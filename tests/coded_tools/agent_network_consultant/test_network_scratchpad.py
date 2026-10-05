@@ -26,6 +26,7 @@ from unittest.mock import patch
 from coded_tools.agent_network_consultant import network_scratchpad
 from coded_tools.agent_network_consultant.network_scratchpad import NetworkScratchpad
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from middleware.agent_network_consultant.consultant_state import ConsultantState
 
 
 class TestNetworkScratchpad(IsolatedAsyncioTestCase):
@@ -40,15 +41,19 @@ class TestNetworkScratchpad(IsolatedAsyncioTestCase):
         shutil.rmtree(self.tmp_path)
 
     @staticmethod
-    async def _invoke(tool: NetworkScratchpad, args: dict[str, Any]) -> Any:
+    async def _invoke(tool: NetworkScratchpad, args: dict[str, Any], run_id: str = "run-1") -> Any:
         """
         Invoke the scratchpad for the isolated test network.
 
         :param tool: The scratchpad coded tool.
         :param args: The coded-tool input arguments.
+        :param run_id: The identifier isolating this test invocation's Consultant run.
         :return: The coded-tool result.
         """
-        sly_data: dict[str, Any] = {AGENT_NETWORK_NAME: "example"}
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_NAME: "example",
+            ConsultantState.NETWORK_CONSULTANT_RUN_ID: run_id,
+        }
         return await tool.async_invoke(args, sly_data)
 
     async def test_read_preserves_history_and_write_appends(self) -> None:
@@ -83,6 +88,19 @@ class TestNetworkScratchpad(IsolatedAsyncioTestCase):
             tool = NetworkScratchpad()
             await self._invoke(tool, {"action": "write", "content": "CURRENT TURN: pending"})
 
-            NetworkScratchpad.clear_for_hocon_file("example.hocon")
+            NetworkScratchpad.clear_for_hocon_file("example.hocon", "run-1")
 
             self.assertEqual(await self._invoke(tool, {"action": "read"}), {"content": ""})
+
+    async def test_concurrent_runs_use_separate_history(self) -> None:
+        """Keep two runs of the same network in separate scratchpad files."""
+        with patch.object(network_scratchpad, "SCRATCHPAD_DIR", self.tmp_path.resolve()):
+            tool = NetworkScratchpad()
+
+            await self._invoke(tool, {"action": "write", "content": "first run"}, "run-1")
+            await self._invoke(tool, {"action": "write", "content": "second run"}, "run-2")
+
+            first_read = await self._invoke(tool, {"action": "read"}, "run-1")
+            second_read = await self._invoke(tool, {"action": "read"}, "run-2")
+            self.assertEqual(first_read, {"content": "first run\n"})
+            self.assertEqual(second_read, {"content": "second run\n"})

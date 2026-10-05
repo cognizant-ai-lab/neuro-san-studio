@@ -17,11 +17,35 @@
 """File exchange between a headless Consultant process and its nsflow job."""
 
 import os
+import tempfile
 import time
+from pathlib import Path
 
 
 class ConsultantJobFiles:
     """Resolve and manage files exposed by the active nsflow job, when present."""
+
+    # Match Studio's bounded five-minute timeout for human input in the run and init commands.
+    ANSWER_TIMEOUT_SECONDS = 300.0
+
+    @staticmethod
+    def identifier() -> str | None:
+        """
+        Return the active nsflow job identifier.
+
+        :return: The job identifier, or `None` outside an nsflow job.
+        """
+        return os.environ.get("NSFLOW_JOB_ID") or None
+
+    @staticmethod
+    def directory() -> Path | None:
+        """
+        Return the active nsflow job-file directory.
+
+        :return: The job-file directory, or `None` outside an nsflow job.
+        """
+        directory = os.environ.get("NSFLOW_JOB_DIR")
+        return Path(directory) if directory else None
 
     @staticmethod
     def active() -> bool:
@@ -30,21 +54,50 @@ class ConsultantJobFiles:
 
         :return: Whether both required job environment values are available.
         """
-        return bool(os.environ.get("NSFLOW_JOB_ID") and os.environ.get("NSFLOW_JOB_DIR"))
+        return bool(ConsultantJobFiles.identifier() and ConsultantJobFiles.directory())
 
     @staticmethod
-    def path(suffix: str) -> str | None:
+    def path(suffix: str) -> Path | None:
         """
         Resolve one output path for the active nsflow job.
 
         :param suffix: The file suffix appended after the job identifier.
         :return: The resolved path, or `None` outside an nsflow job.
         """
-        job_id = os.environ.get("NSFLOW_JOB_ID")
-        job_dir = os.environ.get("NSFLOW_JOB_DIR")
+        job_id = ConsultantJobFiles.identifier()
+        job_dir = ConsultantJobFiles.directory()
         if not job_id or not job_dir:
             return None
-        return os.path.join(job_dir, f"{job_id}.{suffix}")
+        return job_dir / f"{job_id}.{suffix}"
+
+    @staticmethod
+    def _write_atomically(path: Path, content: str) -> None:
+        """
+        Publish complete text through a temporary file on the target filesystem.
+
+        Job sidecars can contain user answers and diagnostic details. The temporary file intentionally retains
+        `mkstemp()`'s restrictive permissions when it replaces the destination instead of adopting the broader
+        permissions used for user-authored project files.
+
+        :param path: The destination job-file path.
+        :param content: The complete text to persist.
+        :raises OSError: If the temporary file cannot be written or published.
+        """
+        temporary_path: Path | None = None
+        try:
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=f".{path.name}.",
+                suffix=".tmp",
+                dir=path.parent,
+            )
+            temporary_path = Path(temporary_name)
+            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as output_file:
+                output_file.write(content)
+            os.replace(temporary_path, path)
+            temporary_path = None
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
 
     @staticmethod
     def write(suffix: str, content: str) -> None:
@@ -57,32 +110,46 @@ class ConsultantJobFiles:
         path = ConsultantJobFiles.path(suffix)
         if path is None:
             return
-        with open(path, "w", encoding="utf-8") as output_file:
-            output_file.write(content)
+        ConsultantJobFiles._write_atomically(path, content)
 
     @staticmethod
-    def ask(question: str, poll_interval: float) -> str:
+    def ask(
+        question: str,
+        poll_interval: float,
+        timeout: float = ANSWER_TIMEOUT_SECONDS,
+    ) -> str:
         """
         Publish a clarification question and wait for the nsflow answer file.
 
         :param question: The clarification question to publish.
         :param poll_interval: Seconds to wait between answer-file checks.
+        :param timeout: Maximum seconds to wait for an answer.
         :return: The stripped answer text.
         :raises RuntimeError: If no nsflow job-file context is active.
+        :raises TimeoutError: If nsflow does not supply an answer before the deadline.
+        :raises ValueError: If the polling interval or timeout is not positive.
         """
+        if poll_interval <= 0:
+            raise ValueError("The answer polling interval must be positive.")
+        if timeout <= 0:
+            raise ValueError("The answer timeout must be positive.")
         question_path = ConsultantJobFiles.path("question.txt")
         answer_path = ConsultantJobFiles.path("answer.txt")
         if question_path is None or answer_path is None:
             raise RuntimeError("Cannot request a headless answer outside an nsflow job.")
-        with open(question_path, "w", encoding="utf-8") as question_file:
-            question_file.write(question)
+        ConsultantJobFiles._write_atomically(question_path, question)
+        deadline = time.monotonic() + timeout
         try:
-            while not os.path.exists(answer_path):
-                time.sleep(poll_interval)
-            with open(answer_path, encoding="utf-8") as answer_file:
-                answer = answer_file.read().strip()
-            os.remove(answer_path)
-            return answer
+            while True:
+                try:
+                    answer = answer_path.read_text(encoding="utf-8").strip()
+                except FileNotFoundError:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError(f"No clarification answer received within {timeout:g} seconds.") from None
+                    time.sleep(min(poll_interval, remaining))
+                else:
+                    answer_path.unlink()
+                    return answer
         finally:
-            if os.path.exists(question_path):
-                os.remove(question_path)
+            question_path.unlink(missing_ok=True)

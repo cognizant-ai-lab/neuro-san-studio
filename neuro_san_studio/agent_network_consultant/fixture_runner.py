@@ -36,6 +36,7 @@ import re
 import threading
 import time
 from collections.abc import Mapping
+from copy import deepcopy
 from functools import partial
 from logging.handlers import QueueHandler
 from typing import Any
@@ -44,7 +45,6 @@ from unittest import TestCase
 from leaf_common.time.timeout_reached_exception import TimeoutReachedException
 
 from neuro_san_studio.agent_network_consultant.consultant_job_files import ConsultantJobFiles
-from neuro_san_studio.agent_network_consultant.fixture_ratio_manager import FixtureRatioManager
 from neuro_san_studio.agent_network_consultant.network_test_environment import NetworkTestEnvironment
 from neuro_san_studio.agent_network_consultant.scorecard_assert_forwarder import ScorecardAssertForwarder
 from neuro_san_studio.agent_network_consultant.thinking_trace_collector import ThinkingTraceCollector
@@ -119,27 +119,173 @@ class FixtureRunner:
         return sorted(glob.glob(os.path.join(search_dir, "*.hocon")))
 
     @staticmethod
-    def run_real_ratio_suite(fixtures_dir: str, original_ratios: dict[str, str], ratio: str) -> list[dict[str, Any]]:
+    def _select_fixture_paths(
+        paths: list[str],
+        fixtures_dir: str,
+        only_fixtures: list[str] | None,
+    ) -> list[str]:
         """
-        Run the full suite for an authoritative Before/After bar. Those bars always score against each fixture's
-        own success_ratio -- that is the network's real score -- so lift any CONFIDENT_FIX bump for the duration of
-        the run, then put it straight back: the loop often continues afterwards, and a fix the consultant vouched
-        for should stay on its stricter ratio when it does.
+        Return the requested fixture paths after rejecting unknown fixture names.
 
-        `original_ratios` is updated in place, so it keeps tracking exactly what needs undoing.
-
-        :param fixtures_dir: The network fixture directory.
-        :param original_ratios: The fixture ratios to restore around the run.
-        :param ratio: The success ratio to apply.
-        :return: The collected values.
+        :param paths: Every fixture path discovered under the selected fixture directory.
+        :param fixtures_dir: Network path under tests/fixtures/ used in validation errors.
+        :param only_fixtures: The optional exact fixture basenames to select.
+        :return: Every discovered path, or the validated requested subset.
+        :raises ValueError: If a requested fixture does not exist in the selected fixture directory.
         """
-        bumped_paths = list(original_ratios)
-        FixtureRatioManager.restore(original_ratios)
-        original_ratios.clear()
-        try:
-            return FixtureRunner.run_all_tests(fixtures_dir)
-        finally:
-            original_ratios.update(FixtureRatioManager.set_for_paths(bumped_paths, ratio))
+        if only_fixtures is None:
+            return paths
+        wanted = set(only_fixtures)
+        available_fixture_names: set[str] = set()
+        for path in paths:
+            available_fixture_names.add(os.path.basename(path))
+        missing_fixture_names: list[str] = []
+        for fixture_name in wanted:
+            if fixture_name not in available_fixture_names:
+                missing_fixture_names.append(fixture_name)
+        if missing_fixture_names:
+            missing_fixture_names.sort()
+            missing_names = ", ".join(missing_fixture_names)
+            raise ValueError(f"Unknown fixture selection under '{fixtures_dir}': {missing_names}.")
+        selected_paths: list[str] = []
+        for path in paths:
+            if os.path.basename(path) in wanted:
+                selected_paths.append(path)
+        return selected_paths
+
+    @staticmethod
+    def _run_with_ratio_override(
+        fixture_path: str,
+        asserts: ScorecardAssertForwarder,
+        fixture_name: str,
+        success_ratio: str,
+    ) -> None:
+        """
+        Run one parsed fixture with an in-memory success-ratio override.
+
+        This mirrors ``DataDrivenAgentTestDriver.one_test`` while changing only the parsed test-case mapping. The
+        upstream driver does not currently accept an override, and changing the mapping avoids modifying the fixture.
+
+        :param fixture_path: Path to a single test fixture HOCON file.
+        :param asserts: The assertion forwarder used to collect fixture results.
+        :param fixture_name: The fixture base name.
+        :param success_ratio: The temporary success ratio used for this execution only.
+        """
+        tests_util_module = importlib.import_module("neuro_san.test.util.tests_util")
+        tests_driver_module = importlib.import_module("neuro_san.test.driver.data_driven_tests_driver")
+        test_case: dict[str, Any] = tests_util_module.TestsUtil.parse_hocon_test_case(None, fixture_path)
+        test_case["success_ratio"] = success_ratio
+        agent = test_case.get("agent")
+        asserts.assertIsNotNone(agent)
+        required_successes, iteration_count = FixtureRunner._ratio_counts(asserts, success_ratio)
+        test_cases = FixtureRunner._repeated_test_cases(test_case, iteration_count)
+        test_driver = tests_driver_module.DataDrivenTestsDriver(asserts, test_name=fixture_name)
+        test_results = test_driver.run_tests(test_cases, required_successes)
+        successful = FixtureRunner._successful_result_count(test_results, required_successes)
+        if successful >= required_successes:
+            return
+        FixtureRunner._raise_ratio_failure(
+            test_results,
+            successful,
+            (required_successes, iteration_count),
+            agent,
+            fixture_path,
+        )
+
+    @staticmethod
+    def _ratio_counts(asserts: ScorecardAssertForwarder, success_ratio: str) -> tuple[int, int]:
+        """
+        Validate a success ratio and return its bounded required and total counts.
+
+        :param asserts: The assertion forwarder used to report an invalid ratio.
+        :param success_ratio: The success ratio formatted as required attempts over total attempts.
+        :return: The bounded required success count and iteration count.
+        """
+        asserts.assertIn("/", success_ratio)
+        ratio_parts = success_ratio.split("/")
+        iteration_count = max(1, int(ratio_parts[-1]))
+        return min(int(ratio_parts[0]), iteration_count), iteration_count
+
+    @staticmethod
+    def _repeated_test_cases(test_case: dict[str, Any], iteration_count: int) -> list[dict[str, Any]]:
+        """
+        Create an isolated test-case mapping for every fixture attempt.
+
+        :param test_case: The parsed fixture test case.
+        :param iteration_count: The number of fixture attempts to create.
+        :return: Deep copies of the fixture test case.
+        """
+        test_cases: list[dict[str, Any]] = []
+        for _index in range(iteration_count):
+            test_cases.append(deepcopy(test_case))
+        return test_cases
+
+    @staticmethod
+    def _successful_result_count(test_results: list[Any], required_successes: int) -> int:
+        """
+        Count successful attempts until the fixture threshold is met.
+
+        :param test_results: The captured result for every completed fixture attempt.
+        :param required_successes: The number of successful attempts required to pass.
+        :return: The observed successful attempt count, capped at the required count.
+        """
+        successful = 0
+        for test_result in test_results:
+            if not test_result.get_asserts():
+                successful += 1
+                if successful >= required_successes:
+                    return successful
+        return successful
+
+    @staticmethod
+    def _raise_ratio_failure(
+        test_results: list[Any],
+        successful: int,
+        ratio_counts: tuple[int, int],
+        agent: Any,
+        fixture_path: str,
+    ) -> None:
+        """
+        Raise the upstream-compatible error from the first failed fixture attempt.
+
+        :param test_results: The captured result for every completed fixture attempt.
+        :param successful: The observed successful attempt count.
+        :param ratio_counts: The required success count and total attempted fixture count.
+        :param agent: The fixture's configured agent name.
+        :param fixture_path: Path to the source fixture HOCON file.
+        :raises AssertionError: Raised from the first captured assertion when the ratio was not met.
+        """
+        required_successes, iteration_count = ratio_counts
+        for test_result in test_results:
+            failures = test_result.get_asserts()
+            if failures:
+                message = (
+                    f"\n{successful} of {iteration_count} iterations on agent {agent} were successful.\n"
+                    f"Need at least {required_successes} to consider {fixture_path} test to be successful.\n"
+                )
+                raise AssertionError(message) from failures[0]
+
+    @staticmethod
+    def _execute_fixture(
+        fixture_path: str,
+        asserts: ScorecardAssertForwarder,
+        fixture_name: str,
+        success_ratio_overrides: dict[str, str] | None,
+    ) -> None:
+        """
+        Execute one fixture with its declared or in-memory confidence ratio.
+
+        :param fixture_path: Path to a single test fixture HOCON file.
+        :param asserts: The assertion forwarder used to collect fixture results.
+        :param fixture_name: The fixture base name.
+        :param success_ratio_overrides: Ratios keyed by fixture basename for this execution only.
+        """
+        ratio_override = (success_ratio_overrides or {}).get(fixture_name)
+        if ratio_override is not None:
+            FixtureRunner._run_with_ratio_override(fixture_path, asserts, fixture_name, ratio_override)
+            return
+        driver = FixtureRunner._create_driver(asserts, fixture_name)
+        driver.one_test(fixture_path)
 
     @staticmethod
     def scorecard_message(cause: BaseException, scorecard: list[tuple[str, int, int]]) -> str:
@@ -255,11 +401,17 @@ class FixtureRunner:
             api_key_error_found = True
 
     @staticmethod
-    def run_fixture(fixture_path: str) -> dict[str, Any]:
+    def run_fixture(
+        fixture_path: str,
+        run_id: str,
+        success_ratio_overrides: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """
         Run fixture.
 
         :param fixture_path: Path to a single test fixture HOCON file.
+        :param run_id: The unique Consultant run identifier.
+        :param success_ratio_overrides: Ratios keyed by fixture basename for this execution only.
         :return: Result with fixture/path/passed/message/infrastructure_error fields.
         """
         # one_test() raises a single AssertionError (summarizing every interaction/iteration
@@ -267,14 +419,13 @@ class FixtureRunner:
         # is all the aggregation this needs.
         fixture_name = os.path.basename(fixture_path)
         asserts = ScorecardAssertForwarder(TestCase())
-        driver = FixtureRunner._create_driver(asserts, fixture_name)
 
         logger.info("run_fixture start: %s", fixture_name)
         started = time.time()
         capture, capture_queue = FixtureRunner._api_key_error_capture()
         logging.getLogger().addHandler(capture)
         try:
-            driver.one_test(fixture_path)
+            FixtureRunner._execute_fixture(fixture_path, asserts, fixture_name, success_ratio_overrides)
             logger.info("run_fixture pass (%.1fs): %s", time.time() - started, fixture_name)
             return FixtureRunner._fixture_verdict(fixture_path, asserts, True, None)
         except AssertionError as exc:
@@ -306,9 +457,9 @@ class FixtureRunner:
             # exc carries no message of its own (leaf_common never sets one) -- report the interaction's
             # own timeout budget so a human knows to raise timeout_in_seconds, not chase a phantom bug.
             limit = exc.timeout.get_limit_in_seconds()
-            name = exc.timeout.get_name() or fixture_name
             message = (
-                f"TIMEOUT_ISSUE: {fixture_name}: interaction {name!r} exceeded its {limit:.0f}s timeout -- "
+                f"TIMEOUT_ISSUE: {fixture_name}: interaction {exc.timeout.get_name() or fixture_name!r} exceeded "
+                f"its {limit:.0f}s timeout -- "
                 f"increase timeout_in_seconds in this fixture."
             )
             logger.warning(
@@ -329,37 +480,47 @@ class FixtureRunner:
             return FixtureRunner._fixture_verdict(fixture_path, asserts, False, message, infrastructure_error=True)
         finally:
             logging.getLogger().removeHandler(capture)
-            ThinkingTraceCollector.write(fixture_name, started)
+            ThinkingTraceCollector.write(fixture_name, started, run_id)
 
     @staticmethod
-    def run_all_tests(fixtures_dir: str, only_fixtures: list[str] | None = None) -> list[dict[str, Any]]:
+    def run_all_tests(
+        fixtures_dir: str,
+        run_id: str,
+        only_fixtures: list[str] | None = None,
+        success_ratio_overrides: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Run a fixture suite without retaining changes to the caller's environment.
 
         :param fixtures_dir: Network path under tests/fixtures/, such as `generated/coffee_shop`.
+        :param run_id: The unique Consultant run identifier.
         :param only_fixtures: The optional fixture basenames to run.
+        :param success_ratio_overrides: Ratios keyed by fixture basename for this execution only.
         :return: One result mapping per discovered fixture.
+        :raises ValueError: If a requested fixture does not exist in the selected fixture directory.
         """
         with NetworkTestEnvironment():
-            return FixtureRunner._run_all_tests(fixtures_dir, only_fixtures)
+            return FixtureRunner._run_all_tests(fixtures_dir, run_id, only_fixtures, success_ratio_overrides)
 
     @staticmethod
-    def _run_all_tests(fixtures_dir: str, only_fixtures: list[str] | None = None) -> list[dict[str, Any]]:
+    def _run_all_tests(
+        fixtures_dir: str,
+        run_id: str,
+        only_fixtures: list[str] | None = None,
+        success_ratio_overrides: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Run all tests.
 
         :param fixtures_dir: Network path under tests/fixtures/, e.g. "generated/coffee_shop"
-        :param only_fixtures: If given, run only these basenames (e.g. ["foo.hocon"]) instead of
+        :param run_id: The unique Consultant run identifier.
+        :param only_fixtures: If given, run only these exact basenames (for example, `["foo.hocon"]`).
+        :param success_ratio_overrides: Ratios keyed by fixture basename for this execution only.
         :return: One result dict (see run_fixture) per fixture found, in fixture_paths order
+        :raises ValueError: If a requested fixture does not exist in the selected fixture directory.
         """
         paths = FixtureRunner.fixture_paths(fixtures_dir)
-        if only_fixtures is not None:
-            wanted = set(only_fixtures)
-            selected_paths: list[str] = []
-            for path in paths:
-                if os.path.basename(path) in wanted:
-                    selected_paths.append(path)
-            paths = selected_paths
+        paths = FixtureRunner._select_fixture_paths(paths, fixtures_dir, only_fixtures)
         if not paths:
             search_dir = os.path.join("tests", "fixtures", fixtures_dir)
             logger.warning("run_all_tests: no fixtures found under %s (only_fixtures=%s)", search_dir, only_fixtures)
@@ -380,10 +541,15 @@ class FixtureRunner:
         )
         started = time.time()
         # Run fixtures concurrently (one thread each) instead of one at a time -- run_fixture
-        # is already safe to call this way: _write_consolidated_thinking is keyed by fixture name,
+        # is already safe to call this way: consolidated thinking is keyed by run and fixture name,
         # and each log capture filters to its own thread.
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(paths), MAX_PARALLEL_FIXTURES)) as executor:
-            results = list(executor.map(FixtureRunner.run_fixture, paths))
+            run_fixture = partial(
+                FixtureRunner.run_fixture,
+                run_id=run_id,
+                success_ratio_overrides=success_ratio_overrides,
+            )
+            results = list(executor.map(run_fixture, paths))
         passed = 0
         for result in results:
             if result.get("passed"):
