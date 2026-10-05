@@ -340,6 +340,10 @@ any `agent_network_metadata` sent with the same request
 - A load that yields no agent (a `tools` list that is missing, not a list, empty, or whose every entry is skipped)
 ends the turn with an error message, as a missing or unparseable file does. `agent_network_name` is set from the
 file name or the reservation id only once the load has produced a definition
+- A file named in `agent_network_hocon_file` must resolve, symlinks and `..` included, to a path inside a
+registries directory: the directory of any manifest in `AGENT_MANIFEST_FILE`, or `registries` when it is unset.
+A path outside those directories, or a missing, unreadable or unsupported file, ends the turn with one generic
+error message; the server log records the path and the reason
 
 #### Persistence (Middleware)
 
