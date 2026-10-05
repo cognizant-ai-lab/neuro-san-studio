@@ -14,16 +14,12 @@
 #
 # END COPYRIGHT
 
-"""Scoped environment required by Neuro SAN's direct fixture driver."""
+"""Child-process environment required by Neuro SAN's direct fixture driver."""
 
 import logging
 import os
 import shutil
 import tempfile
-import threading
-from types import TracebackType
-from typing import ClassVar
-from typing import Self
 
 from neuro_san_studio.commands.project_environment import ProjectEnvironment
 
@@ -31,112 +27,87 @@ logger = logging.getLogger("network_consultant")
 
 
 class NetworkTestEnvironment:
-    """Provide direct-test configuration temporarily and restore the caller's environment."""
-
-    MANAGED_VARIABLES: ClassVar[tuple[str, ...]] = (
-        "AGENT_MANIFEST_FILE",
-        "AGENT_TOOL_PATH",
-        "AGENT_TOOLBOX_INFO_FILE",
-        "AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE",
-        "AGENT_TEST_THINKING_BASIS",
-    )
-    ENVIRONMENT_LOCK: ClassVar[threading.RLock] = threading.RLock()
+    """Build direct-test configuration for an isolated Consultant child process."""
 
     def __init__(self, project_root: str | None = None) -> None:
         """
-        Initialize a scoped direct-test environment.
+        Initialize a direct-test environment builder for one child process.
 
         :param project_root: The project root containing registries and coded tools.
         """
         self._project_root = os.path.abspath(project_root or os.getcwd())
-        self._original_values: dict[str, str | None] = {}
         self._thinking_directory: str | None = None
 
-    def __enter__(self) -> Self:
+    def create(self) -> dict[str, str]:
         """
-        Apply missing direct-test values for the duration of the scope.
+        Build a child environment without changing the current process.
 
-        :return: This active environment scope.
+        :return: A complete environment mapping for the Consultant child process.
         :raises OSError: If the temporary thinking directory cannot be created.
-        :raises TypeError: If an environment value cannot be assigned.
-        :raises ValueError: If an environment value is malformed.
         """
-        NetworkTestEnvironment.ENVIRONMENT_LOCK.acquire()
-        try:
-            self._remember_environment()
-            self._apply_project_defaults()
-            self._apply_thinking_directory()
-        except (OSError, TypeError, ValueError):
-            self._restore_environment()
-            self._cleanup_thinking_directory()
-            NetworkTestEnvironment.ENVIRONMENT_LOCK.release()
-            raise
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        """
-        Restore every caller-owned environment value and clean up temporary files.
-
-        :param exc_type: The exception type leaving the scope, when present.
-        :param exc_value: The exception leaving the scope, when present.
-        :param traceback: The exception traceback leaving the scope, when present.
-        """
-        del exc_type, exc_value, traceback
-        try:
-            self._restore_environment()
-            self._cleanup_thinking_directory()
-        finally:
-            NetworkTestEnvironment.ENVIRONMENT_LOCK.release()
-
-    def _remember_environment(self) -> None:
-        """Remember the caller's complete state for every managed variable."""
-        for name in NetworkTestEnvironment.MANAGED_VARIABLES:
-            self._original_values[name] = os.environ.get(name)
-
-    def _apply_project_defaults(self) -> None:
-        """Apply missing project paths using Studio's shared resolution rules."""
+        environment = dict(os.environ)
         project = ProjectEnvironment(self._project_root)
-        tool_path = os.path.relpath(project.resolve_tool_path(), self._project_root)
         defaults: dict[str, str] = {
             "AGENT_MANIFEST_FILE": project.resolve_manifest_file(),
-            "AGENT_TOOL_PATH": tool_path,
+            "AGENT_TOOL_PATH": project.resolve_tool_path(),
             "AGENT_TOOLBOX_INFO_FILE": project.resolve_toolbox_info_file(),
             "AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE": project.resolve_designer_toolbox_info_file(),
         }
         for name, value in defaults.items():
-            if name not in os.environ and value:
-                os.environ[name] = value
+            NetworkTestEnvironment._set_default(environment, name, value)
+        self._add_project_to_python_path(environment)
+        if environment.get("AGENT_TEST_THINKING_BASIS") is None:
+            if self._thinking_directory is None:
+                self._thinking_directory = tempfile.mkdtemp(prefix="network_consultant_test_thinking_")
+            environment["AGENT_TEST_THINKING_BASIS"] = self._thinking_directory
+        return environment
 
-    def _apply_thinking_directory(self) -> None:
-        """Create and expose an isolated thinking directory only when the caller did not configure one."""
-        if "AGENT_TEST_THINKING_BASIS" in os.environ:
-            return
-        self._thinking_directory = tempfile.mkdtemp(prefix="network_consultant_test_thinking_")
-        os.environ["AGENT_TEST_THINKING_BASIS"] = self._thinking_directory
+    def owned_thinking_directory(self) -> str | None:
+        """
+        Return the temporary thinking directory created for the child process.
 
-    def _restore_environment(self) -> None:
-        """Restore managed variables to the exact state captured on entry."""
-        for name, value in self._original_values.items():
-            if value is None:
-                os.environ.pop(name, None)
-            else:
-                os.environ[name] = value
+        :return: The owned directory, or `None` when the caller supplied one.
+        """
+        return self._thinking_directory
 
-    def _cleanup_thinking_directory(self) -> None:
-        """Delete the owned thinking directory and report cleanup failures."""
-        if self._thinking_directory is None:
+    def _add_project_to_python_path(self, environment: dict[str, str]) -> None:
+        """
+        Ensure the child process can import project-local coded tools.
+
+        :param environment: The child environment being assembled.
+        """
+        existing = environment.get("PYTHONPATH", "")
+        for path in existing.split(os.pathsep):
+            if path and os.path.abspath(path) == self._project_root:
+                return
+        environment["PYTHONPATH"] = existing + os.pathsep + self._project_root if existing else self._project_root
+
+    @staticmethod
+    def _set_default(environment: dict[str, str], name: str, value: str) -> None:
+        """
+        Add one default to the child environment without replacing a caller value.
+
+        :param environment: The child environment being assembled.
+        :param name: The environment variable name.
+        :param value: The resolved default value.
+        """
+        if environment.get(name) is None and value:
+            environment[name] = value
+
+    @staticmethod
+    def cleanup_owned_thinking_directory(thinking_directory: str | None) -> None:
+        """
+        Delete a child-process thinking directory and report cleanup failures.
+
+        :param thinking_directory: The owned directory, or `None` for caller-owned storage.
+        """
+        if thinking_directory is None:
             return
         try:
-            shutil.rmtree(self._thinking_directory)
+            shutil.rmtree(thinking_directory)
         except OSError as error:
             logger.warning(
                 "Could not remove temporary Consultant thinking directory %s: %s",
-                self._thinking_directory,
+                thinking_directory,
                 error,
             )
-        self._thinking_directory = None

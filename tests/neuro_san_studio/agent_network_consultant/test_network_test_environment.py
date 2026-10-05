@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for the scoped Network Consultant fixture environment."""
+"""Tests for the isolated Network Consultant child environment."""
 
 import os
 import tempfile
@@ -25,26 +25,32 @@ from neuro_san_studio.agent_network_consultant.network_test_environment import N
 
 
 class TestNetworkTestEnvironment(TestCase):
-    """Verify direct-test settings are isolated and caller-owned values survive unchanged."""
+    """Verify child configuration never mutates caller-owned environment values."""
 
-    def test_scope_restores_missing_values_and_removes_thinking_directory(self) -> None:
-        """Remove temporary values and files after a scope created every required default."""
+    def test_create_returns_defaults_without_changing_the_current_process(self) -> None:
+        """Build direct-test defaults only in the returned child mapping."""
         with tempfile.TemporaryDirectory() as project_root:
             with patch.dict(os.environ, {}, clear=True):
-                with NetworkTestEnvironment(project_root):
-                    thinking_directory = os.environ.get("AGENT_TEST_THINKING_BASIS", "")
-                    self.assertEqual(
-                        os.path.join(project_root, "registries", "manifest.hocon"),
-                        os.environ.get("AGENT_MANIFEST_FILE"),
-                    )
-                    self.assertEqual("coded_tools", os.environ.get("AGENT_TOOL_PATH"))
-                    self.assertTrue(os.path.isdir(thinking_directory))
+                scope = NetworkTestEnvironment(project_root)
+                child_environment = scope.create()
+                thinking_directory = scope.owned_thinking_directory()
 
+                self.assertEqual(
+                    os.path.join(project_root, "registries", "manifest.hocon"),
+                    child_environment.get("AGENT_MANIFEST_FILE"),
+                )
+                self.assertEqual(os.path.join(project_root, "coded_tools"), child_environment.get("AGENT_TOOL_PATH"))
+                self.assertEqual(project_root, child_environment.get("PYTHONPATH"))
+                self.assertEqual(thinking_directory, child_environment.get("AGENT_TEST_THINKING_BASIS"))
+                self.assertIsNotNone(thinking_directory)
+                self.assertTrue(os.path.isdir(thinking_directory or ""))
                 self.assertFalse(os.environ)
-                self.assertFalse(os.path.exists(thinking_directory))
 
-    def test_scope_preserves_existing_values(self) -> None:
-        """Leave every operator-provided value unchanged during and after the fixture run."""
+            NetworkTestEnvironment.cleanup_owned_thinking_directory(thinking_directory)
+            self.assertFalse(os.path.exists(thinking_directory or ""))
+
+    def test_create_preserves_existing_values_without_owning_their_thinking_directory(self) -> None:
+        """Copy every operator-provided value without changing or deleting it."""
         existing: dict[str, str] = {
             "AGENT_MANIFEST_FILE": "custom/manifest.hocon",
             "AGENT_TOOL_PATH": "custom_tools",
@@ -53,21 +59,25 @@ class TestNetworkTestEnvironment(TestCase):
             "AGENT_TEST_THINKING_BASIS": "custom/thinking",
         }
         with patch.dict(os.environ, existing, clear=True):
-            with NetworkTestEnvironment():
-                for name, value in existing.items():
-                    self.assertEqual(value, os.environ.get(name))
+            scope = NetworkTestEnvironment()
+            child_environment = scope.create()
 
             for name, value in existing.items():
                 self.assertEqual(value, os.environ.get(name))
+                self.assertEqual(value, child_environment.get(name))
+            self.assertIsNone(scope.owned_thinking_directory())
 
-    def test_scope_restores_environment_after_an_exception(self) -> None:
-        """Restore caller state and delete temporary thinking files when fixture execution raises."""
+    def test_create_failure_leaves_the_current_process_unchanged(self) -> None:
+        """Propagate temporary-directory failures without writing process environment values."""
         with tempfile.TemporaryDirectory() as project_root:
             with patch.dict(os.environ, {}, clear=True):
-                with self.assertRaisesRegex(RuntimeError, "fixture failed"):
-                    with NetworkTestEnvironment(project_root):
-                        thinking_directory = os.environ.get("AGENT_TEST_THINKING_BASIS", "")
-                        raise RuntimeError("fixture failed")
+                with (
+                    patch(
+                        "neuro_san_studio.agent_network_consultant.network_test_environment.tempfile.mkdtemp",
+                        side_effect=OSError("creation failed"),
+                    ),
+                    self.assertRaisesRegex(OSError, "creation failed"),
+                ):
+                    NetworkTestEnvironment(project_root).create()
 
                 self.assertFalse(os.environ)
-                self.assertFalse(os.path.exists(thinking_directory))
