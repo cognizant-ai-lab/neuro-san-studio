@@ -350,7 +350,7 @@ class TestAdcHint(TestCase):
         hint = CheckConfigCommand.adc_hint(DefaultCredentialsError("Your default credentials were not found."))
         self.assertIsNotNone(hint)
         self.assertIn("gcloud auth application-default login", hint)
-        self.assertIn("docs/user_guide.md", hint)
+        self.assertIn("github.com/cognizant-ai-lab/neuro-san-studio", hint)
 
     def test_unrelated_exception_returns_none(self):
         """A non-ADC exception (e.g. a bad API key) gets no hint."""

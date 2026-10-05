@@ -472,7 +472,8 @@ class CheckConfigCommand:
                 return (
                     "Hint: run 'gcloud auth application-default login', or deploy where the runtime "
                     "service account has Vertex AI access. See the 'Simpler ADC Alternative' section "
-                    "in docs/user_guide.md."
+                    "in https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md"
+                    "#simpler-adc-alternative-built-in-gemini-class"
                 )
             candidate = candidate.__cause__
         return None
