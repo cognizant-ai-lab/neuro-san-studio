@@ -47,6 +47,15 @@ class TestSourcePreservingHoconEditor(TestCase):
         self.assertNotIn("${aaosa_instructions}", updated)
         ConfigFactory.parse_string(updated, resolve=True)
 
+    def test_instruction_edit_does_not_add_unrequested_root_settings(self) -> None:
+        """Change only the requested instruction value when execution limits are absent."""
+        updated = SourcePreservingHoconEditor.update_text(self.NON_AAOSA, self.CHANGE)
+
+        expected = self.NON_AAOSA.replace('"Say hello."', '"Greet the user warmly."')
+        self.assertEqual(expected, updated)
+        self.assertNotIn("max_steps", updated)
+        self.assertNotIn("max_execution_seconds", updated)
+
     def test_aaosa_network_keeps_one_substitution(self) -> None:
         """
         Recognize both supported AAOSA include variants without duplication.
