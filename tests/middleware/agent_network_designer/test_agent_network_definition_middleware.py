@@ -19,6 +19,10 @@ Tests for AgentNetworkDefinitionMiddleware: path resolution, the loaded metadata
 removal of copies of the designer's common instructions from the definition.
 """
 
+# This is the one-class test module for AgentNetworkDefinitionMiddleware (one file per class,
+# per the repo convention), so it legitimately exceeds pylint's default line limit.
+# pylint: disable=too-many-lines
+
 import asyncio
 import json
 import os
@@ -579,7 +583,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
 
         with patch(
-            "middleware.agent_network_designer.agent_network_definition_middleware.Path.is_file",
+            "middleware.agent_network_designer.agent_network_config_path_resolver.Path.is_file",
             side_effect=PermissionError("denied"),
         ):
             with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
