@@ -34,8 +34,6 @@ _AAOSA_INCLUDE = re.compile(r'include\s+"[^"]*aaosa[^"]*\.hocon"')
 class SourcePreservingHoconEditor:
     """Patch supported agent fields without resolving includes or rebuilding the network."""
 
-    DEFAULT_MAX_STEPS = 500
-    DEFAULT_MAX_EXECUTION_SECONDS = 600
     _path_locks: dict[Path, threading.Lock] = {}
     _path_locks_guard = threading.Lock()
 
@@ -73,7 +71,7 @@ class SourcePreservingHoconEditor:
                 if field_name not in {"instructions", "description"}:
                     raise ValueError(f"Unsupported agent field for source-preserving edit: {field_name}")
                 updated = cls._replace_agent_field(updated, agent_name, field_name, new_value)
-        return cls._ensure_execution_limits(updated)
+        return updated
 
     @classmethod
     def _replace_agent_field(cls, text: str, agent_name: str, field_name: str, new_value: str) -> str:
@@ -317,32 +315,6 @@ class SourcePreservingHoconEditor:
                 if depth == 0:
                     return index
         raise ValueError(f"Unterminated HOCON {opening!r} block.")
-
-    @classmethod
-    def _ensure_execution_limits(cls, text: str) -> str:
-        """
-        Add bounded execution defaults only when the source omits them.
-
-        :param text: The HOCON or assertion text to process.
-        :return: The resulting text.
-        """
-        tokens = cls._tokens(text)
-        root_start = cls._first_token(tokens, "{")
-        root_end = cls._matching_index(tokens, root_start, "{", "}")
-        additions = []
-        for key, value in (
-            ("max_steps", cls.DEFAULT_MAX_STEPS),
-            ("max_execution_seconds", cls.DEFAULT_MAX_EXECUTION_SECONDS),
-        ):
-            try:
-                cls._property_value_index(tokens, root_start, root_end, key)
-            except ValueError:
-                additions.append(f'    "{key}": {value},')
-        if not additions:
-            return text
-        insertion = "\n" + "\n".join(additions) + "\n"
-        position = tokens[root_start].end()
-        return text[:position] + insertion + text[position:]
 
     @staticmethod
     def _tokens(text: str) -> list[HoconToken]:

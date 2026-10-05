@@ -63,8 +63,7 @@ and repair:
 
 7. [`ConsultantPersistenceMiddleware`](../../middleware/agent_network_consultant/consultant_persistence_middleware.py)
    validates instruction changes and applies them to the original HOCON source. It does not regenerate the complete
-   network file for an instruction-only repair. When the source omits execution limits, the source editor also adds
-   bounded `max_steps` and `max_execution_seconds` defaults.
+   network file for an instruction-only repair or add unrelated root settings.
 
 8. The next iteration retests only the fixtures that were failing. When that subset passes, Consultant runs the full
    suite to detect regressions.
@@ -289,7 +288,6 @@ extends Designer's persistence middleware while changing how successful edits re
 - Uses
   [`SourcePreservingHoconEditor`](../../middleware/agent_network_consultant/source_preserving_hocon_editor.py) to patch
   only changed `instructions` and `description` values in the original file.
-- Adds bounded `max_steps` and `max_execution_seconds` defaults when those root settings are absent.
 - Writes atomically after parsing and validating the resulting HOCON.
 
 Structural changes are not forced through this source patcher. They are delegated to Agent Network Designer.
