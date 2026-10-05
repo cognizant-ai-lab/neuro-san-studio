@@ -16,6 +16,7 @@
 
 """Typer CLI dispatcher for the neuro-san-studio package."""
 
+import json
 import os
 import sys
 from typing import List
@@ -309,14 +310,35 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
 
         # pylint: disable-next=import-outside-toplevel
-        from neuro_san_studio.agent_network_consultant.network_consultant_orchestrator import (
-            NetworkConsultantOrchestrator,
-        )
+        from neuro_san_studio.agent_network_consultant.network_test_environment import NetworkTestEnvironment
 
         try:
-            NetworkConsultantOrchestrator.run(ConsultantOptions(**options))
+            consultant_options = ConsultantOptions(**options)
+            consultant_options.validate()
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from exc
+
+        environment_scope = NetworkTestEnvironment()
+        child_environment = environment_scope.create()
+        serialized_run = json.dumps(
+            {
+                "options": consultant_options._asdict(),
+                "owned_thinking_directory": environment_scope.owned_thinking_directory(),
+            }
+        )
+        command = [
+            sys.executable,
+            "-m",
+            "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator",
+            serialized_run,
+        ]
+        try:
+            # Replacing the CLI process preserves signal and terminal behavior while keeping project defaults out of
+            # the caller's environment. The new process receives only the explicit copied mapping above.
+            os.execve(sys.executable, command, child_environment)
+        except OSError:
+            NetworkTestEnvironment.cleanup_owned_thinking_directory(environment_scope.owned_thinking_directory())
+            raise
 
     @staticmethod
     @app.command(

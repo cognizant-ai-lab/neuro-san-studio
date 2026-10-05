@@ -1,0 +1,46 @@
+name: Agent Network Consultant Tests
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  agent-network-consultant-test:
+    if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@e11ab4d3725a79bd8b28c3f7fb0785615290cf24
+    with:
+      python-version: '3.12'
+      system-packages: 'curl netcat-openbsd procps net-tools'
+      lint-command-override: 'true'
+      requirements-file: ''
+      requirements-build-file: ''
+      run-pytest: false
+      test-command-override: |
+        set -euo pipefail
+        make install
+        # shellcheck source=/dev/null
+        source venv/bin/activate
+        export AGENT_TOOL_PATH="coded_tools/"
+        export AGENT_MANIFEST_FILE="registries/manifest.hocon"
+        export PYTHONPATH=".:${PYTHONPATH:-}"
+        thinking_dir="$(mktemp -d)"
+        export AGENT_TEST_THINKING_BASIS="${thinking_dir}"
+        cleanup() {
+          rm -rf "${thinking_dir}"
+        }
+        trap cleanup EXIT
+        build_scripts/server_start.sh
+        if ! pytest --capture=no --verbose \
+            -m "integration_agent_network_consultant" --durations=100; then
+          echo "===================================================="
+          echo "=== Server Log ==="
+          cat logs/server.log || echo "(no server.log found)"
+          echo "===================================================="
+          exit 1
+        fi
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -1,4 +1,4 @@
-.PHONY: help venv install activate venv-guard lint lint-tests format format-tests
+.PHONY: help venv install activate venv-guard lint lint-tests format format-tests test-designer test-consultant
 SOURCES := apps coded_tools middleware neuro_san_studio
 TESTS   := tests
 .DEFAULT_GOAL := help
@@ -113,6 +113,27 @@ test-designer: install
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
 	pytest --capture=no --verbose -m "integration_agent_network_designer" --durations=100
+
+# Test the Agent Network Consultant
+test-consultant: install
+	@. venv/bin/activate && \
+	thinking_dir="$$(mktemp -d)" && \
+	cleanup() { \
+		if [ -f server.pid ]; then \
+			kill "$$(cat server.pid)" 2>/dev/null || true; \
+			rm -f server.pid; \
+		fi; \
+		rm -rf "$$thinking_dir"; \
+	}; \
+	trap cleanup EXIT; \
+	echo "# Start the neuro-san server" && \
+	export NEURO_SAN_SERVER_HTTP_PORT=8080 && ./build_scripts/server_start.sh && \
+	echo "# Run the Agent Network Consultant integration tests" && \
+	export PYTHONPATH=`pwd` && \
+	export AGENT_TOOL_PATH=coded_tools/ && \
+	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
+	export AGENT_TEST_THINKING_BASIS="$$thinking_dir" && \
+	pytest --capture=no --verbose -m "integration_agent_network_consultant" --durations=100
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \

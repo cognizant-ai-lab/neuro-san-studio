@@ -30,12 +30,15 @@ Usage:
     python -m neuro_san_studio consultant --hocon-file generated/coffee_shop.hocon --direction "Preserve lookup"
 """
 
+import json
 import logging
 import os
 import shutil
 import signal
+import sys
 import time
 from collections.abc import Callable
+from collections.abc import Mapping
 from tempfile import TemporaryDirectory
 from typing import Any
 
@@ -78,7 +81,7 @@ class NetworkConsultantOrchestrator:
         :raises ValueError: If the options do not identify a safe, fully described target.
         """
         normalized_hocon_file = NetworkConsultantOrchestrator._validate_options(options)
-        with NetworkTestEnvironment(), TemporaryDirectory(prefix="network_consultant_thinking_") as thinking_directory:
+        with TemporaryDirectory(prefix="network_consultant_thinking_") as thinking_directory:
             NetworkConsultantOrchestrator.configure_logging()
             context = NetworkConsultantOrchestrator._initialize_context(
                 options,
@@ -89,6 +92,26 @@ class NetworkConsultantOrchestrator:
                 return
             NetworkConsultantOrchestrator._generate_tests(context, thinking_directory)
             NetworkConsultantOrchestrator.execute(context)
+
+    @staticmethod
+    def run_serialized(serialized_run: str) -> None:
+        """
+        Run options received by the isolated Consultant process and clean up its owned traces.
+
+        :param serialized_run: JSON containing the options and optional owned thinking directory.
+        :raises ValueError: If the serialized payload does not contain an options mapping.
+        """
+        payload = json.loads(serialized_run)
+        if not isinstance(payload, Mapping):
+            raise ValueError("The serialized Consultant run must be a JSON object.")
+        options_payload = payload.get("options")
+        if not isinstance(options_payload, Mapping):
+            raise ValueError("The serialized Consultant run is missing its options object.")
+        thinking_directory = str(payload.get("owned_thinking_directory") or "") or None
+        try:
+            NetworkConsultantOrchestrator.run(ConsultantOptions(**dict(options_payload)))
+        finally:
+            NetworkTestEnvironment.cleanup_owned_thinking_directory(thinking_directory)
 
     @staticmethod
     def configure_logging() -> None:
@@ -748,3 +771,7 @@ class NetworkConsultantOrchestrator:
         for result in results:
             criteria_total += result.get("criteria_total", 0)
         return criteria_total
+
+
+if __name__ == "__main__":
+    NetworkConsultantOrchestrator.run_serialized(sys.argv[1])

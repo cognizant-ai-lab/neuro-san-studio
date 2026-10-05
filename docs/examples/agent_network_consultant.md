@@ -18,7 +18,8 @@ protecting its intended behavior. Given a network and its generated fixtures, it
 
 Note that:
 
-- Consultant runs through direct, in-process Neuro SAN sessions. A separate Neuro SAN server is not required.
+- Consultant runs direct Neuro SAN sessions in an isolated worker process. A separate Neuro SAN server is not
+  required, and project defaults are passed to the worker without changing the caller's environment.
 - The Self Improvement tab is available only in an nsflow build that contains the companion Network Consultant
   integration. The `ns consultant` command remains available when the installed nsflow release does not include that
   UI integration.
@@ -371,8 +372,8 @@ reports an error before initialization when the environment variable is unset.
   `network_consultant_test_thinking_` prefix, unless `AGENT_TEST_THINKING_BASIS` was already supplied.
 - Git worktree: a run-specific operating-system temporary directory with a `network_consultant_git_` prefix.
 
-Consultant removes temporary directories it owns when their scope ends and restores caller-owned environment values.
-It does not delete a caller-supplied thinking directory.
+Consultant removes temporary directories it owns when their scope ends. It builds a copied environment for its worker
+process and never changes the caller's environment. It does not delete a caller-supplied thinking directory.
 
 ---
 

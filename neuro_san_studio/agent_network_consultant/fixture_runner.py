@@ -45,7 +45,6 @@ from unittest import TestCase
 from leaf_common.time.timeout_reached_exception import TimeoutReachedException
 
 from neuro_san_studio.agent_network_consultant.consultant_job_files import ConsultantJobFiles
-from neuro_san_studio.agent_network_consultant.network_test_environment import NetworkTestEnvironment
 from neuro_san_studio.agent_network_consultant.scorecard_assert_forwarder import ScorecardAssertForwarder
 from neuro_san_studio.agent_network_consultant.thinking_trace_collector import ThinkingTraceCollector
 
@@ -499,8 +498,7 @@ class FixtureRunner:
         :return: One result mapping per discovered fixture.
         :raises ValueError: If a requested fixture does not exist in the selected fixture directory.
         """
-        with NetworkTestEnvironment():
-            return FixtureRunner._run_all_tests(fixtures_dir, run_id, only_fixtures, success_ratio_overrides)
+        return FixtureRunner._run_all_tests(fixtures_dir, run_id, only_fixtures, success_ratio_overrides)
 
     @staticmethod
     def _run_all_tests(

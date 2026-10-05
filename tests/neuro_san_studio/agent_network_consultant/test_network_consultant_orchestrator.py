@@ -16,6 +16,7 @@
 
 """Characterization tests for the refactored Network Consultant run orchestration."""
 
+import json
 import logging
 import os
 import shutil
@@ -457,11 +458,6 @@ class TestNetworkConsultantOrchestrator(TestCase):
             stack.enter_context(
                 patch.object(NetworkConsultantOrchestrator, "_validate_options", return_value="example.hocon")
             )
-            stack.enter_context(
-                patch(
-                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.NetworkTestEnvironment"
-                )
-            )
             stack.enter_context(patch.object(NetworkConsultantOrchestrator, "configure_logging"))
             consultant_session = stack.enter_context(
                 patch("neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.ConsultantSession")
@@ -502,12 +498,6 @@ class TestNetworkConsultantOrchestrator(TestCase):
                 stack.enter_context(
                     patch.object(NetworkConsultantOrchestrator, "_validate_options", return_value="example.hocon")
                 )
-                stack.enter_context(
-                    patch(
-                        "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
-                        "NetworkTestEnvironment"
-                    )
-                )
                 stack.enter_context(patch.object(NetworkConsultantOrchestrator, "configure_logging"))
                 consultant_session = stack.enter_context(
                     patch(
@@ -544,11 +534,6 @@ class TestNetworkConsultantOrchestrator(TestCase):
             stack.enter_context(
                 patch.object(NetworkConsultantOrchestrator, "_validate_options", return_value="example.hocon")
             )
-            stack.enter_context(
-                patch(
-                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.NetworkTestEnvironment"
-                )
-            )
             stack.enter_context(patch.object(NetworkConsultantOrchestrator, "configure_logging"))
             stack.enter_context(
                 patch(
@@ -569,6 +554,25 @@ class TestNetworkConsultantOrchestrator(TestCase):
         thinking_directory, existed_during_run = directories[0]
         self.assertTrue(existed_during_run)
         self.assertFalse(os.path.exists(thinking_directory))
+
+    def test_serialized_run_always_cleans_the_child_thinking_directory(self) -> None:
+        """Remove child-owned raw traces even when Consultant execution fails."""
+        with TemporaryDirectory() as temporary_directory:
+            thinking_directory = os.path.join(temporary_directory, "raw-thinking")
+            os.makedirs(thinking_directory)
+            serialized_run = json.dumps(
+                {
+                    "options": self._context().options()._asdict(),
+                    "owned_thinking_directory": thinking_directory,
+                }
+            )
+            with (
+                patch.object(NetworkConsultantOrchestrator, "run", side_effect=RuntimeError("run failed")),
+                self.assertRaisesRegex(RuntimeError, "run failed"),
+            ):
+                NetworkConsultantOrchestrator.run_serialized(serialized_run)
+
+            self.assertFalse(os.path.exists(thinking_directory))
 
     def test_configure_logging_does_not_configure_the_root_logger(self) -> None:
         """Keep host-application root logging unchanged when Consultant starts."""
