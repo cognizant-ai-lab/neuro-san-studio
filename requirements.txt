@@ -1,7 +1,7 @@
 # Neuro SAN
-leaf-common>=1.4.2
-neuro-san==0.7.4
-nsflow==0.7.0
+leaf-common>=1.4.4
+neuro-san==0.7.7
+nsflow==0.7.4
 
 # For config parsing
 pyhocon>=0.3.60
@@ -23,6 +23,10 @@ aiohttp>=3.13.0,<4.0
 # transitively by yarl (via aiohttp) and neuro-san; declared here because UrlPolicy
 # imports it directly and relies on yarl-matching UTS#46 behavior.
 idna>=3.0
+
+# aiohttp's URL type, used to hand a translated ClientResponseError a redacted RequestInfo in
+# SafeFetch. Already required by aiohttp; declared here because SafeFetch imports it directly.
+yarl>=1.9
 
 # For HTML parsing
 beautifulsoup4>=4.12.0

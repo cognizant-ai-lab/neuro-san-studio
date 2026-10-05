@@ -22,6 +22,7 @@
       - [Gemini with ADC](#gemini-with-adc)
         - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
         - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
+        - [Simpler ADC Alternative: Built-in gemini Class](#simpler-adc-alternative-built-in-gemini-class)
     - [Ollama](#ollama)
       - [Ollama Prerequisites](#ollama-prerequisites)
       - [Ollama Configuration](#ollama-configuration)
@@ -537,7 +538,8 @@ API keys is not desirable or permitted.
     gcloud auth application-default login
     ```
 
-3. Install the required package (already included in `requirements.txt`):
+3. Install the required package. This is a separate, optional dependency — it is **not**
+   included in `requirements.txt` by default, since only this `ChatVertexAI`-based path needs it:
 
     ```bash
     pip install langchain-google-vertexai
@@ -553,8 +555,8 @@ API keys is not desirable or permitted.
 ##### Gemini with ADC Configuration
 
 Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
-Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
-`ChatVertexAI` directly in your `llm_config`:
+Neuro-SAN's default Gemini model definitions — you can use the `class` key to instantiate
+`ChatVertexAI` directly in your `llm_config` (see also the simpler alternative below):
 
 ```hocon
 llm_config: {
@@ -585,6 +587,38 @@ No API key is required — authentication is handled transparently by Google's A
 For more information on Vertex AI authentication and available models, see the
 [Vertex AI documentation](https://cloud.google.com/vertex-ai/docs/authentication) and the
 [LangChain ChatVertexAI reference](https://python.langchain.com/docs/integrations/chat/google_vertex_ai_palm/).
+
+##### Simpler ADC Alternative: Built-in gemini Class
+
+`ChatVertexAI` (above) is also flagged by LangChain itself as deprecated in favor of
+`langchain-google-genai`, which neuro-san's built-in `class: "gemini"` already uses under the
+hood. That class can be routed into Vertex AI/ADC mode purely through environment variables,
+with no explicit `project`/`location` keys in the config and no extra dependency to install.
+
+Note that these variables apply to the whole server process: once set, every Gemini client in
+the process routes to Vertex AI, including fallback models in other configs and the
+`gemini_image_generation` tool. A BYOK `google_api_key` from `sly_data` is silently ignored
+and the request is billed to the server's GCP project instead.
+
+```hocon
+llm_config: {
+    class: "gemini"
+    model_name: "gemini-3.5-flash"
+    temperature: 1.0   # recommended for Gemini 3.0+; 0.7 (the default) can cause loops and degraded reasoning
+}
+```
+
+```bash
+GOOGLE_GENAI_USE_VERTEXAI="true"
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GOOGLE_CLOUD_LOCATION="global"   # a specific region may 404 on newer models; global is the safe default
+```
+
+See [`config/vertex_adc_llm_config.hocon`](../config/vertex_adc_llm_config.hocon) for a
+ready-to-use version of this config, and run
+`ns check-config --hocon-path config/vertex_adc_llm_config.hocon` to verify it can actually
+connect before deploying it. Use `GOOGLE_CLOUD_LOCATION=global`; newer Gemini models may not be
+available in all regional endpoints.
 
 ### Ollama
 
@@ -1974,40 +2008,40 @@ with ongoing additions of test cases to improve coverage.
 
 Please select the execution option that best aligns with the level of validation you want to perform.
 
-`--timer-top-n 100` flag is optional. It shows the top 100 slowest test cases.
+`--durations=100` flag is optional. It shows the 100 slowest test phases (setup, call, teardown).
 
 - Run all integration test cases:
 
     Example:
 
     ```bash
-    pytest -s -m "integration" --timer-top-n 100
+    pytest -s -m "integration" --durations=100
     ```
 
 - Run by a group or groups of those test cases:
 
     ```bash
-    pytest -s -m "<name of folder>" --timer-top-n 100
+    pytest -s -m "<name of folder>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic" --timer-top-n 100
-    pytest -s -m "integration_industry" --timer-top-n 100
+    pytest -s -m "integration_basic" --durations=100
+    pytest -s -m "integration_industry" --durations=100
     ```
 
 - Run by the network agent hocon name of those test cases:
 
     ```bash
-    pytest -s -m "<name of network_agent hocon>" --timer-top-n 100
+    pytest -s -m "<name of network_agent hocon>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic_coffee_finder_advanced" --timer-top-n 100
-    pytest -s -m "integration_industry_airline_policy" --timer-top-n 100
+    pytest -s -m "integration_basic_coffee_finder_advanced" --durations=100
+    pytest -s -m "integration_industry_airline_policy" --durations=100
     ```
 
 - Run a single test case:

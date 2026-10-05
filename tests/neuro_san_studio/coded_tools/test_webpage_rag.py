@@ -99,13 +99,28 @@ async def cancel_mid_flight_load(tool: WebpageRag) -> None:
     await task
 
 
-class TestWebpageRag(TestCase):
+class TestWebpageRag(TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for WebpageRag: SSRF-hardened loading, PDF/HTML routing, input guards."""
 
     def setUp(self):
         # Bypass BaseRag.__init__, which instantiates OpenAIEmbeddings and therefore
         # requires an OPENAI_API_KEY; these tests never embed or build a store.
         self.tool = object.__new__(WebpageRag)
+
+    @staticmethod
+    async def _probe_as_text(url: str, _session: Any) -> tuple[str, None, str]:
+        """
+        Stand in for get_content_type: report text/html with no redirect, echoing the requested URL as final.
+
+        Multi-URL tests need this rather than a fixed return value: since the fetch and the
+        Document source follow the probe's final URL, a fixed final URL would make every
+        page in the batch fetch from and be attributed to the same address.
+
+        :param url: The URL being probed.
+        :param _session: The shared session; unused.
+        :return: A ("text/html", None, url) probe result.
+        """
+        return "text/html", None, url
 
     def _load(self, urls: list[str]) -> list:
         """
@@ -193,7 +208,11 @@ class TestWebpageRag(TestCase):
         self.assertEqual(docs[0].page_content, "PDF from suffix")
 
     def test_redirected_pdf_is_classified_by_final_url(self) -> None:
-        """A URL that redirects to a .pdf served as a generic download type is parsed as PDF via the final URL."""
+        """A URL that redirects to a .pdf served as a generic download type is parsed as PDF via the final URL.
+
+        The PDF is fetched from that final URL and it becomes the Document's source, so
+        the redirect chain is walked once and citations point at the document itself.
+        """
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
             patch.object(
@@ -207,8 +226,73 @@ class TestWebpageRag(TestCase):
             docs = self._load(["http://example.com/download"])
 
         mock_pdf.assert_awaited_once()
+        self.assertEqual(mock_pdf.await_args.args[0], "http://example.com/files/report.pdf")
         mock_raw.assert_not_awaited()
         self.assertEqual(docs[0].page_content, "PDF after redirect")
+        self.assertEqual(docs[0].metadata, {"source": "http://example.com/files/report.pdf"})
+
+    def test_redirected_html_page_is_fetched_from_and_attributed_to_final_url(self) -> None:
+        """A redirected HTML page is fetched from the URL the probe ended on, and that URL becomes the source.
+
+        One walk of the redirect chain (the probe), then one fetch starting at its end;
+        the source names where the content lives, not the redirector.
+        """
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", None, "http://www.example.com/landing")),
+            ),
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
+        ):
+            docs = self._load(["http://example.com/go"])
+
+        mock_raw.assert_awaited_once()
+        self.assertEqual(mock_raw.await_args.args[0], "http://www.example.com/landing")
+        self.assertEqual(docs[0].metadata["source"], "http://www.example.com/landing")
+        self.assertIn("Hello world", docs[0].page_content)
+
+    def test_redirect_log_redacts_server_controlled_url_but_source_keeps_it(self) -> None:
+        """Tests that a presigned redirect target is logged without its query while the Document source keeps it.
+
+        Logs must not persist a bearer token chosen by the server; the source metadata needs the
+        full URL so the document can be fetched again from where it lives.
+        """
+        final: str = "http://files.example.com/landing?X-Amz-Signature=secret-token"
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, final))),
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)),
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.webpage_rag", level="INFO") as logs:
+                docs = self._load(["http://example.com/go"])
+
+        joined: str = "\n".join(logs.output)
+        self.assertNotIn("secret-token", joined)
+        self.assertIn("redirected to http://files.example.com/landing?[redacted]", joined)
+        self.assertEqual(docs[0].metadata["source"], final)
+
+    def test_fetch_failure_log_redacts_server_controlled_url_in_error(self) -> None:
+        """Tests that a fetch failure at a presigned redirect target is logged without the token in the error text.
+
+        SafeFetch's translated errors quote the URL they were given, which is now final_url;
+        the per-URL catch must not copy that token into the log.
+        """
+        final: str = "http://files.example.com/landing?X-Amz-Signature=secret-token"
+        failure = ClientError(f"url_not_accessible: Could not reach '{final}': connection reset")
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, final))),
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(side_effect=failure)),
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.webpage_rag", level="ERROR") as logs:
+                docs = self._load(["http://example.com/go"])
+
+        joined: str = "\n".join(logs.output)
+        self.assertEqual(docs, [])
+        self.assertNotIn("secret-token", joined)
+        self.assertIn("Could not reach 'http://files.example.com/landing?[redacted]'", joined)
 
     def test_pdf_not_a_pdf_is_skipped_and_logged(self) -> None:
         """A PDF-classified URL whose body fails SafeFetch's header sniff is logged as not_a_pdf and skipped.
@@ -275,11 +359,7 @@ class TestWebpageRag(TestCase):
         """A URL that fails SSRF validation is skipped and never fetched; others still load."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(
-                SafeFetch,
-                "get_content_type",
-                new=AsyncMock(return_value=("text/html", None, "http://192.168.1.1/internal")),
-            ),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(side_effect=self._probe_as_text)),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
         ):
             # validate_url is NOT mocked, so the private-IP URL is rejected for real.
@@ -300,11 +380,7 @@ class TestWebpageRag(TestCase):
 
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(
-                SafeFetch,
-                "get_content_type",
-                new=AsyncMock(return_value=("text/html", None, "http://bad.example.com")),
-            ),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(side_effect=self._probe_as_text)),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(side_effect=fetch_raw)),
         ):
             docs = self._load(["http://bad.example.com", "http://example.com/good"])
