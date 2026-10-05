@@ -35,7 +35,7 @@ ns new tool my_tool
 ```
 
 After filling in `async_invoke`, reference the tool in a network's `tools` list with
-`"class": "MyTool"` (the PascalCase form of the name you gave).
+`"class": "my_tool.my_tool.MyTool"` — the full dotted path relative to `coded_tools/`.
 
 ## Usage
 

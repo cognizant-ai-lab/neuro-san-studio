@@ -50,6 +50,10 @@ class TestNewToolValidation:
         """Names starting with a digit are rejected."""
         assert NewToolCommand(name="1tool", root_dir=str(tmp_path)).run() == 1
 
+    def test_invalid_name_python_keyword_returns_error(self, tmp_path: Path) -> None:
+        """Python keywords are rejected to avoid syntax errors in generated imports."""
+        assert NewToolCommand(name="class", root_dir=str(tmp_path)).run() == 1
+
 
 class TestNewToolRun:
     """Integration tests for NewToolCommand.run()."""

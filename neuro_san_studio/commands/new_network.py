@@ -16,6 +16,7 @@
 
 """Implementation of the `ns new network` command."""
 
+import keyword
 import os
 import re
 from typing import Optional
@@ -41,6 +42,8 @@ _NETWORK_HOCON = '''\
     include "registries/expertise_scoping_instructions.hocon",
 
     include "config/llm_config.hocon",
+    "max_steps": 40000,
+    "max_execution_seconds": 6000,
     "tools": [
         {
             "name": "__CLASS_NAME__",
@@ -104,10 +107,11 @@ class NewNetworkCommand:  # pylint: disable=too-few-public-methods
 
     def run(self) -> int:
         """Scaffold the network. Returns 0 on success, 1 on validation error."""
-        if not re.match(r"^[a-z][a-z0-9_]*$", self.name):
+        if not re.match(r"^[a-z][a-z0-9_]*$", self.name) or keyword.iskeyword(self.name):
             CliStatus.err(
-                f"Network name '{self.name}' must start with a lowercase letter "
-                "and contain only lowercase letters, digits, and underscores."
+                f"Network name '{self.name}' must start with a lowercase letter, "
+                "contain only lowercase letters, digits, and underscores, "
+                "and must not be a Python keyword."
             )
             return 1
 

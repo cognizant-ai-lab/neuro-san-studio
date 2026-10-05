@@ -16,6 +16,7 @@
 
 """Implementation of the `ns new tool` command."""
 
+import keyword
 import os
 import re
 from typing import Optional
@@ -121,10 +122,11 @@ class NewToolCommand:  # pylint: disable=too-few-public-methods
 
     def run(self) -> int:
         """Scaffold the tool. Returns 0 on success, 1 on validation error."""
-        if not re.match(r"^[a-z][a-z0-9_]*$", self.name):
+        if not re.match(r"^[a-z][a-z0-9_]*$", self.name) or keyword.iskeyword(self.name):
             CliStatus.err(
-                f"Tool name '{self.name}' must start with a lowercase letter "
-                "and contain only lowercase letters, digits, and underscores."
+                f"Tool name '{self.name}' must start with a lowercase letter, "
+                "contain only lowercase letters, digits, and underscores, "
+                "and must not be a Python keyword."
             )
             return 1
 
@@ -142,8 +144,9 @@ class NewToolCommand:  # pylint: disable=too-few-public-methods
 
         _console.print()
         _console.print(f"[bold green]Tool '{class_name}' scaffolded.[/bold green]")
+        module_ref = f"{self.name}.{self.name}.{class_name}"
         _console.print(f"  Implement [cyan]{tool_rel}[/cyan].")
-        _console.print(f'  Reference it in a network\'s \'tools\' list with: [bold]"class": "{class_name}"[/bold]')
+        _console.print(f'  Reference it in a network\'s \'tools\' list with: [bold]"class": "{module_ref}"[/bold]')
         return 0
 
     def _write_file(self, rel_path: str, content: str) -> None:

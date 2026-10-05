@@ -61,6 +61,11 @@ class TestNewNetworkValidation:
         result = NewNetworkCommand(name="my network", root_dir=str(tmp_path)).run()
         assert result == 1
 
+    def test_invalid_name_python_keyword_returns_error(self, tmp_path: Path) -> None:
+        """Python keywords are rejected to avoid syntax errors in generated imports."""
+        result = NewNetworkCommand(name="class", root_dir=str(tmp_path)).run()
+        assert result == 1
+
 
 class TestNewNetworkRun:
     """Integration tests for NewNetworkCommand.run()."""
