@@ -89,6 +89,14 @@
         "tools": ["get_current_time", "convert_time", "time_by_coordinates", "get_dst_transitions", "search_cities"]
     },
 
+    # Cohesivity MCP — managed backend infrastructure for AI agents: databases, storage, hosting, and APIs.
+    # Creates a temporary tenant without an account or API key. Unclaimed tenants expire after 72 hours.
+    # Free tier; no authentication required.
+    # Docs: https://cohesivity.ai/docs
+    "https://cohesivity.ai/mcp": {
+        "tools": ["get_cohesivity_documentation", "create_tenant", "provision_resource", "tenant_status", "claim_tenant", "give_feedback"]
+    },
+
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {

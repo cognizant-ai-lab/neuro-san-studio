@@ -158,6 +158,10 @@
     # - Use MCP_SERVERS_INFO_FILE for authentication. See ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication
     "tools/serply_search.hocon": false,
 
+    # Cohesivity backend provisioning via the hosted Cohesivity MCP server.
+    # No API key required. Creates a temporary tenant and provisions databases, storage, hosting, and APIs.
+    "tools/cohesivity_backend.hocon": true,
+
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
     "tools/visual_question_answering.hocon": false,
 
