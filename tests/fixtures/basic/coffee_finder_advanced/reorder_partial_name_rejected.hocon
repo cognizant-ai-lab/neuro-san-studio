@@ -19,24 +19,21 @@
 # The schema specifications for this file are documented here:
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 
+# When the user identifies with only a partial name, the agent must confirm the full identity before placing a reorder.
+
 {
     # Describes what agent to test against.
     "agent": "basic/coffee_finder_advanced",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
-    # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermitently failing. Sometimes it's the agent prompt, but
-    # sometimes it's the test itself.
-    # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
+    # Minimum pass ratio for intermittent-failure triage.
     "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
     "interactions": [
         {
+            "timeout_in_seconds": 90,
+
             # Expected memory file existed.
             # Negative test case re-order using just partial name like Pixel vs. Pixel Smith.
             # It is expected no order due the partial name.
@@ -44,8 +41,9 @@
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard time
+            # Using the sly_data to set a hard time.
             "sly_data": {
+                "test_mode": true,
                 "time": "1 am"
             },
             
@@ -54,7 +52,7 @@
 Hey, it's Pixel. Get me the same as usual please.
 """,
 
-            # The response block treats how we are going to test what comes back
+            # The response block describes how we are going to test what comes back
             "response": {
 
                 # Text block says how we are going to examine the text of the response.
@@ -63,11 +61,12 @@ Hey, it's Pixel. Get me the same as usual please.
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "not_gist": ["""
-Order 301 has been placed
-- Black coffee
-- Joe's Gas Station
-                            """]
+                    "gist": [
+"The response asks the user to confirm their identity or full name (for example, 'Are you Pixel Smith?') before placing the order."
+                    ],
+                    "not_gist": [
+"The response includes an order ID, confirming an order was placed."
+                    ]
                 }
             }
         }
