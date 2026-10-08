@@ -295,6 +295,51 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         )
 
     @staticmethod
+    @app.command(
+        "test",
+        help="Run tests for the current project (unit tests by default).",
+        context_settings={
+            "allow_extra_args": True,
+            "ignore_unknown_options": True,
+        },
+    )
+    def _test_command(
+        ctx: typer.Context,
+        *,
+        path: Optional[str] = typer.Argument(
+            None,
+            help="Path to a test file or directory to scope the run. Defaults to tests/.",
+        ),
+        integration: bool = typer.Option(
+            False,
+            "--integration",
+            help="Run integration tests instead of unit tests (requires API keys).",
+        ),
+        verbose: bool = typer.Option(
+            False,
+            "--verbose",
+            help="Run pytest in verbose mode.",
+        ),
+    ) -> None:
+        """Run pytest with the project's environment applied.
+
+        Unit tests (default) run without API keys.  Pass ``--integration`` to run
+        fixture-based integration tests, which require API keys and a running server.
+        Any extra arguments after ``--`` are forwarded verbatim to pytest.
+        """
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.test import TestCommand
+
+        raise typer.Exit(
+            code=TestCommand(
+                path=path,
+                integration=integration,
+                verbose=verbose,
+                extra_args=list(ctx.args),
+            ).run()
+        )
+
+    @staticmethod
     @app.command("validate", help="Validate the structure of an agent network HOCON file.")
     def _validate_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         hocon_path: str = typer.Argument(
@@ -397,13 +442,15 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
 
 def main() -> None:
     """Entry point for the `neuro-san-studio` console script."""
-    # Typer/click exit with SystemExit(0) on success and SystemExit(2) for
-    # no-args-is-help; let clean exits return normally so main() can be
-    # driven from tests and embedded callers.
+    # Typer/click exits with SystemExit(2) when no arguments are given and
+    # no_args_is_help is True; suppress only that case so main() can be driven
+    # from tests and embedded callers.  Code 2 from a subcommand (e.g. pytest
+    # interrupted) must propagate so the shell and CI see the correct status.
     try:
         NeuroSanStudioCli.app()
     except SystemExit as exc:
-        if exc.code not in (None, 0, 2):
+        is_no_args_help = len(sys.argv) <= 1
+        if exc.code not in (None, 0) and not (exc.code == 2 and is_no_args_help):
             raise
 
 
