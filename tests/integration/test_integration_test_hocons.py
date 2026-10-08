@@ -162,6 +162,9 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
     @pytest.mark.integration_basic
     @pytest.mark.integration_basic_coffee_finder_advanced_e2e
     def test_hocon_industry_coffee_finder_advanced_e2e(self, test_name: str, test_hocon: str):
+        """
+        Test method for a single parameterized test case specified by a hocon file.
+        """
         self.run_hocon_group_fail_fast_case(test_name, test_hocon)
 
     @parameterized.expand(
