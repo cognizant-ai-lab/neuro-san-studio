@@ -43,9 +43,9 @@ Disabled by default: it requires `pip install typesafe-sdk` and the `TYPESAFE_AP
 - The front man carries the `JevToolSelectorMiddleware`. On a routed turn its system prompt is replaced by
   `routed_instructions` ("the responsible department has already been consulted: its answer is in the tool
   result"); on a fallback turn its own AAOSA instructions are used untouched.
-- `max_steps` and `max_execution_seconds` are set at the network level, at neuro-san's default values (300 s),
-  so a fallback turn runs with exactly the bounds the baseline runs with (a tighter 180 s limit cut an AAOSA
-  fallback turn short in the data-driven tests).
+- `max_steps` and `max_execution_seconds` are set at the network level, at neuro-san's default values (10,000
+  steps, 300 s), so a fallback turn runs with exactly the bounds the baseline runs with (a tighter 180 s limit
+  cut an AAOSA fallback turn short in the data-driven tests).
 - Each Jev decision (path taken, department, confidence, ambiguity, probabilities, latency) is returned to the
   client in `sly_data`: `jev_turn` for the current turn, `jev_tool_selection` for the whole conversation, and
   `jev_current_department` for the department of the last routed turn.
