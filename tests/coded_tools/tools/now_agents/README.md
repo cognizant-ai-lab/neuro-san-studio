@@ -189,8 +189,18 @@ python tests/coded_tools/tools/now_agents/integration_tests/test_integration_ser
 # Check credentials
 python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py
 
-# Verify .env file exists and has required variables
-ls .env && grep -E "SERVICENOW_(INSTANCE_URL|USER|PWD)" .env
+# Check required variable names without printing their values
+if [ -f .env ]; then
+    for key in SERVICENOW_INSTANCE_URL SERVICENOW_USER SERVICENOW_PWD; do
+        if grep --quiet --extended-regexp "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=" .env; then
+            printf '%s: present\n' "$key"
+        else
+            printf '%s: missing\n' "$key"
+        fi
+    done
+else
+    printf '.env: missing\n'
+fi
 ```
 
 ### Common Fixes
