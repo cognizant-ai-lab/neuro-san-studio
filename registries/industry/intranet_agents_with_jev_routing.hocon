@@ -45,9 +45,10 @@
         ]
     },
     include "config/llm_config.hocon",
-    # Bounds are set explicitly (repo rule) at neuro-san's defaults, so the fallback path has exactly the bounds the
-    # baseline network runs with; a tighter limit (180 s) cut an AAOSA fallback turn short in the data-driven tests.
-    "max_steps": 100,
+    # Bounds are set explicitly (repo rule) at neuro-san's defaults (10,000 steps, 300 s), so the fallback path has
+    # exactly the bounds the baseline network runs with; a tighter limit (180 s) cut an AAOSA fallback turn short in
+    # the data-driven tests.
+    "max_steps": 10000,
     "max_execution_seconds": 300,
     "instructions_prefix": """
     You are in charge of a portion of company's intranet. The intranet is also known as MyIntranet.
