@@ -361,6 +361,67 @@ when the tool set changes at run time in ways the criteria cannot describe, or w
 free-form reasoning over the whole conversation rather than a classification. The two are not exclusive: Jev
 can decide the department and `LlmConfigToolSelectorMiddleware` can still narrow a department's own tools.
 
+### Why not memory routing
+
+The studio also ships [Intranet Agents With Memory Routing](intranet_agents_with_memory_routing.md): the same
+network, where the front man learns routes. On the first inquiry of a kind it runs the AAOSA walk, reads the
+`Handled by:` line the leaf agents append, and stores the leaf agents and the parameter names under a generalized
+topic in persistent memory ([Mem0 cloud](../tools/persistent_memory_mem0.md), scoped per user). On later inquiries
+it lists the cached topics, judges with the LLM whether one matches, reads it, asks the user for missing parameters
+up front and calls the cached leaves directly with `CallAgent`. It attacks the same cost, the `Determine`
+round-trips, from the other side: instead of deciding the department with a model, it remembers what AAOSA found.
+
+The two differ in what they rely on:
+
+- **Who decides.** Memory routing decides with the LLM on every turn: list the topics, match one, read it, which is
+  at least three model calls before the leaf is called, by construction. Jev decides in one HTTP call, with no
+  model call for the routing step.
+- **The first turn.** Memory routing has to discover every kind of inquiry once, per user because of Mem0's
+  `user_id` scoping, with a full AAOSA walk. Jev routes from the static `function.description` texts and is right
+  on the first turn.
+- **What is learned.** Memory routing learns leaf agents and parameter names and keeps them across sessions, which
+  lets it collect parameters up front and skip a leaf's follow-up. Jev learns nothing; its state is the recent
+  conversation carried in `sly_data`.
+- **Enforcement.** Memory routing is a prompt policy: nothing prevents the LLM from skipping the lookup or matching
+  the wrong topic, and there is no confidence to threshold. Jev's paths are enforced in code, with
+  `min_confidence`, the reserved options, the ambiguity question and a per-turn audit record.
+- **What changes in the network.** Memory routing changes the instructions of every agent (the `Handled by:`
+  protocol), replaces the front man's prompt and adds `CallAgent`. This network keeps every agent byte-identical
+  and changes only the front man's tool list.
+- **Dependencies.** Mem0 cloud and `MEM0_API_KEY`, versus `typesafe-sdk` and `TYPESAFE_API_KEY`.
+
+Memory routing is not measured here (it has no fixture in the repo and needs a Mem0 key), so no cost numbers are
+claimed for it. Where it is the better fit: repeat inquiries whose leaf needs parameters the front man can collect
+up front, inquiries that fan out to several leaves, and routes that are specific to a user. Where Jev is: the first
+inquiry of a kind, consistent decisions, a bounded routing cost per turn, and a routing step that can be audited
+and thresholded.
+
+### Next steps: combining Jev, memory and AAOSA
+
+The two are complementary rather than exclusive. Three shapes, in increasing effort; none is implemented or
+measured:
+
+1. **Jev in front, memory routing as the fallback.** Configuration only: the front man takes the memory network's
+   instructions, preamble and `CallAgent`; `fallback_tools` becomes the five heads plus `CallAgent`; `URLProvider`
+   and `persistent_memory` go in `always_include`. Clear turns are dispatched by Jev; unclear turns run the memory
+   policy, which learns the leaf route for next time. The Jev middleware has to be listed first, so a dispatch
+   short-circuits before the memory preamble is added, and `persistent_memory` has to be listed explicitly: the
+   memory middleware injects that tool into every model request, and this middleware denies any tool outside the
+   path's list. This shape inherits the `Handled by:` prompt changes on every agent.
+2. **Jev as the cache matcher.** Replace the LLM judgment of the memory policy's first step with a Jev `choice`
+   over the cached topics (read from the store with `list_topics` and `get_topic`), plus `none`. On a hit the
+   middleware dispatches `CallAgent` to the cached leaves, and a `Noul` or `Score` question can check whether each
+   required parameter is already in the conversation. This removes two model calls and the sampled matching from
+   every hit and gives the cache a confidence to threshold. It needs a topic source on this middleware or a
+   sibling middleware.
+3. **Memory as learned candidates for Jev.** After a fallback turn, store the topic and its leaves; on later turns
+   offer the cached topics to Jev as candidates next to the departments. This covers the one case Jev cannot
+   handle alone: a compound inquiry (the married question above) becomes a cached topic that fans out to several
+   leaves, Jev picks the topic and the cache supplies the fan-out. Most work, and the per-user cold start remains.
+
+In the first two shapes the dispatch can go through `CallAgent` instead of a direct tool call, which would let this
+network drop the 15 extra front-man edges and keep the baseline graph identical.
+
 ### Reproducing the comparison
 
 The comparison is written as standard neuro-san data-driven test cases
