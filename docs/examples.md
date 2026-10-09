@@ -36,6 +36,7 @@ Here are a few examples ordered by level of complexity.
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
     - [Internet Info Gatherer](#internet-info-gatherer)
+    - [FXMacroData](#fxmacrodata)
     - [Gmail Assistant](#gmail-assistant)
     - [Google Workspace Assistant](#google-workspace-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
@@ -307,6 +308,15 @@ the promising pages with the `web_fetch` toolbox tool so its answers come from a
 It needs no API keys or OAuth — the free search tier and the local fetch tool work out of the box.
 
 **Tags:** `tool`, `MCP`, `toolbox`, `web`
+
+### FXMacroData
+
+[FXMacroData](examples/tools/fxmacrodata.md) is a single-agent system that answers questions about official
+macroeconomic data for FX analysis: latest indicator values, indicator history, upcoming release dates, central-bank
+press releases and FX market session times. It connects to the hosted FXMacroData MCP server, which works without an
+API key for US data; an optional key adds 21 more currencies, full history and real-time releases.
+
+**Tags:** `tool`, `MCP`, `FXMacroData`
 
 ### Gmail Assistant
 
