@@ -16,13 +16,20 @@
 
 """Typer CLI dispatcher for the neuro-san-studio package."""
 
+import json
 import os
+import subprocess
 import sys
+import tempfile
+from collections.abc import Callable
+from pathlib import Path
 from typing import List
+from typing import Literal
 from typing import Optional
 
 import typer
 
+from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
 from neuro_san_studio.commands.project_environment import ProjectEnvironment
 from neuro_san_studio.commands.run import NeuroSanRunner
 
@@ -295,6 +302,180 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         )
 
     @staticmethod
+    def _run_consultant(options: ConsultantOptions) -> int:
+        """
+        Load Consultant only when requested and run it with the parsed CLI options.
+
+        :param options: The typed Consultant option values parsed by Typer.
+        :return: The Consultant worker process exit code.
+        :raises typer.BadParameter: If Consultant rejects an option value or combination.
+        :raises OSError: If the Consultant worker process cannot be started.
+        """
+        # Consultant has a large dependency graph. Load it only for this command so unrelated
+        # `ns` commands and their help paths stay lightweight.
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.agent_network_consultant.consultant_option_validator import ConsultantOptionValidator
+
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.agent_network_consultant.network_test_environment import NetworkTestEnvironment
+
+        try:
+            ConsultantOptionValidator(options).validate()
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+
+        environment_scope = NetworkTestEnvironment()
+        child_environment = environment_scope.create()
+        owned_thinking_directory = environment_scope.owned_thinking_directory()
+        serialized_run = json.dumps(
+            {
+                # `_asdict()` is the documented serialization API for a NamedTuple.
+                "options": options._asdict(),
+                "owned_thinking_directory": owned_thinking_directory,
+            }
+        )
+        payload_path: str | None = None
+        try:
+            payload_path = NeuroSanStudioCli._write_consultant_payload(serialized_run)
+            command = [
+                sys.executable,
+                "-m",
+                "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator",
+                payload_path,
+            ]
+            # Inherit the terminal streams so interactive clarification works on every supported platform. Passing an
+            # explicit environment keeps project defaults out of the caller's process environment.
+            completed_process: subprocess.CompletedProcess[bytes] = subprocess.run(
+                command,
+                env=child_environment,
+                check=False,
+            )
+            # Convert a POSIX signal status such as -15 into the conventional shell status 143.
+            if completed_process.returncode < 0:
+                return 128 - completed_process.returncode
+            return completed_process.returncode
+        finally:
+            if payload_path is not None:
+                Path(payload_path).unlink(missing_ok=True)
+            NetworkTestEnvironment.cleanup_owned_thinking_directory(owned_thinking_directory)
+
+    @staticmethod
+    def _write_consultant_payload(serialized_run: str) -> str:
+        """
+        Write one private worker payload without exposing free-form user text in the process list.
+
+        :param serialized_run: The complete serialized Consultant run.
+        :return: The temporary payload path passed to the worker process.
+        :raises OSError: If the private payload cannot be created or written.
+        """
+        descriptor, payload_path = tempfile.mkstemp(prefix="agent_network_consultant_", suffix=".json")
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as payload_file:
+                payload_file.write(serialized_run)
+        except OSError:
+            Path(payload_path).unlink(missing_ok=True)
+            raise
+        return payload_path
+
+    @staticmethod
+    @app.command(
+        "consultant",
+        help="Generate tests and repair failing agent-network behavior without changing its intended behavior.",
+        context_settings={"allow_extra_args": True},
+    )
+    # Typer exposes one declared parameter per CLI option; the method immediately packages them into typed data.
+    def _consultant_command(  # pylint: disable=too-many-arguments
+        ctx: typer.Context,
+        *,
+        use_case: str | None = typer.Option(
+            None,
+            "--use-case",
+            help="Use-case description for a new network; cannot be combined with --hocon-file.",
+        ),
+        hocon_file: str | None = typer.Option(
+            None,
+            "--hocon-file",
+            help="Existing network HOCON, relative to registries/, to test and repair; cannot be combined with "
+            "--use-case.",
+        ),
+        direction: str | None = typer.Option(
+            None,
+            "--direction",
+            help="Optional intended behavior or constraints that repairs must preserve.",
+        ),
+        test_level: Literal["minimum", "normal", "max"] = typer.Option(
+            "normal",
+            "--test-level",
+            help="Coverage level for generated tests.",
+        ),
+        test_guidance: str = typer.Option(
+            "",
+            "--test-guidance",
+            help="Free-text guidance about what the test generator should cover.",
+        ),
+        force_generate: bool = typer.Option(
+            False,
+            "--force-generate",
+            help="Generate tests even when fixtures already exist; existing files are never deleted.",
+        ),
+        ungrounded: Literal["stop", "continue"] = typer.Option(
+            "stop",
+            "--ungrounded",
+            help="Stop for unsatisfied data requirements, or remove those criteria and continue.",
+        ),
+        only_fixtures: list[str] | None = typer.Option(
+            None,
+            "--only-fixtures",
+            help="Run only a space-separated list of exact fixture filenames, including .hocon.",
+        ),
+        max_iterations: int = typer.Option(
+            ConsultantOptions.DEFAULT_MAX_ITERATIONS,
+            "--max-iterations",
+            help="Maximum number of repair attempts; zero runs tests without repairs.",
+        ),
+        success_ratio: str = typer.Option(
+            ConsultantOptions.CONFIDENT_SUCCESS_RATIO,
+            "--success-ratio",
+            help="Verification ratio, in N/M form, used for fixes the Consultant considers stable.",
+        ),
+    ) -> None:
+        """Run Agent Network Consultant with Studio's shared Typer command dispatcher.
+
+        :param ctx: The Click context carrying additional space-separated fixture names.
+        :param use_case: The use case used to create a new network.
+        :param hocon_file: The existing registries-relative HOCON file to test and repair.
+        :param direction: The optional intended behavior or constraints that repairs must preserve.
+        :param test_level: The coverage level requested from the test generator.
+        :param test_guidance: Additional test-generation focus.
+        :param force_generate: Whether to generate tests when fixtures already exist.
+        :param ungrounded: How to handle criteria unsupported by available tools.
+        :param only_fixtures: The optional fixture subset to run.
+        :param max_iterations: The maximum number of repair iterations.
+        :param success_ratio: The confidence verification ratio in N/M form.
+        """
+        if ctx.args and not only_fixtures:
+            raise typer.BadParameter("Unexpected argument. Fixture names must follow --only-fixtures.")
+        selected_fixtures = list(only_fixtures or [])
+        selected_fixtures.extend(ctx.args)
+
+        raise typer.Exit(
+            code=NeuroSanStudioCli._run_consultant(
+                ConsultantOptions(
+                    use_case=use_case,
+                    hocon_file=hocon_file,
+                    direction=direction,
+                    test_level=test_level,
+                    test_guidance=test_guidance,
+                    force_generate=force_generate,
+                    ungrounded=ungrounded,
+                    only_fixtures=selected_fixtures or None,
+                    max_iterations=max_iterations,
+                    success_ratio=success_ratio,
+                )
+            )
+        )
+
+    @staticmethod
     @app.command("validate", help="Validate the structure of an agent network HOCON file.")
     def _validate_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         hocon_path: str = typer.Argument(
@@ -394,17 +575,20 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             ).run()
         )
 
-
-def main() -> None:
-    """Entry point for the `neuro-san-studio` console script."""
-    # Typer/click exit with SystemExit(0) on success and SystemExit(2) for
-    # no-args-is-help; let clean exits return normally so main() can be
-    # driven from tests and embedded callers.
-    try:
-        NeuroSanStudioCli.app()
-    except SystemExit as exc:
-        if exc.code not in (None, 0, 2):
+    @staticmethod
+    def main() -> None:
+        """Run the `neuro-san-studio` console-script entry point."""
+        # Preserve the established Studio entry-point behavior: Typer/Click uses status 2 both for
+        # `no_args_is_help` and rejected input, and the wrapper has historically treated either as a clean return.
+        try:
+            NeuroSanStudioCli.app()
+        except SystemExit as exc:
+            if exc.code in (None, 0, 2):
+                return
             raise
+
+
+main: Callable[[], None] = NeuroSanStudioCli.main
 
 
 if __name__ == "__main__":
