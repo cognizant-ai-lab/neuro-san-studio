@@ -58,6 +58,7 @@ EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "agent_network_query_generator.hocon",
     "tools/internet_info_gatherer.hocon",
     "agent_network_test_generator.hocon",
+    "agent_network_consultant.hocon",
     "experimental/cruse_theme_agent.hocon",
     "experimental/cruse_widget_agent.hocon",
 ]
@@ -700,6 +701,12 @@ class TestDefaultNetworks:
         ):
             assert dict(keys[support]) == {"serve": True, "public": False}, support
 
+    def test_agent_network_consultant_is_installed_but_disabled(self, scaffolded_project: Path) -> None:
+        """Install Consultant beside Designer without enabling it in the server manifest."""
+        keys = self._manifest_keys(scaffolded_project)
+
+        assert keys.get("agent_network_consultant.hocon") is False
+
     def test_public_networks_are_plain_true(self, scaffolded_project: Path) -> None:
         """The entry points a user picks from the UI stay publicly listed."""
         keys = self._manifest_keys(scaffolded_project)
@@ -735,7 +742,7 @@ class TestDefaultNetworks:
         assert edited.read_text() == "# my edits\n"
 
     def test_manifest_declares_nothing_it_does_not_install(self, scaffolded_project: Path) -> None:
-        """Every served key must have landed on disk, or the server hands out a 404."""
+        """Every declared key must land on disk, even when its manifest value disables serving."""
         keys = self._manifest_keys(scaffolded_project)
 
         assert set(keys) == set(EXPECTED_DEFAULT_NETWORKS)
@@ -747,7 +754,7 @@ class TestDefaultNetworkDerivation:
     def test_derived_list_is_pinned(self) -> None:
         """What every new project gets must be an explicit, reviewed decision.
 
-        The list is derived from the manifest template so it cannot drift from what is served --
+        The list is derived from the manifest template so it cannot drift from what is declared --
         but that also means a one-line edit to the template silently changes what every `ns init`
         installs. Pin it here so the change shows up in review.
         """
@@ -832,7 +839,7 @@ class TestScaffoldDeclaresWhatItInstalls(TestCase):
         List every agent-network HOCON the scaffold placed under registries/.
 
         Manifests and the shared substitution fragments are not networks and are excluded;
-        everything else under registries/ is something the server would have to serve.
+        everything else under registries/ must have an explicit manifest entry, enabled or disabled.
 
         :param project: Root of the scaffolded project.
         :return: Sorted registries-relative paths, e.g. ``["agent_network_designer.hocon", ...]``.
@@ -873,7 +880,7 @@ class TestScaffoldDeclaresWhatItInstalls(TestCase):
 
     def test_every_installed_network_is_declared(self) -> None:
         """
-        No network may sit on disk unserved: each installed HOCON needs a manifest key.
+        Require every installed HOCON to have an explicit manifest key, even when disabled.
         """
         declared: List[str] = self._declared_networks(self._project)
         undeclared: List[str] = []
