@@ -41,6 +41,7 @@ Here are a few examples ordered by level of complexity.
     - [Agent Network HTML Creator](#agent-network-html-creator)
     - [Agentforce](#agentforce)
     - [Agentspace](#agentspace)
+    - [Cohesivity Backend](#cohesivity-backend)
     - [MCP BMI STREAMABLE HTTP](#mcp-bmi-streamable-http)
     - [A2A RESEARCH REPORT](#a2a-research-report)
     - [PDF RAG Assistant](#pdf-rag-assistant)
@@ -346,6 +347,14 @@ to interact with a CRM system.
 interact with different datastore connectors on Google Cloud.
 
 **Tags:** `tool`, `API`
+
+### Cohesivity Backend
+
+[Cohesivity Backend](examples/tools/cohesivity_backend.md) is a single-agent system that provisions
+managed backend infrastructure (databases, storage, hosting, APIs) through the Cohesivity MCP server.
+No account or API keys required to start. Unclaimed tenants expire after 72 hours.
+
+**Tags:** `tool`, `MCP`, `Cohesivity`
 
 ### MCP BMI STREAMABLE HTTP
 

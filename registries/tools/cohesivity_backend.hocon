@@ -1,0 +1,77 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - No API key required. Cohesivity creates a temporary tenant without an account.
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent that provisions backend infrastructure (databases, storage, hosting, APIs) via the Cohesivity MCP server.",
+        "tags": ["tool", "cohesivity_backend"]
+        "sample_queries": [
+            "Create a temporary backend with PostgreSQL and object storage for my app.",
+            "Provision a Redis cache and check its status.",
+            "What backend resources does Cohesivity offer?"
+        ]
+    },
+
+    include "registries/expertise_scoping_instructions.hocon",
+
+    # Load the shared LLM configuration from a single source of truth.
+    include "config/llm_config.hocon",
+
+    "tools": [
+        {
+            "name": "cohesivity_provisioner",
+
+            "function": {
+                "description": "Assist caller with provisioning backend infrastructure via the Cohesivity MCP server.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "An inquiry from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": """
+Use your tools to respond to the inquiry.
+
+Cohesivity provisions managed backend resources. No account or API keys
+are required to start. Each tenant is temporary and expires with its
+resources after 72 hours unless claimed.
+
+Pick the tool that matches the task:
+- get_cohesivity_documentation for resource details, pricing, or onboarding.
+- create_tenant to create one temporary tenant. Do not create duplicates.
+- provision_resource to provision one or more resources on a tenant.
+- tenant_status to check lifecycle, resources, and connection details.
+- claim_tenant to generate an approval URL when the user wants to keep the environment.
+- give_feedback to report a problem or suggestion.
+
+Always report the exact expires_at timestamp returned by tenant creation,
+and warn the user that unclaimed tenants expire after 72 hours.
+""" ${expertise_scoping_instructions},
+            "tools": ["https://cohesivity.ai/mcp"]
+        },
+    ]
+}
