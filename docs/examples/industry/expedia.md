@@ -120,7 +120,7 @@ Would you like to proceed with one of these packages, or would you like me to sh
    - Educates customers on loyalty programs and travel requirements.
    - Delegates to:
      - `airline_partner_coordinator` - Liaises with airlines for availability, fare negotiation, and issue resolution
-       - Uses: `ExpediaSearch` - Web search tool via DuckDuckGo
+       - Uses: `ExpediaSearch` - Web search tool via the Internet Info Gatherer
 
 2. **hotel_specialist**
    - Specializes in booking and managing hotel reservations.
@@ -129,7 +129,7 @@ Would you like to proceed with one of these packages, or would you like me to sh
    - Educates customers on Expedia Rewards and package benefits.
    - Delegates to:
      - `hotel_partner_coordinator` - Liaises with hotels for room availability, rate negotiation, and issue resolution
-       - Uses: `ExpediaSearch` - Web search tool via DuckDuckGo
+       - Uses: `ExpediaSearch` - Web search tool via the Internet Info Gatherer
 
 3. **vacation_package_specialist**
    - Creates and manages vacation packages combining flights, hotels, and services.
@@ -138,7 +138,7 @@ Would you like to proceed with one of these packages, or would you like me to sh
    - Handles reservation modifications and hotel-specific issues.
    - Delegates to:
      - `package_deal_coordinator` - Collaborates with service providers to create attractive vacation packages
-       - Uses: `ExpediaSearch` - Web search tool via DuckDuckGo
+       - Uses: `ExpediaSearch` - Web search tool via the Internet Info Gatherer
 
 4. **customer_support_representative**
    - Handles general customer inquiries and support for existing bookings.
@@ -153,12 +153,11 @@ Would you like to proceed with one of these packages, or would you like me to sh
 
 ## External Dependencies
 
-**DuckDuckGo Search API** (`/tools/ddgs_search`)
+**[Internet Info Gatherer](../tools/internet_info_gatherer.md)** (`/tools/internet_info_gatherer`)
 
 - **Tool Name**: ExpediaSearch
 - **Used By**: `airline_partner_coordinator`, `hotel_partner_coordinator`, `package_deal_coordinator`
 - **Purpose**: Simulates web searches on expedia.com to return URLs and options for flights, accommodations, and vacation packages
-- **Quota Limitation**: Subject to DuckDuckGo's daily search quota limits
 - **Impact if Unavailable**: The network will be unable to search for flights, hotels, or package options through partner coordinators, significantly limiting the ability to provide competitive pricing and availability information
 
 ---

@@ -412,11 +412,7 @@ Returns the URL to various AirBnb accommodation and travel options.
             Searches airbnb.com using search terms that would help respond to the inquiry.
             """,
             "command": "Call the API to get a list of URLs for available options.",
-            "tools": ["ddgs_search"]
-        },
-        {
-            "name": "ddgs_search",
-            "toolbox": "ddgs_search",
+            "tools": ["/tools/internet_info_gatherer"]
         },
     ]
 }
