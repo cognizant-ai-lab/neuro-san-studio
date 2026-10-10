@@ -1,0 +1,114 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+"""Behavioral tests for the Agent Network Consultant's append-only scratchpad."""
+
+import shutil
+import tempfile
+from os import environ
+from pathlib import Path
+from typing import Any
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import patch
+
+from coded_tools.agent_network_consultant.network_scratchpad import NetworkScratchpad
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+
+
+class TestNetworkScratchpad(IsolatedAsyncioTestCase):
+    """Verify scratchpad history persists within a run and resets between runs."""
+
+    def setUp(self) -> None:
+        """Create one isolated scratchpad directory for each test."""
+        self.tmp_path = Path(tempfile.mkdtemp())
+
+    def tearDown(self) -> None:
+        """Remove the isolated scratchpad directory after each test."""
+        shutil.rmtree(self.tmp_path)
+
+    @staticmethod
+    async def _invoke(tool: NetworkScratchpad, args: dict[str, Any], run_id: str = "run-1") -> Any:
+        """
+        Invoke the scratchpad for the isolated test network.
+
+        :param tool: The scratchpad coded tool.
+        :param args: The coded-tool input arguments.
+        :param run_id: The identifier isolating this test invocation's Consultant run.
+        :return: The coded-tool result.
+        """
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_NAME: "example",
+            NetworkScratchpad.RUN_ID_KEY: run_id,
+        }
+        return await tool.async_invoke(args, sly_data)
+
+    async def test_read_preserves_history_and_write_appends(self) -> None:
+        """
+        Preserve prior attempts across reads and append the next turn after them.
+        """
+        tool = NetworkScratchpad(self.tmp_path)
+        first_turn = "CURRENT TURN: agent_a changed routing; AWAITING RETEST"
+        second_turn = "PRIOR ATTEMPT OUTCOMES: agent_a WORKED\nCURRENT TURN: agent_b changed wording; AWAITING RETEST"
+
+        self.assertEqual(await self._invoke(tool, {"action": "write", "content": first_turn}), {"saved": True})
+        first_read: dict[str, str] = await self._invoke(tool, {"action": "read"})
+        repeated_read: dict[str, str] = await self._invoke(tool, {"action": "read"})
+        self.assertEqual(first_read.get("content"), f"{first_turn}\n")
+        self.assertEqual(repeated_read, first_read)
+
+        self.assertEqual(
+            await self._invoke(tool, {"action": "write", "content": second_turn}),
+            {"saved": True},
+        )
+        final_read: dict[str, str] = await self._invoke(tool, {"action": "read"})
+        self.assertEqual(final_read.get("content"), f"{first_turn}\n{second_turn}\n")
+
+    async def test_concurrent_runs_use_separate_history(self) -> None:
+        """Keep two runs of the same network in separate scratchpad files."""
+        tool = NetworkScratchpad(self.tmp_path)
+
+        await self._invoke(tool, {"action": "write", "content": "first run"}, "run-1")
+        await self._invoke(tool, {"action": "write", "content": "second run"}, "run-2")
+
+        first_read = await self._invoke(tool, {"action": "read"}, "run-1")
+        second_read = await self._invoke(tool, {"action": "read"}, "run-2")
+        self.assertEqual(first_read, {"content": "first run\n"})
+        self.assertEqual(second_read, {"content": "second run\n"})
+
+    async def test_redacts_credentials_before_persisting_history(self) -> None:
+        """Keep credentials in model-provided notes out of the scratchpad and later reads."""
+        tool = NetworkScratchpad(self.tmp_path)
+        secret = "sk-proj-scratchpad-secret"
+
+        result = await self._invoke(tool, {"action": "write", "content": f"OPENAI_API_KEY={secret}"})
+        persisted = (self.tmp_path / "example.run-1.txt").read_text(encoding="utf-8")
+        returned = await self._invoke(tool, {"action": "read"})
+
+        self.assertEqual({"saved": True}, result)
+        self.assertNotIn(secret, persisted)
+        self.assertNotIn(secret, str(returned.get("content")))
+        self.assertIn("[REDACTED]", persisted)
+
+    async def test_empty_environment_directory_uses_the_default(self) -> None:
+        """Keep an empty environment value from redirecting scratchpad writes to the project root."""
+        with (
+            patch.dict(environ, {NetworkScratchpad.DIRECTORY_ENVIRONMENT_VARIABLE: ""}),
+            patch.object(NetworkScratchpad, "DEFAULT_DIRECTORY", str(self.tmp_path)),
+        ):
+            result = await self._invoke(NetworkScratchpad(), {"action": "write", "content": "first run"})
+
+        self.assertEqual({"saved": True}, result)
+        self.assertEqual("first run\n", (self.tmp_path / "example.run-1.txt").read_text(encoding="utf-8"))
