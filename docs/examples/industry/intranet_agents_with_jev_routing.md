@@ -463,9 +463,9 @@ The Jev model version can be pinned with the `model` argument of the middleware 
 ### Open-weight decision models and local training
 
 The middleware passes the SDK client only `model`, `retry` and `timeout`; the SDK resolves the endpoint from the
-environment: `TYPESAFE_BASE_URL` (default `https://api.typesafe.ai`) and `TYPESAFE_API_KEY`. Any server that speaks
-the same `POST /v1/systemone` protocol can therefore replace Jev with no code change: set `TYPESAFE_BASE_URL` to the
-server and `model` to the checkpoint name that server expects.
+environment: `TYPESAFE_BASE_URL` (unset means TypeSafe's public API) and `TYPESAFE_API_KEY`. Any server that
+speaks the same `POST /v1/systemone` protocol can therefore replace Jev with no code change: set
+`TYPESAFE_BASE_URL` to the server and `model` to the checkpoint name that server expects.
 
 Jev itself cannot be trained or run locally: TypeSafe states that "Jev is not fine-tuned or LoRA-adapted with
 customer data" and that "the same weights serve every account"
