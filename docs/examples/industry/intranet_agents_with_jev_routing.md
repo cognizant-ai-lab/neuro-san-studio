@@ -460,6 +460,34 @@ benchmark-only variants in the tables are this network's hocon with one change e
 The Jev model version can be pinned with the `model` argument of the middleware (for example
 `"model": "jev-1.13.0"`); by default the SDK uses `TYPESAFE_DEFAULT_MODEL` or `jev-latest`.
 
+### Open-weight decision models and local training
+
+The middleware passes the SDK client only `model`, `retry` and `timeout`; the SDK resolves the endpoint from the
+environment: `TYPESAFE_BASE_URL` (default `https://api.typesafe.ai`) and `TYPESAFE_API_KEY`. Any server that speaks
+the same `POST /v1/systemone` protocol can therefore replace Jev with no code change: set `TYPESAFE_BASE_URL` to the
+server and `model` to the checkpoint name that server expects.
+
+Jev itself cannot be trained or run locally: TypeSafe states that "Jev is not fine-tuned or LoRA-adapted with
+customer data" and that "the same weights serve every account"
+([models](https://docs.typesafe.ai/models.md)). Several open-weight decision models serve the same protocol and
+ship a local training loop:
+
+- [Laya](https://github.com/NandhaKishorM/laya) (Apache-2.0, ModernBERT-large, 421M): `laya-train` fine-tunes from
+  a CSV or JSONL of labeled decisions with an RLCD objective and fits calibration temperatures; `laya-serve`
+  exposes `/v1/systemone`. Its model card reports weak results on large option sets (77-way Banking77).
+- [Von](https://github.com/wfzyx/von) (Apache-2.0, ModernBERT-large, 395M): `von calibrate labels.jsonl` refits the
+  confidence map on your labels on a CPU in minutes; a continue-train takes about an hour on one GPU; `von serve`.
+- [Kev](https://github.com/jaredpalmer/kev) (Apache-2.0, Qwen3.5 0.8B to 9B, LoRA plus a pointer head):
+  `python -m kev.train` on JSONL requests with a `label` per question; `python -m kev.serve --port 8009`.
+
+The labels for a router like this one come from the network itself: every `jev_turn` record and every data-driven
+fixture names the department for a turn, which is the `{state, options, label}` row these trainers read. None of
+this was measured here, and the accuracy figures those projects publish are self-reported. TypeSafe's own recipe
+for local training runs the other way, using Jev's probabilities as features for a classical model
+([Autoresearch feature discovery](https://docs.typesafe.ai/cookbooks/autoresearch_feature_discovery.md)), and its
+[system-one-adapter-python](https://github.com/typesafe-ai/system-one-adapter-python) is a drop-in client backed
+by an LLM API, for A/B tests and as a fallback.
+
 ---
 
 ## Example Conversation
