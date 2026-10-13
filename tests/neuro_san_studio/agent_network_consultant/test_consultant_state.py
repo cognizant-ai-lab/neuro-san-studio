@@ -31,6 +31,7 @@ class TestConsultantState(TestCase):
             ConsultantState.AGENT_NETWORK_DIAGNOSTIC_CONTEXT,
             ConsultantState.AGENT_NETWORK_EDITABLE_FIELDS,
             ConsultantState.AGENT_NETWORK_HOCON_FILE,
+            ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED,
             ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT,
             ConsultantState.AGENT_NETWORK_SOURCE_FILE,
             ConsultantState.AGENT_NETWORK_CONSULTANT_RUN_ID,
