@@ -25,6 +25,7 @@ from typing import override
 
 from langchain.agents.middleware import AgentState
 from langchain.agents.middleware import hook_config
+from langchain_core.messages import AIMessage
 from langgraph.runtime import Runtime
 from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
@@ -44,10 +45,14 @@ from middleware.agent_network_consultant.source_preserving_hocon_editor import S
 from middleware.agent_network_designer.persistence import agent_network_persistence_middleware
 from middleware.agent_network_designer.validation import agent_network_instructions_validation_middleware
 from neuro_san_studio.agent_network_consultant.consultant_state import ConsultantState
+from neuro_san_studio.agent_network_consultant.sensitive_data_redactor import SensitiveDataRedactor
 
 
 class ConsultantPersistenceMiddleware(agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware):
     """Validate and patch only Agent Network Consultant's changed instruction fields."""
+
+    # Three attempts let the model correct unsupported source edits without allowing an unbounded agent loop.
+    PERSISTENCE_FAILURE_LIMIT = 3
 
     @override
     @hook_config(can_jump_to=["model"])
@@ -72,11 +77,51 @@ class ConsultantPersistenceMiddleware(agent_network_persistence_middleware.Agent
             return self._validation_failure_response(structure_errors, instructions_errors)
 
         self._validation_attempts = 0
-        deploy_error = await self._assemble_and_persist(network_definition, network_name, [])
+        try:
+            deploy_error = await self._assemble_and_persist(network_definition, network_name, [])
+        except (ConfigException, ParseBaseException, ValueError) as error:
+            return self._persistence_failure_response(error)
         await self._export_network_definition()
         if deploy_error is not None:
             return self._deploy_error_response(deploy_error)
         return None
+
+    def _persistence_failure_response(self, error: Exception) -> dict[str, Any]:
+        """
+        Ask the model to correct a failed source edit or finish after the bounded retry limit.
+
+        :param error: The source-preserving edit failure.
+        :return: A model retry response or terminal response after the retry limit.
+        """
+        failure_count = self._persistence_failure_count()
+        safe_error = SensitiveDataRedactor.redact_text(str(error))
+        if failure_count < self.PERSISTENCE_FAILURE_LIMIT:
+            self.logger.info(
+                "Source-preserving persistence failed; requesting an Agent Network Consultant repair "
+                "(attempt %d/%d): %s",
+                failure_count,
+                self.PERSISTENCE_FAILURE_LIMIT,
+                safe_error,
+            )
+            return self._error_response(
+                "The source-preserving edit could not be applied safely: "
+                f"{safe_error}. Revise only the responsible agents' instructions or descriptions and try again."
+            )
+
+        self.sly_data.update({ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED: True})
+        self.logger.error(
+            "Source-preserving persistence failed after %d attempts; stopping without another edit: %s",
+            failure_count,
+            safe_error,
+        )
+        return {
+            "messages": [
+                AIMessage(
+                    content="Agent Network Consultant stopped because source-preserving persistence could not "
+                    f"safely apply the requested change after {failure_count} attempts."
+                )
+            ]
+        }
 
     def _persistence_candidate(
         self,
@@ -261,24 +306,10 @@ class ConsultantPersistenceMiddleware(agent_network_persistence_middleware.Agent
                 changes,
                 original_fields,
             )
-        except (ConfigException, ParseBaseException, ValueError) as exc:
+        except (ConfigException, ParseBaseException, ValueError):
             # Only unsupported or malformed HOCON counts as a stuck patch. File-system errors retain their normal
             # exception path and must not be mislabeled as a source-format limitation.
-            failure_count_value: Any = self.sly_data.get(
-                ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT,
-                0,
-            )
-            # bool is an Integral in Python, but framework flags must never become numeric failure counts.
-            if (
-                failure_count_value is True
-                or failure_count_value is False
-                or not isinstance(
-                    failure_count_value,
-                    Integral,
-                )
-            ):
-                raise TypeError("The persistence failure count must be an integer.") from exc
-            failure_count = int(failure_count_value)
+            failure_count = self._persistence_failure_count()
             self.sly_data.update({ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: failure_count + 1})
             raise
         self.sly_data.update(
@@ -286,8 +317,29 @@ class ConsultantPersistenceMiddleware(agent_network_persistence_middleware.Agent
                 AGENT_NETWORK_HOCON_TEXT: updated_text,
                 ConsultantState.AGENT_NETWORK_CHANGES: {},
                 ConsultantState.AGENT_NETWORK_EDITABLE_FIELDS: ConsultantInstructionChanges.snapshot(network_def),
+                ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED: False,
                 ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: 0,
             }
         )
         self.logger.info("Persisted surgical agent-network changes to %s", source_file)
         return None
+
+    def _persistence_failure_count(self) -> int:
+        """
+        Return the validated consecutive source-edit failure count.
+
+        :return: The current consecutive source-edit failure count.
+        :raises TypeError: If middleware state contains a noninteger count.
+        """
+        failure_count_value: Any = self.sly_data.get(
+            ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT,
+            0,
+        )
+        # bool is an Integral in Python, but framework flags must never become numeric failure counts.
+        if (
+            failure_count_value is True
+            or failure_count_value is False
+            or not isinstance(failure_count_value, Integral)
+        ):
+            raise TypeError("The persistence failure count must be an integer.")
+        return int(failure_count_value)
