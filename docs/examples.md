@@ -39,6 +39,7 @@ Here are a few examples ordered by level of complexity.
     - [Gmail Assistant](#gmail-assistant)
     - [Google Workspace Assistant](#google-workspace-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
+    - [Agent Network Consultant](#agent-network-consultant)
     - [Agentforce](#agentforce)
     - [Agentspace](#agentspace)
     - [MCP BMI STREAMABLE HTTP](#mcp-bmi-streamable-http)
@@ -332,6 +333,13 @@ system by generating an interactive HTML graph and opening it in Chrome. It help
 and roles of agents within the network.
 
 **Tags:** `tool`, `HTML`
+
+### Agent Network Consultant
+
+[Agent Network Consultant](examples/agent_network_consultant.md) generates and runs fixtures for an agent network,
+diagnoses failures, and applies targeted repairs while preserving the network's intended behavior.
+
+**Tags:** `tool`
 
 ### Agentforce
 
