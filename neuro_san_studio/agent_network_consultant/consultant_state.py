@@ -26,6 +26,7 @@ class ConsultantState(StrEnum):
     AGENT_NETWORK_DIAGNOSTIC_CONTEXT = "agent_network_diagnostic_context"
     AGENT_NETWORK_EDITABLE_FIELDS = "agent_network_editable_fields"
     AGENT_NETWORK_HOCON_FILE = "agent_network_hocon_file"
+    AGENT_NETWORK_PERSISTENCE_EXHAUSTED = "agent_network_persistence_exhausted"
     AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT = "agent_network_persistence_failure_count"
     AGENT_NETWORK_SOURCE_FILE = "agent_network_source_file"
     AGENT_NETWORK_CONSULTANT_RUN_ID = "agent_network_consultant_run_id"
