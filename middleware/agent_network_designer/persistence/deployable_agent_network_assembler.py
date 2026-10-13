@@ -227,8 +227,8 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         # Retrieve the modified agent spec
         return network_spec["tools"][0]
 
-    @classmethod
-    def _remove_placeholders(cls, value: Any, keys: list[str]) -> Any:
+    @staticmethod
+    def _remove_placeholders(value: Any, keys: list[str]) -> Any:
         """
         Remove the "{key}" placeholders of the given keys from every string value in a template value. Dict keys
         are left as they are.
@@ -237,18 +237,28 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         :param keys: The keys whose placeholders to remove
         :return: A copy of the value without those placeholders; a value of any other type comes back as it is
         """
+        # A string: delete each placeholder, for example "{demo_mode}" becomes "". This is the only case that
+        # changes anything; the other cases only walk down to the strings.
         if isinstance(value, str):
             for key in keys:
                 value = value.replace("{" + key + "}", "")
             return value
+
+        # A list: handle each item the same way, keeping their order. A new list is built, so the template the
+        # caller passed in is left unchanged.
         if isinstance(value, list):
             items: list[Any] = []
             for item in value:
-                items.append(cls._remove_placeholders(item, keys))
+                items.append(DeployableAgentNetworkAssembler._remove_placeholders(item, keys))
             return items
+
+        # A dict, such as an agent template or its "allow" block: handle each value and keep each key as it is,
+        # as neuro-san's filter does. A new dict is built here too.
         if isinstance(value, dict):
             entries: dict[Any, Any] = {}
             for name, item in value.items():
-                entries[name] = cls._remove_placeholders(item, keys)
+                entries[name] = DeployableAgentNetworkAssembler._remove_placeholders(item, keys)
             return entries
+
+        # Anything else, such as a number, a boolean or None, holds no placeholder and is returned as it is.
         return value
