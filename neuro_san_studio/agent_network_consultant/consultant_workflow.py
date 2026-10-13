@@ -16,7 +16,6 @@
 """Reusable orchestration for Agent Network Consultant conversations."""
 
 import logging
-from numbers import Integral
 from typing import Any
 from typing import Literal
 
@@ -35,8 +34,6 @@ logger = logging.getLogger(__name__)
 class ConsultantWorkflow:
     """Coordinate one Agent Network Consultant session, clarification transport, and fixture runtime."""
 
-    # Three consecutive source-edit failures allow transient retries before the workflow stops safely.
-    PERSISTENCE_FAILURE_THRESHOLD = 3
     # Three answered rounds bound runs when the model repeatedly asks for clarification.
     MAX_CLARIFICATION_ROUNDS = 3
 
@@ -253,31 +250,22 @@ class ConsultantWorkflow:
         :param sly_data: The shared agent runtime data.
         :return: The response text from Agent Network Consultant.
         :raises StuckPatchError: If source-preserving persistence repeatedly fails.
-        :raises TypeError: If middleware returns a noninteger persistence failure count.
+        :raises TypeError: If middleware returns a nonboolean persistence exhaustion state.
         """
         chat_sly_data: dict[str, Any] = dict(sly_data or {})
-        chat_sly_data.update({ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: 0})
-        response = self._session.chat(message, sly_data=chat_sly_data)
-        failure_count_value: Any = self._session.sly_data_value(
-            ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT
+        chat_sly_data.update(
+            {
+                ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED: False,
+                ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: 0,
+            }
         )
-        if failure_count_value is None:
-            failure_count = 0
-        # bool is an Integral in Python, but framework flags must never become numeric failure counts.
-        elif (
-            failure_count_value is not True
-            and failure_count_value is not False
-            and isinstance(
-                failure_count_value,
-                Integral,
-            )
-        ):
-            failure_count = int(failure_count_value)
-        else:
-            raise TypeError("The persistence failure count must be an integer.")
-        if failure_count >= self.PERSISTENCE_FAILURE_THRESHOLD:
+        response = self._session.chat(message, sly_data=chat_sly_data)
+        persistence_exhausted = self._session.sly_data_value(ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED)
+        if persistence_exhausted is True:
             raise StuckPatchError(
                 f"Agent Network Consultant could not apply a supported source-preserving change to {hocon_file} "
-                f"after {failure_count} consecutive attempts. Review the persistence errors before retrying."
+                "after the allowed attempts. Review the persistence errors before retrying."
             )
+        if persistence_exhausted is not None and persistence_exhausted is not False:
+            raise TypeError("The persistence exhaustion state must be a boolean.")
         return response
