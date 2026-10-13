@@ -114,24 +114,25 @@ class TestConsultantWorkflow(TestCase):
         logging.getLogger().warning("unrelated warning")
         return "complete"
 
-    def test_consult_stops_after_structured_persistence_failure_threshold(self) -> None:
-        """Stop after the middleware reports three consecutive source-edit failures."""
+    def test_consult_stops_after_middleware_exhausts_source_edit_retries(self) -> None:
+        """Translate the middleware's terminal source-edit status into the workflow exception."""
         session = Mock(spec=ConsultantSession)
         session.chat.return_value = "complete"
-        session.sly_data_value.return_value = ConsultantWorkflow.PERSISTENCE_FAILURE_THRESHOLD
+        session.sly_data_value.return_value = True
         fixture_paths = {"a.hocon": "tests/fixtures/a.hocon"}
 
         with self.assertRaisesRegex(StuckPatchError, "could not apply.*example.hocon"):
             self._workflow(session).consult("fix it", "example.hocon", fixture_paths)
 
         chat_sly_data = session.chat.call_args.kwargs.get("sly_data")
+        self.assertFalse(chat_sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED))
         self.assertEqual(0, chat_sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT))
         self.assertEqual("example.hocon", chat_sly_data.get(ConsultantState.AGENT_NETWORK_HOCON_FILE))
         self.assertEqual(fixture_paths, chat_sly_data.get(ConsultantState.TEST_FIXTURE_PATHS))
 
-    def test_consult_rejects_a_noninteger_persistence_failure_count(self) -> None:
-        """Reject malformed middleware state rather than coercing it into a failure count."""
-        malformed_values: tuple[Any, Any, Any] = ("3", True, 3.5)
+    def test_consult_rejects_a_nonboolean_persistence_exhaustion_state(self) -> None:
+        """Reject malformed middleware exhaustion state rather than treating it as a terminal failure."""
+        malformed_values: tuple[Any, Any, Any] = ("true", 1, 3.5)
         for malformed_value in malformed_values:
             with self.subTest(malformed_value=malformed_value):
                 session = Mock(spec=ConsultantSession)
@@ -145,7 +146,7 @@ class TestConsultantWorkflow(TestCase):
         """Keep unrelated global warnings out of persistence control flow."""
         session = Mock(spec=ConsultantSession)
         session.chat.side_effect = self._chat_with_unrelated_warning
-        session.sly_data_value.return_value = 0
+        session.sly_data_value.return_value = False
 
         with self.assertLogs(level="WARNING"):
             response = self._workflow(session).consult("fix it", "example.hocon", {})
@@ -157,7 +158,7 @@ class TestConsultantWorkflow(TestCase):
         private_answer = "customer-secret-123"
         session = Mock(spec=ConsultantSession)
         session.chat.side_effect = ["NEEDS_CLARIFICATION: Which account?", "Complete"]
-        session.sly_data_value.return_value = 0
+        session.sly_data_value.return_value = False
         answerer = Mock(spec=ConsultantClarificationAnswerer)
         answerer.answer_all.return_value = [private_answer]
 
@@ -173,7 +174,7 @@ class TestConsultantWorkflow(TestCase):
         """Stop when the model keeps requesting clarification after every allowed answer round."""
         session = Mock(spec=ConsultantSession)
         session.chat.return_value = "NEEDS_CLARIFICATION: Which account?"
-        session.sly_data_value.return_value = 0
+        session.sly_data_value.return_value = False
         answerer = Mock(spec=ConsultantClarificationAnswerer)
         answerer.answer_all.return_value = ["account 42"]
 
