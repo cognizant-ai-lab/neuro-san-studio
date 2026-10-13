@@ -29,7 +29,6 @@ from langgraph.runtime import Runtime
 from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
-from neuro_san_studio.agent_network_consultant.consultant_state import ConsultantState
 from pyhocon.exceptions import ConfigException
 from pyparsing import ParseBaseException
 
@@ -44,6 +43,7 @@ from middleware.agent_network_consultant.consultant_instruction_changes import C
 from middleware.agent_network_consultant.source_preserving_hocon_editor import SourcePreservingHoconEditor
 from middleware.agent_network_designer.persistence import agent_network_persistence_middleware
 from middleware.agent_network_designer.validation import agent_network_instructions_validation_middleware
+from neuro_san_studio.agent_network_consultant.consultant_state import ConsultantState
 
 
 class ConsultantPersistenceMiddleware(agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware):
