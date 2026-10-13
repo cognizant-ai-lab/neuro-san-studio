@@ -742,7 +742,7 @@ class TestDefaultNetworks:
         assert edited.read_text() == "# my edits\n"
 
     def test_manifest_declares_nothing_it_does_not_install(self, scaffolded_project: Path) -> None:
-        """Every declared key must land on disk, even when its manifest value disables serving."""
+        """Every served key must have landed on disk, or the server hands out a 404."""
         keys = self._manifest_keys(scaffolded_project)
 
         assert set(keys) == set(EXPECTED_DEFAULT_NETWORKS)
@@ -754,7 +754,7 @@ class TestDefaultNetworkDerivation:
     def test_derived_list_is_pinned(self) -> None:
         """What every new project gets must be an explicit, reviewed decision.
 
-        The list is derived from the manifest template so it cannot drift from what is declared --
+        The list is derived from the manifest template so it cannot drift from what is served --
         but that also means a one-line edit to the template silently changes what every `ns init`
         installs. Pin it here so the change shows up in review.
         """
@@ -839,7 +839,7 @@ class TestScaffoldDeclaresWhatItInstalls(TestCase):
         List every agent-network HOCON the scaffold placed under registries/.
 
         Manifests and the shared substitution fragments are not networks and are excluded;
-        everything else under registries/ must have an explicit manifest entry, enabled or disabled.
+        everything else under registries/ is something the server would have to serve.
 
         :param project: Root of the scaffolded project.
         :return: Sorted registries-relative paths, e.g. ``["agent_network_designer.hocon", ...]``.
@@ -880,7 +880,7 @@ class TestScaffoldDeclaresWhatItInstalls(TestCase):
 
     def test_every_installed_network_is_declared(self) -> None:
         """
-        Require every installed HOCON to have an explicit manifest key, even when disabled.
+        No network may sit on disk unserved: each installed HOCON needs a manifest key.
         """
         declared: List[str] = self._declared_networks(self._project)
         undeclared: List[str] = []

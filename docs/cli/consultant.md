@@ -1,7 +1,8 @@
 # consultant
 
-Generates tests and repairs failing agent-network behavior without changing the intended behavior. Consultant can
-repair an existing HOCON network or design a network for a new use case before testing it.
+Runs fixtures against an agent network and can update the network to address failing tests. It reuses existing
+fixtures by default and generates fixtures only when none exist or `--force-generate` is supplied. When `--use-case`
+is supplied, Agent Network Designer creates the network before Consultant tests it.
 
 See the [Agent Network Consultant guide](../examples/agent_network_consultant.md) for setup, workflow, nsflow
 integration, and output locations.

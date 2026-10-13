@@ -21,7 +21,6 @@ import os
 import subprocess
 import sys
 import tempfile
-from collections.abc import Callable
 from pathlib import Path
 from typing import List
 from typing import Literal
@@ -575,20 +574,17 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             ).run()
         )
 
-    @staticmethod
-    def main() -> None:
-        """Run the `neuro-san-studio` console-script entry point."""
-        # Preserve the established Studio entry-point behavior: Typer/Click uses status 2 both for
-        # `no_args_is_help` and rejected input, and the wrapper has historically treated either as a clean return.
-        try:
-            NeuroSanStudioCli.app()
-        except SystemExit as exc:
-            if exc.code in (None, 0, 2):
-                return
+
+def main() -> None:
+    """Entry point for the `neuro-san-studio` console script."""
+    # Typer/click exit with SystemExit(0) on success and SystemExit(2) for
+    # no-args-is-help; let clean exits return normally so main() can be
+    # driven from tests and embedded callers.
+    try:
+        NeuroSanStudioCli.app()
+    except SystemExit as exc:
+        if exc.code not in (None, 0, 2):
             raise
-
-
-main: Callable[[], None] = NeuroSanStudioCli.main
 
 
 if __name__ == "__main__":
