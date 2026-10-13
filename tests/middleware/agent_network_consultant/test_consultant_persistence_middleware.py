@@ -227,21 +227,28 @@ class TestConsultantPersistenceMiddleware(IsolatedAsyncioTestCase):
         self.assertEqual({"employee_lookup": {}}, toolbox_tools)
         update_file.assert_called_once()
 
-    async def test_after_agent_counts_repeated_source_edit_failures(self) -> None:
-        """Record each structured source-edit failure without inspecting its log message."""
+    async def test_after_agent_retries_source_edits_then_reports_exhaustion(self) -> None:
+        """Keep source-edit retries inside one agent turn and finish after the bounded limit."""
         middleware, sly_data = self._changed_middleware()
         validation = AsyncMock(return_value=([], []))
         with (
             patch.object(middleware, "_validate_network", new=validation),
             patch.object(SourcePreservingHoconEditor, "update_file", side_effect=ValueError("unsupported source")),
         ):
-            for expected_count in range(1, 4):
-                with self.assertRaisesRegex(ValueError, "unsupported source"):
-                    await middleware.aafter_agent({}, None)
+            for expected_count in range(1, ConsultantPersistenceMiddleware.PERSISTENCE_FAILURE_LIMIT + 1):
+                result = await middleware.aafter_agent({}, None)
                 self.assertEqual(
                     expected_count,
                     sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT),
                 )
+                if expected_count < ConsultantPersistenceMiddleware.PERSISTENCE_FAILURE_LIMIT:
+                    self.assertEqual("model", (result or {}).get("jump_to"))
+                    continue
+                self.assertIsNone((result or {}).get("jump_to"))
+                self.assertTrue(sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED))
+                messages: list[Any] = (result or {}).get("messages", [])
+                self.assertEqual(1, len(messages))
+                self.assertIn("stopped", str(messages[0]))
 
     async def test_after_agent_rejects_a_malformed_persistence_failure_count(self) -> None:
         """Reject malformed middleware state instead of coercing it into an integer counter."""
@@ -283,6 +290,7 @@ class TestConsultantPersistenceMiddleware(IsolatedAsyncioTestCase):
             },
             sly_data.get(ConsultantState.AGENT_NETWORK_EDITABLE_FIELDS),
         )
+        self.assertFalse(sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_EXHAUSTED))
         self.assertEqual(0, sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT))
 
     async def test_after_agent_returns_validation_feedback_without_persisting(self) -> None:
@@ -325,28 +333,27 @@ class TestConsultantPersistenceMiddleware(IsolatedAsyncioTestCase):
         self.assertIn("Reached max validation attempts (0)", "\n".join(captured.output))
         update_file.assert_not_called()
 
-    async def test_after_agent_counts_parser_failures_as_stuck_patches(self) -> None:
-        """Count supported parser failures while preserving their original exception types."""
+    async def test_after_agent_retries_parser_failures_as_stuck_patches(self) -> None:
+        """Count supported parser failures and return actionable model retry feedback."""
         failures: tuple[Exception, Exception] = (
             ConfigException("invalid HOCON"),
             ParseBaseException("invalid syntax"),
         )
         for failure in failures:
-            failure_type: type[Exception] = type(failure)
             with self.subTest(failure=failure):
                 middleware, sly_data = self._changed_middleware()
                 validation = AsyncMock(return_value=([], []))
                 with (
                     patch.object(middleware, "_validate_network", new=validation),
                     patch.object(SourcePreservingHoconEditor, "update_file", side_effect=failure),
-                    self.assertRaises(failure_type),
                 ):
-                    await middleware.aafter_agent({}, None)
+                    result = await middleware.aafter_agent({}, None)
 
                 self.assertEqual(
                     1,
                     sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT),
                 )
+                self.assertEqual("model", (result or {}).get("jump_to"))
 
     async def test_after_agent_does_not_count_file_system_failures_as_stuck_patches(self) -> None:
         """Keep ordinary file-system failures outside the unsupported-source retry counter."""
