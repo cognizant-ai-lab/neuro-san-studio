@@ -73,7 +73,7 @@ class TestNetworkConsultantOrchestrator(TestCase):
         session = Mock(spec=ConsultantSession)
         session.run_identifier.return_value = "run-one"
         session.chat.return_value = "Repairs complete."
-        session.sly_data_value.return_value = 0
+        session.sly_data_value.return_value = False
         return ConsultantRunContext(
             options=options,
             session=session,
@@ -165,7 +165,7 @@ class TestNetworkConsultantOrchestrator(TestCase):
         session = Mock(spec=ConsultantSession)
         session.run_identifier.return_value = "run-one"
         session.chat.return_value = "Repairs complete."
-        session.sly_data_value.return_value = 0
+        session.sly_data_value.return_value = False
         return session
 
     def _probe_results(
