@@ -1066,21 +1066,27 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
 
     async def test_abefore_model_strips_a_network_loaded_from_an_s3_reservation(self) -> None:
         """
-        A network deployed in reservations mode and loaded again from its S3 copy comes back as the own text.
+        A network deployed in reservations mode and loaded again from its S3 copy comes back as the own text, demo
+        mode on or off, and deploying the loaded definition again gives the same spec, so nothing grows.
         """
-        spec: dict[str, Any] = await DeployableAgentNetworkAssembler(True).assemble_agent_network(
-            OWN_TEXT_DEFINITION, "front", "travel", []
-        )
-        sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]}
-        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                assembler: DeployableAgentNetworkAssembler = DeployableAgentNetworkAssembler(demo_mode)
+                spec: dict[str, Any] = await assembler.assemble_agent_network(
+                    OWN_TEXT_DEFINITION, "front", "travel", []
+                )
+                sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]}
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
 
-        result: dict[str, Any] | None = await self._abefore_model_from_s3(middleware, spec)
+                result: dict[str, Any] | None = await self._abefore_model_from_s3(middleware, spec)
 
-        self.assertIsNone(result)
-        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
-        for agent_name, agent in OWN_TEXT_DEFINITION.items():
-            with self.subTest(agent_name=agent_name):
-                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                self.assertIsNone(result)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in OWN_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                redeployed: dict[str, Any] = await assembler.assemble_agent_network(loaded, "front", "travel", [])
+                self.assertEqual(redeployed, spec)
 
     async def test_abefore_model_ignores_aaosa_instructions_sent_in_sly_data(self) -> None:
         """

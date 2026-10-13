@@ -14,10 +14,15 @@
 #
 # END COPYRIGHT
 
-"""Tests for DeployableAgentNetworkAssembler: execution timeout, sly_data_schema emission and metadata block."""
+"""
+Tests for DeployableAgentNetworkAssembler: execution timeout, sly_data_schema emission, metadata block and filled-in
+template placeholders.
+"""
 
 import asyncio
+import json
 import os
+import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -52,6 +57,22 @@ NETWORK_DEF: dict[str, Any] = {
     "helper": {"description": "helps", "instructions": "Help.", "tools": [FILE_AUTH_URL]},
 }
 
+# One agent of each role. The top and regular agents have no text of their own, which leaves their
+# "{agent_instructions}" replacement empty, like "{demo_mode}" with demo mode off.
+ROLES_DEF: dict[str, Any] = {
+    "front": {"description": "top", "instructions": "", "tools": ["router", "search"]},
+    "router": {"description": "routes", "instructions": "", "tools": ["weather"]},
+    "weather": {"description": "leaf", "instructions": "Report the weather."},
+    "search": {"description": "toolbox"},
+}
+
+# A template placeholder such as "{demo_mode}". Only a placeholder has a brace, then lowercase letters and
+# underscores, then a closing brace, so this matches nothing else in an agent spec dumped to JSON.
+PLACEHOLDER: re.Pattern[str] = re.compile(r"\{[a-z_]+\}")
+
+# The start of the demo sentence the demo template puts in each leaf.
+DEMO_MARKER: str = "You are part of a demo system"
+
 
 class TestDeployableAgentNetworkAssembler(TestCase):
     """
@@ -59,7 +80,7 @@ class TestDeployableAgentNetworkAssembler(TestCase):
 
     The deployable config dict carries the generated-network execution timeout, declares the network's MCP
     header needs in the front man's sly_data_schema, and carries the metadata block it is given, stamping
-    nothing itself.
+    nothing itself. No template placeholder is left in it.
     """
 
     @staticmethod
@@ -216,3 +237,71 @@ class TestDeployableAgentNetworkAssembler(TestCase):
         spec: dict[str, Any] = self._assemble_spec([], supplied)
 
         self.assertEqual(spec["metadata"], supplied)
+
+    @staticmethod
+    def _assemble_roles(definition: dict[str, Any], demo_mode: bool) -> dict[str, Any]:
+        """
+        Assemble a definition whose top agent is "front", from the repo root.
+
+        :param definition: The definition to assemble
+        :param demo_mode: Whether to use the demo template
+        :return: The assembled deployable spec
+        """
+        assembler: DeployableAgentNetworkAssembler = DeployableAgentNetworkAssembler(demo_mode=demo_mode)
+        cwd: str = os.getcwd()
+        os.chdir(REPO_ROOT)
+        try:
+            return asyncio.run(assembler.assemble_agent_network(definition, "front", "travel", []))
+        finally:
+            os.chdir(cwd)
+
+    def test_no_placeholder_is_left_in_any_agent(self) -> None:
+        """
+        Every template placeholder is filled in or removed, for every role and in both demo modes. neuro-san's
+        string filter leaves a placeholder as written when its replacement is empty, which is the case for
+        "{demo_mode}" with demo mode off and for "{agent_instructions}" of an agent with no text of its own.
+        """
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                spec: dict[str, Any] = self._assemble_roles(ROLES_DEF, demo_mode)
+                for agent in spec.get("tools"):
+                    with self.subTest(agent=agent.get("name")):
+                        self.assertIsNone(PLACEHOLDER.search(json.dumps(agent)))
+
+    def test_only_a_demo_mode_leaf_gets_the_demo_sentence(self) -> None:
+        """
+        The leaf carries the demo sentence once with demo mode on and not at all with it off, and keeps its own
+        text either way.
+        """
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                spec: dict[str, Any] = self._assemble_roles(ROLES_DEF, demo_mode)
+                leaf: str = self._instructions(spec, "weather")
+                self.assertEqual(leaf.count(DEMO_MARKER), 1 if demo_mode else 0)
+                self.assertTrue(leaf.rstrip().endswith("Report the weather."))
+
+    def test_a_placeholder_in_the_agents_own_text_is_kept_once(self) -> None:
+        """
+        Only the template's placeholders are removed, never the agent's own text: with demo mode off, a
+        "{demo_mode}" in a leaf's own text stays exactly once.
+        """
+        definition: dict[str, Any] = deepcopy(ROLES_DEF)
+        definition.get("weather")["instructions"] = "{demo_mode}\n\nReport the weather."
+
+        spec: dict[str, Any] = self._assemble_roles(definition, False)
+
+        self.assertEqual(self._instructions(spec, "weather").count("{demo_mode}"), 1)
+
+    @staticmethod
+    def _instructions(spec: dict[str, Any], agent_name: str) -> str:
+        """
+        Read one agent's instructions from a deployable spec.
+
+        :param spec: The assembled deployable spec
+        :param agent_name: The agent's name
+        :return: The agent's instructions, or an empty string when the spec has no such agent
+        """
+        for agent in spec.get("tools"):
+            if agent.get("name") == agent_name:
+                return agent.get("instructions", "")
+        return ""
