@@ -200,13 +200,11 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         string_replacements.update(string_replacements_in)
         string_replacements.update(commondefs.get("replacement_strings", empty))
 
-        # neuro-san's string filter leaves a placeholder as written when its replacement is an empty string. That
-        # happens to "{demo_mode}" with demo mode off and to "{agent_instructions}" for an agent with no text of its
-        # own, so remove those placeholders from the template first. The agent's own text is put in afterwards,
-        # so it is never changed here.
+        # neuro-san's string filter leaves "{name}" as written when its replacement is empty, so remove those
+        # placeholders from the template here, before the agent's own text goes in.
         empty_keys: list[str] = []
         for key, value in string_replacements.items():
-            if isinstance(value, str) and not value:
+            if isinstance(key, str) and isinstance(value, str) and not value:
                 empty_keys.append(key)
 
         # Create a network spec so the ConfigFilters from neuro_san can work on it

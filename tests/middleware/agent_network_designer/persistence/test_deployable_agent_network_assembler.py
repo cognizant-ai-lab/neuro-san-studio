@@ -292,6 +292,35 @@ class TestDeployableAgentNetworkAssembler(TestCase):
 
         self.assertEqual(self._instructions(spec, "weather").count("{demo_mode}"), 1)
 
+    def test_placeholders_are_removed_at_any_depth_and_the_input_is_kept(self) -> None:
+        """
+        Placeholders are removed from strings inside nested lists and dicts, other values and dict keys stay as
+        they are, and the template passed in is not modified.
+        """
+        template: dict[str, Any] = {
+            "instructions": "a {demo_mode}b {agent_name}",
+            "allow": {"to_downstream": ["{demo_mode}x", {"{demo_mode}": "{demo_mode}y"}]},
+            "max_steps": 5,
+            "note": None,
+        }
+        snapshot: dict[str, Any] = deepcopy(template)
+
+        # The method is private; it is tested directly because no agent template holds a list or a non-string value.
+        removed: Any = DeployableAgentNetworkAssembler._remove_placeholders(  # pylint: disable=protected-access
+            template, ["demo_mode"]
+        )
+
+        self.assertEqual(
+            removed,
+            {
+                "instructions": "a b {agent_name}",
+                "allow": {"to_downstream": ["x", {"{demo_mode}": "y"}]},
+                "max_steps": 5,
+                "note": None,
+            },
+        )
+        self.assertEqual(template, snapshot)
+
     @staticmethod
     def _instructions(spec: dict[str, Any], agent_name: str) -> str:
         """
