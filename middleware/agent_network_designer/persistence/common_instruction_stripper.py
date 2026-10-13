@@ -25,7 +25,7 @@ from middleware.agent_network_designer.persistence.designer_common_instructions 
 
 class CommonInstructionStripper:
     """
-    Strips copies of the designer's common instructions from agent instructions, so that a save adds exactly one.
+    Strips copies of the designer's common instructions and a leaked demo placeholder, so a save adds one clean copy.
 
     The instructions in agent_network_definition are meant to hold only each agent's custom instructions, its own
     text: every save adds the common instructions again, which are the prefix, the front man's lines, the demo
@@ -95,6 +95,9 @@ class CommonInstructionStripper:
     AAOSA_INSTRUCTIONS: str = "aaosa_instructions"
     PIECE_ORDER: tuple[str, ...] = (PREFIX, FRONT_MAN_LINES, DEMO_SENTENCE, AAOSA_INSTRUCTIONS)
 
+    # A legacy template placeholder that leaked into saved reservation instructions when demo mode was disabled.
+    LEGACY_DEMO_PLACEHOLDER: re.Pattern[str] = re.compile(r"\n[ \t]*\{demo_mode\}[ \t]*\n")
+
     def __init__(self, aaosa_instructions: str | None) -> None:
         """
         Split each piece into the words its copies are matched by.
@@ -161,9 +164,11 @@ class CommonInstructionStripper:
         Strip every copy of the common instructions' pieces from an agent's instructions.
 
         :param instructions: The agent's instructions as received
-        :return: The instructions unchanged when they hold no copy; otherwise the text between the copies,
-                without the whitespace around it, or one copy of each piece found when nothing else remains
+        :return: The instructions unchanged when they hold no copy or placeholder; otherwise the text between the
+                copies, without the whitespace around it, or one copy of each piece found when nothing else remains
         """
+        instructions = self.LEGACY_DEMO_PLACEHOLDER.sub("", instructions)
+
         start: int
         end: int
         first_copies: dict[str, tuple[int, int]]

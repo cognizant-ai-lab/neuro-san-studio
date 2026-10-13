@@ -198,6 +198,9 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         }
         string_replacements.update(string_replacements_in)
         string_replacements.update(commondefs.get("replacement_strings", empty))
+        if not string_replacements.get("demo_mode"):
+            # The string filter skips empty replacements, leaving {demo_mode} in deployed instructions.
+            string_replacements["demo_mode"] = " "
 
         # Similarly set up dictionary value replacements
         value_replacements: dict[str, Any] = {
