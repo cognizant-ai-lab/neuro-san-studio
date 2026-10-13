@@ -48,10 +48,10 @@
     "error_formatter": "json",
     "error_fragments": ["Error:", "Exception:", "Traceback (most recent call last)"],
 
-    # Protect every Consultant LLM boundary in addition to the Python-side redaction used for system-prompt
-    # diagnostics, logs, exceptions, caches, and files. LangChain's middleware covers message/model/tool content:
+    # Redact credentials from messages entering or leaving the front man and from results returned by its tools.
+    # Python-side redaction separately protects system prompts, diagnostics, logs, exceptions, caches, and files.
+    # LangChain middleware documentation:
     # https://docs.langchain.com/oss/python/langchain/middleware/built-in#pii-detection
-    # Defining this once keeps all Consultant agents on the same policy.
     "agent_network_consultant_pii_patterns": {
         "anthropic": "sk-ant-[A-Za-z0-9_-]+",
         "openai_project": "sk-proj-[A-Za-z0-9_-]+",
@@ -62,7 +62,7 @@
         "slack": "xox[baprs]-[A-Za-z0-9-]+",
         "gitlab": "glpat-[A-Za-z0-9_-]+",
         "stripe": "sk_(?:live|test)_[A-Za-z0-9]+",
-        # Unlike Designer, Consultant preserves existing source; literal ${...} references must remain editable.
+        # Literal ${...} references are valid source syntax and must remain available for source-preserving edits.
         "bearer": "Bearer\\s+[A-Za-z0-9._~+/=-]{20,}"
     },
     "agent_network_consultant_pii_middleware": {
@@ -243,8 +243,7 @@ Additional requirements:
                 {
                     "class": "middleware.agent_network_consultant.consultant_definition_middleware.ConsultantDefinitionMiddleware",
                     "args": {"sly_data": true}
-                },
-                ${agent_network_consultant_pii_middleware}
+                }
             ]
         },
 
@@ -292,10 +291,7 @@ fixture's own expectation is wrong.
 - Never alter the agent, unrelated fields, or file/path/address.
 - Do not return or claim success unless both validation and persistence complete with no errors.
 """${aaosa_instructions},
-            "tools": ["validate_test_fixture", "persist_test_fixture", "read_thinking_trace"],
-            "middleware": [
-                ${agent_network_consultant_pii_middleware}
-            ]
+            "tools": ["validate_test_fixture", "persist_test_fixture", "read_thinking_trace"]
         },
 
         {
@@ -354,8 +350,7 @@ After the call:
                 {
                     "class": "middleware.agent_network_consultant.consultant_definition_middleware.ConsultantDefinitionMiddleware",
                     "args": {"sly_data": true}
-                },
-                ${agent_network_consultant_pii_middleware}
+                }
             ]
         },
         {
@@ -596,8 +591,7 @@ OPTIONAL — only set this when the user has explicitly stated a directive targe
                     "args": {
                         "sly_data": true
                     }
-                },
-                ${agent_network_consultant_pii_middleware}
+                }
             ]
         },
 

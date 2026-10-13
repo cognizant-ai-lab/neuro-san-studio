@@ -99,37 +99,38 @@ class TestAgentNetworkConsultantRegistry(TestCase):
         self.assertIn("no nsflow job is", instructions)
         self.assertIn("missing job log is not itself a TOOL ISSUE", instructions)
 
-    def test_every_consultant_llm_agent_redacts_sensitive_message_content(self) -> None:
-        """Protect each LLM's input, output, and tool-result message boundaries with one shared policy."""
+    def test_only_front_man_redacts_sensitive_message_content(self) -> None:
+        """Protect the front-man boundary without attaching duplicate PII middleware downstream."""
         configuration = self._configuration()
-        shared_arguments: ConfigTree | None = None
-        for agent_name in self.LLM_AGENT_NAMES:
+        consultant = self._tool(configuration, "consultant")
+        middleware_chain: list[ConfigTree] = list(consultant.get("middleware", []))
+        pii_middleware: list[ConfigTree] = []
+        for middleware in middleware_chain:
+            if middleware.get("class") == self.PII_MIDDLEWARE_CLASS:
+                pii_middleware.append(middleware)
+
+        self.assertEqual(1, len(pii_middleware))
+        self.assertEqual(self.PII_MIDDLEWARE_CLASS, middleware_chain[-1].get("class"))
+        arguments: ConfigTree = pii_middleware[0].get("args")
+        self.assertEqual("redact", arguments.get("strategy"))
+        self.assertIs(True, arguments.get("apply_to_input"))
+        self.assertIs(True, arguments.get("apply_to_output"))
+        self.assertIs(True, arguments.get("apply_to_tool_results"))
+        detector: str = arguments.get("detector", "")
+        pattern: re.Pattern[str] = re.compile(detector)
+        self.assertIsNotNone(pattern.search("sk-proj-example-secret"))
+        self.assertIsNotNone(pattern.search("Bearer ABCDEFGHIJKLMNOPQRST"))
+        # Existing source substitutions must remain editable instead of becoming redaction markers.
+        self.assertIsNone(pattern.search("${OPENAI_API_KEY}"))
+        self.assertIsNone(pattern.search("max_tokens=2048"))
+
+        for agent_name in self.LLM_AGENT_NAMES[1:]:
             with self.subTest(agent_name=agent_name):
                 agent = self._tool(configuration, agent_name)
-                middleware_chain: list[ConfigTree] = list(agent.get("middleware", []))
-                pii_middleware: list[ConfigTree] = []
-                for middleware in middleware_chain:
+                downstream_middleware: list[ConfigTree] = list(agent.get("middleware", []))
+                for middleware in downstream_middleware:
                     if middleware.get("class") == self.PII_MIDDLEWARE_CLASS:
-                        pii_middleware.append(middleware)
-
-                self.assertEqual(1, len(pii_middleware))
-                self.assertEqual(self.PII_MIDDLEWARE_CLASS, middleware_chain[-1].get("class"))
-                arguments: ConfigTree = pii_middleware[0].get("args")
-                if shared_arguments is None:
-                    shared_arguments = arguments
-                else:
-                    self.assertEqual(shared_arguments, arguments)
-                self.assertEqual("redact", arguments.get("strategy"))
-                self.assertIs(True, arguments.get("apply_to_input"))
-                self.assertIs(True, arguments.get("apply_to_output"))
-                self.assertIs(True, arguments.get("apply_to_tool_results"))
-                detector: str = arguments.get("detector", "")
-                pattern: re.Pattern[str] = re.compile(detector)
-                self.assertIsNotNone(pattern.search("sk-proj-example-secret"))
-                self.assertIsNotNone(pattern.search("Bearer ABCDEFGHIJKLMNOPQRST"))
-                # Existing source substitutions must remain editable instead of becoming redaction markers.
-                self.assertIsNone(pattern.search("${OPENAI_API_KEY}"))
-                self.assertIsNone(pattern.search("max_tokens=2048"))
+                        self.fail(f"{agent_name} must not define its own PII middleware.")
 
     def test_registry_resolves_consultant_instruction_writer_nodes(self) -> None:
         """Reuse the existing fan-out code with the Consultant-specific writing contract."""
