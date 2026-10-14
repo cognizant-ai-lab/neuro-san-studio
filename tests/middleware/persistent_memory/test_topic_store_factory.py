@@ -16,8 +16,6 @@
 
 """Tests for ``TopicStoreFactory`` backend selection."""
 
-from __future__ import annotations
-
 from middleware.persistent_memory.json_file_store import JsonFileStore
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory

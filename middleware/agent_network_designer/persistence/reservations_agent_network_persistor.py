@@ -57,6 +57,19 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         """
         return DeployableAgentNetworkAssembler(self.demo_mode)
 
+    async def async_restore_metadata(self, file_reference: str) -> dict[str, Any] | None:
+        """
+        Reservations have no readable "existing network" to carry metadata from: every save
+        mints a new <prefix>-<uuid4> reservation, and the Reservationist interface offers no
+        lookup of a previous one. In reservations mode the block is carried forward only when
+        the client sends it back under agent_network_metadata.
+
+        :param file_reference: The raw network name (the middleware sanitizes it into the
+                reservation prefix only for async_persist); unused
+        :return: None, always
+        """
+        return None
+
     async def async_persist(self, obj: dict[str, Any], file_reference: str = None) -> str | list[dict[str, Any]]:
         """
         Persists the object passed in.

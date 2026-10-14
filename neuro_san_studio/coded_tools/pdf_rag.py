@@ -52,13 +52,14 @@ class PdfRag(CodedTool, BaseRag):
     validated at connection time (anti DNS-rebinding), redirects are subject to
     SafeFetch's redirect policy, and response sizes are capped. Local file paths
     (a documented input form for this tool) are read directly from disk — SafeFetch
-    governs network fetches only — subject to the same byte cap as downloads, and
-    are checked for a PDF header ("%PDF-" within the first PDF_HEADER_WINDOW bytes)
-    before being read in full, so a non-PDF that merely carries a .pdf name is
-    skipped early with a clear message. Items with any other URL scheme (file://,
-    s3://, ...) are skipped with a logged message. All PDFs are parsed with pypdf
-    via the shared PdfUtils helper, one Document per page so page numbers survive
-    into the vector store metadata.
+    governs network fetches only — subject to the same byte cap as downloads. Both
+    downloads and local files are checked for a PDF header ("%PDF-" within the
+    first PDF_HEADER_WINDOW bytes) before being read in full, so a URL that serves
+    a non-PDF body (an HTML error page, say) or a local non-PDF that merely carries
+    a .pdf name is skipped early with a clear not_a_pdf message. Items with any
+    other URL scheme (file://, s3://, ...) are skipped with a logged message. All
+    PDFs are parsed with pypdf via the shared PdfUtils helper, one Document per
+    page so page numbers survive into the vector store metadata.
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str | list[dict[str, Any]]:

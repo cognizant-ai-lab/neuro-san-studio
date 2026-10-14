@@ -104,6 +104,7 @@ addopts = "--verbose --cov=. --cov-report=term-missing --no-cov-on-fail"
 markers = [
     "existing_marker: ...",
     "integration: integration tests that may be slow or hit external services",
+    "smoke: packaged-install smoke tests that build a wheel and install it into a clean venv",
 ]
 
 [tool.coverage.run]

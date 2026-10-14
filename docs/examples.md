@@ -31,12 +31,12 @@ Here are a few examples ordered by level of complexity.
     - [Anthropic Web Search](#anthropic-web-search)
     - [OpenAI Code Interpreter](#openai-code-interpreter)
     - [OpenAI Image Generation](#openai-image-generation)
-    - [OpenAI Video Generation](#openai-video-generation)
     - [OpenAI Web Search](#openai-web-search)
     - [Google Maps](#google-maps)
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
     - [Internet Info Gatherer](#internet-info-gatherer)
+    - [FXMacroData](#fxmacrodata)
     - [Gmail Assistant](#gmail-assistant)
     - [Google Workspace Assistant](#google-workspace-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
@@ -263,16 +263,6 @@ for generated images.
 
 **Tags:** `tool`, `image`, `OpenAI`
 
-### OpenAI Video Generation
-
-[OpenAI Video Generation](examples/tools/openai_video_generation.md) is a multi-agent system that allows users to
-create, remix, and describe videos through natural language commands. It consists of a Video Generator agent that
-coordinates with two tools: an OpenAI video generation tool (using Sora models) that creates videos from text prompts
-with configurable durations and resolutions, and a Video Describer tool that analyzes video content by extracting
-frames and generating detailed descriptions using vision-capable language models.
-
-**Tags:** `tool`, `video`, `OpenAI`
-
 ### OpenAI Web Search
 
 [OpenAI Web Search](examples/tools/openai_web_search.md) is a task-oriented agentic system designed to help users search
@@ -318,6 +308,15 @@ the promising pages with the `web_fetch` toolbox tool so its answers come from a
 It needs no API keys or OAuth — the free search tier and the local fetch tool work out of the box.
 
 **Tags:** `tool`, `MCP`, `toolbox`, `web`
+
+### FXMacroData
+
+[FXMacroData](examples/tools/fxmacrodata.md) is a single-agent system that answers questions about official
+macroeconomic data for FX analysis: latest indicator values, indicator history, upcoming release dates, central-bank
+press releases and FX market session times. It connects to the hosted FXMacroData MCP server, which works without an
+API key for US data; an optional key adds 21 more currencies, full history and real-time releases.
+
+**Tags:** `tool`, `MCP`, `FXMacroData`
 
 ### Gmail Assistant
 

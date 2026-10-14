@@ -44,8 +44,7 @@ DEFAULT_PAGE_LIMIT = 50
 DEFAULT_MAX_PAGES = 1000
 
 CONFLUENCE_TYPE = ResolverUtil.create_type("atlassian.Confluence", raise_if_not_found=False)
-API_PERMISSION_ERROR_TYPE = ResolverUtil.create_type("atlassian.errors.ApiPermissionError", raise_if_not_found=False)
-API_PERMISSION_ERRORS = (API_PERMISSION_ERROR_TYPE,) if API_PERMISSION_ERROR_TYPE is not None else ()
+API_PERMISSION_ERRORS = ResolverUtil.create_type_tuple(["atlassian.errors.ApiPermissionError"])
 IMAGE_OPEN = ResolverUtil.create_type("PIL.Image.open", raise_if_not_found=False)
 IMAGE_TO_STRING = ResolverUtil.create_type("pytesseract.image_to_string", raise_if_not_found=False)
 SVG_TO_DRAWING = ResolverUtil.create_type("svglib.svglib.svg2rlg", raise_if_not_found=False)

@@ -101,6 +101,20 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
         return PDF_BYTES
 
     @staticmethod
+    async def _download_refusing_html(url: str, _session: Any) -> bytes:
+        """
+        Stand in for download_pdf_bytes: return PDF bytes, refusing URLs containing 'html' as not_a_pdf.
+
+        :param url: The URL being downloaded.
+        :param _session: The shared session; unused.
+        :return: The stub PDF bytes for any URL not containing 'html'.
+        :raises ValueError: not_a_pdf for any URL containing 'html', as SafeFetch's header sniff would.
+        """
+        if "html" in url:
+            raise ValueError(f"not_a_pdf: '{url}' has no PDF header in its first {PDF_HEADER_WINDOW} bytes.")
+        return PDF_BYTES
+
+    @staticmethod
     async def _record_session_close(order: list[str], *_args: Any) -> bool:
         """
         Stand in for the session context manager's __aexit__, recording when it runs.
@@ -214,6 +228,29 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
 
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0].metadata["source"], "http://example.com/good.pdf")
+
+    def test_remote_non_pdf_is_skipped_with_not_a_pdf_log(self) -> None:
+        """A download refused by SafeFetch's header sniff is logged as not_a_pdf and skipped; the rest still load.
+
+        Remote counterpart of test_non_pdf_local_file_is_skipped_before_parse: the
+        ValueError from download_pdf_bytes lands in the same broad per-item catch, so
+        pypdf never sees that body and the other URL in the batch is unaffected.
+        """
+        html_url: str = "http://example.com/html-error-page.pdf"
+        with (
+            patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+            patch.object(SafeFetch, "download_pdf_bytes", new=AsyncMock(side_effect=self._download_refusing_html)),
+            patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR") as logs:
+                docs = self._load([html_url, "http://example.com/good.pdf"])
+
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0].metadata["source"], "http://example.com/good.pdf")
+        mock_parse.assert_called_once_with(PDF_BYTES)
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn("not_a_pdf", joined_logs)
+        self.assertIn(html_url, joined_logs)
 
     def test_parse_failure_skips_only_that_item(self):
         """A pypdf parse error skips that item instead of aborting the whole load."""

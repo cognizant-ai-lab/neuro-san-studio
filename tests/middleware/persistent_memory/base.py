@@ -16,8 +16,6 @@
 
 """Shared ``TestCase`` base for persistent-memory tests."""
 
-from __future__ import annotations
-
 import shutil
 import tempfile
 from typing import Any
