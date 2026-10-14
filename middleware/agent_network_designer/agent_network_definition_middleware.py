@@ -49,7 +49,6 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
-from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 from middleware.agent_network_designer.agent_network_config_path_resolver import CONFIG_FILE_UNAVAILABLE_MESSAGE
 from middleware.agent_network_designer.agent_network_config_path_resolver import AgentNetworkConfigPathResolver
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
@@ -471,11 +470,11 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         """
         Get the AAOSA instructions a save appends, read from registries/aaosa.hocon once per process.
 
-        Unlike _get_aaosa_instructions, this keeps nothing in sly_data: it is read on every model call, and sly_data
-        comes from the client, which could put anything under a cache key there. The file is the one every
-        generated network includes (see HoconAgentNetworkAssembler), so its text is what a save adds. The read
-        awaits, so first calls at the same time may all read the file; the first to finish keeps its value and
-        reports any problem, and the others use that value (see _cache_aaosa_instructions).
+        Nothing is kept in sly_data: this runs on every model call, and sly_data comes from the client, which could
+        put anything under a cache key there. The file is the one every generated network includes (see
+        HoconAgentNetworkAssembler), so its text is what a save adds. The read awaits, so first calls at the same
+        time may all read the file; the first to finish keeps its value and reports any problem, and the others use
+        that value (see _cache_aaosa_instructions).
 
         :return: The AAOSA instructions, or "" when the file is missing, unreadable or malformed or defines none.
                 Copies of them are then not stripped, the reason is logged once, and fixing the file takes a
@@ -774,9 +773,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 )
                 return None, {}
             if instructions.strip():
-                # Extract only the unique instructions
-                # (remove aaosa instructions, instructions prefix, and demo mode)
-                agent_def["instructions"] = await self._extract_custom_instructions(instructions.strip())
+                # Kept with its own line breaks and indentation. The copies of the common instructions are stripped
+                # later, the same way for every source (see _strip_common_instructions).
+                agent_def["instructions"] = instructions.strip()
 
             # Initialize description for non-function agents so the description setter
             # can distinguish them from function/toolbox agents (which have no description key).
@@ -800,77 +799,6 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             agent_def["tools"] = tools
 
         return agent_name, agent_def
-
-    async def _extract_custom_instructions(self, instructions: str) -> str:
-        """
-        Extract the custom part of instructions, excluding aaosa instructions, instructions prefix, and demo mode.
-        :param instructions: The full instructions of an agent.
-
-        :return: The part of instructions that is unique to the agent.
-        """
-
-        # Pattern for instruction prefix (matches any agent name)
-        prefix_pattern = (
-            r"You are part of a \w+ of assistants\.\s*Only answer inquiries that are directly within "
-            r"your area of expertise\.\s*Do not try to help for other matters\.\s*"
-            r"Do not mention what you can NOT do\. Only mention what you can do\."
-        )
-
-        demo_mode = (
-            "You are part of a demo system, so when queried, make up a realistic response as if "
-            "you are actually grounded in real data or you are operating a real application API or microservice."
-        )
-
-        aaosa_instructions: str = await self._get_aaosa_instructions()
-
-        # Clean and normalize the input
-        custom_part: str = instructions.strip()
-        custom_part = re.sub(r"\s+", " ", custom_part)  # Normalize whitespace
-
-        # Remove instruction prefix using regex
-        custom_part = re.sub(prefix_pattern, "", custom_part).strip()
-
-        # Remove aaosa text
-        custom_part = custom_part.replace(aaosa_instructions.strip(), "").strip()
-
-        # Remove demo mode text
-        custom_part = custom_part.replace(demo_mode.strip(), "").strip()
-
-        # Clean up any extra whitespace
-        custom_part = " ".join(custom_part.split())
-
-        return custom_part
-
-    async def _get_aaosa_instructions(self) -> str:
-        """
-        Get aaosa instructions potentially from cache in sly_data
-
-        :return: aaosa instructions
-        """
-        aaosa_instructions: str = ""
-
-        # Try to get aaosa_instructions from sly_data cache
-        async with await SlyDataLock.get_lock(self.sly_data, "aaosa_instructions_lock"):
-            aaosa_instructions = self.sly_data.get("aaosa_instructions")
-            if aaosa_instructions is not None:
-                # Return early with cached value
-                return aaosa_instructions
-
-            # Get from file
-            try:
-                use_file = "registries/aaosa.hocon"
-                hocon = AbstractAsyncConfigRestorer(
-                    file_purpose="get_agent_network_definition - custom instructions", must_exist=True
-                )
-                config: dict[str, Any] = await hocon.async_restore(file_reference=use_file)
-                aaosa_instructions = config.get("aaosa_instructions", "")
-            except FileNotFoundError:
-                aaosa_instructions = ""
-
-            # Cache the loaded value in sly_data for subsequent calls
-            self.sly_data["aaosa_instructions"] = aaosa_instructions
-
-        return aaosa_instructions
 
     def _extract_name_from_reservation_id(self, reservation_id: str) -> str:
         """

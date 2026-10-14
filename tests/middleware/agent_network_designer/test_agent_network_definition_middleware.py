@@ -52,6 +52,7 @@ from middleware.agent_network_designer.agent_network_definition_middleware impor
 from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (
     DeployableAgentNetworkAssembler,
 )
+from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HOCON_HEADER_START
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
@@ -94,12 +95,12 @@ MIDDLEWARE_LOGGER: str = "AgentNetworkDefinitionMiddleware"
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 # Patched to point the once-per-process read of the AAOSA instructions at another file.
 AAOSA_FILE_TARGET: str = "middleware.agent_network_designer.agent_network_definition_middleware.AAOSA_FILE"
-# A definition holding only the agents' own text: a front man, an agent with tools and a leaf. The texts are
-# one line each because the load path still collapses the whitespace of a network loaded from a file.
+# A definition holding only the agents' own text: a front man, an agent with tools and a leaf. The line breaks,
+# the blank line and the indentation must come back as written, whatever the source.
 OWN_TEXT_DEFINITION: dict[str, Any] = {
-    "front": {"instructions": "Route travel requests.", "tools": ["booker", "weather"]},
-    "booker": {"instructions": "Book trips.", "tools": ["weather"]},
-    "weather": {"instructions": "Report the weather."},
+    "front": {"instructions": "Route travel requests.\nKeep answers short.", "tools": ["booker", "weather"]},
+    "booker": {"instructions": "Book trips.\n\nSteps:\n  1. Find a flight.\n  2. Book it.", "tools": ["weather"]},
+    "weather": {"instructions": "Report the weather.\n    Use Celsius."},
 }
 # Words that occur once in the AAOSA instructions and nowhere in OWN_TEXT_DEFINITION, for counting copies.
 AAOSA_MARKER: str = "When you receive an inquiry, you will:"
@@ -1030,6 +1031,34 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertEqual(loaded.get("house").get("instructions"), "Control the house.")
         self.assertEqual(loaded.get("Book").get("instructions"), "Your name is Book. You are a book.")
 
+    async def test_abefore_model_keeps_a_hand_written_prefix_and_a_demo_sentence_in_the_middle(self) -> None:
+        """
+        A file load strips the common instructions only in the wording a save writes today, and only at the ends of
+        the text. A hand-written prefix in another wording stays, and so does a demo sentence in the middle of the
+        text, once each and as written.
+        """
+        desk: str = "You run the front desk.\n" + DesignerCommonInstructions.DEMO_SENTENCE + "\nGreet guests."
+        rooms: str = (
+            "You are part of a hotel of assistants.\n"
+            + DesignerCommonInstructions.PREFIX_RULES
+            + "\n\nAnswer room questions."
+        )
+        config: dict[str, Any] = {
+            "tools": [
+                {"name": "desk", "instructions": desk, "tools": ["rooms"]},
+                {"name": "rooms", "instructions": rooms},
+            ]
+        }
+        sly_data: dict[str, Any] = self._sly_data_for_file("hotel", config)
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertIsNone(result)
+        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        self.assertEqual(loaded.get("desk").get("instructions"), desk)
+        self.assertEqual(loaded.get("rooms").get("instructions"), rooms)
+
     async def test_abefore_model_keeps_a_definition_without_common_instructions_as_sent(self) -> None:
         """
         A definition holding only own text is neither copied nor changed: sly_data keeps the very dict the client
@@ -1047,22 +1076,31 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     async def test_abefore_model_strips_a_network_loaded_from_a_generated_hocon_file(self) -> None:
         """
         A network the designer saved and then loads again through agent_network_hocon_file comes back as the own
-        text, instead of the resolved common instructions the next save would add to.
+        text, line breaks and indentation included, demo mode on or off. Saving the loaded definition again writes
+        the same file, so nothing grows.
         """
-        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
-            OWN_TEXT_DEFINITION, "front", "travel", []
-        )
-        path: str = self._write_config_file("travel.hocon", text)
-        sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
-        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode)
+                text: str = await assembler.assemble_agent_network(OWN_TEXT_DEFINITION, "front", "travel", [])
+                path: str = self._write_config_file("travel.hocon", text)
+                sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
 
-        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+                result: dict[str, Any] | None = await middleware.abefore_model({}, None)
 
-        self.assertIsNone(result)
-        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
-        for agent_name, agent in OWN_TEXT_DEFINITION.items():
-            with self.subTest(agent_name=agent_name):
-                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                self.assertIsNone(result)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in OWN_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                # With the metadata block the load returned, as a client sends it back, so date_created is kept.
+                saved_again: str = await assembler.assemble_agent_network(
+                    loaded, "front", "travel", [], metadata=sly_data.get(AGENT_NETWORK_METADATA)
+                )
+                self.assertEqual(saved_again, text)
+                # The AAOSA instructions are read from registries/aaosa.hocon, so nothing is cached in sly_data.
+                self.assertNotIn("aaosa_instructions", sly_data)
 
     async def test_abefore_model_strips_a_network_loaded_from_an_s3_reservation(self) -> None:
         """
@@ -1091,19 +1129,34 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     async def test_abefore_model_ignores_aaosa_instructions_sent_in_sly_data(self) -> None:
         """
         The AAOSA instructions to strip come from registries/aaosa.hocon, never from sly_data, which the client
-        writes: a value planted under the key the load path caches it in changes nothing.
+        writes: a value planted under "aaosa_instructions" removes nothing, whether the definition is sent in
+        sly_data or loaded from a file or an S3 reservation.
         """
         resolved: dict[str, Any] = await self._resolved_definition(OWN_TEXT_DEFINITION, "travel")
-        sly_data: dict[str, Any] = {
-            AGENT_NETWORK_DEFINITION: resolved,
-            AGENT_NETWORK_NAME: "travel",
-            "aaosa_instructions": "Not the AAOSA instructions.",
+        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        spec: dict[str, Any] = await DeployableAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        sources: dict[str, dict[str, Any]] = {
+            "definition": {AGENT_NETWORK_DEFINITION: resolved, AGENT_NETWORK_NAME: "travel"},
+            "file": {AGENT_NETWORK_HOCON_FILE: self._write_config_file("travel.hocon", text)},
+            "reservation": {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]},
         }
-        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+        for source, sly_data in sources.items():
+            with self.subTest(source=source):
+                # Words from the booker's own text, so stripping by this value would show.
+                sly_data["aaosa_instructions"] = "Book trips."
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
 
-        await middleware.abefore_model({}, None)
+                # The S3 stand-in is only reached for the reservation; the other two sources come first.
+                await self._abefore_model_from_s3(middleware, spec)
 
-        self.assertEqual(sly_data.get(AGENT_NETWORK_DEFINITION), OWN_TEXT_DEFINITION)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in OWN_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
 
     async def test_abefore_model_warns_once_and_keeps_aaosa_copies_when_the_aaosa_file_is_missing(self) -> None:
         """

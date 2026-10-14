@@ -348,8 +348,9 @@ to the LLM or saved, so a save writes one copy instead of adding another. Every 
 whatever its role and whatever `AGENT_NETWORK_DESIGNER_DEMO_MODE` is set to, and the save adds back the ones the
 agent's role calls for. So a hand-written network that gives its leaves the AAOSA instructions loses them from those
 leaves once loaded. An agent whose instructions are nothing but common instructions keeps one copy of each piece.
-Only the current wording of each piece is recognized: after a wording changes, a copy of the old wording that a
-client sends back stays in the agent's own text, once, and does not grow
+Only the current wording of each piece is recognized, at the start or the end of the text: a copy in another
+wording, sent back by a client or loaded from a file, stays in the agent's own text, once, and does not grow. The
+text left keeps its own line breaks and indentation
 - A file named in `agent_network_hocon_file` must resolve, symlinks and `..` included, to a path inside a
 registries directory: the directory of any manifest in `AGENT_MANIFEST_FILE`, or `registries` when it is unset.
 A path outside those directories, or a missing, unreadable or unsupported file, ends the turn with one generic
