@@ -196,8 +196,8 @@ No specific URLs are declared here because the set depends on what the user has 
                             "description": """
 Skip the LLM for a save or a load.
 With agent_network_definition, the definition is validated and saved without the LLM. If it fails validation,
-skip_designer comes back false and the designer's LLM fixes the definition before it is saved. Send
-agent_network_metadata back with it so the saved network keeps its metadata block.
+the designer's LLM fixes the definition before it is saved. Send agent_network_metadata back with it so the
+saved network keeps its metadata block.
 Without agent_network_definition, the network named in agent_network_hocon_file or agent_reservations is only
 loaded: it is returned under agent_network_definition, agent_network_name and agent_network_metadata, and it is
 not validated, saved or deployed. If nothing can be loaded, for example a reservation entry with no

@@ -342,7 +342,7 @@ ends the turn with an error message, as a missing or unparseable file does. `age
 file name or the reservation id only once the load has produced a definition
 - With `skip_designer` set to `true`, what happens depends on what the request sends:
   - `agent_network_definition`: the definition is validated and saved without the LLM. If it fails validation,
-    `skip_designer` comes back `false` and the LLM fixes the definition before the save
+    the LLM fixes the definition before the save
   - `agent_network_hocon_file` or `agent_reservations`, and no definition: the network is only loaded. Its
     definition, name and metadata are returned, and nothing is validated, saved or deployed. A request that
     names nothing to load, such as a reservation entry with no `reservation_id`, ends the turn with an error
@@ -374,6 +374,9 @@ error message; the server log records the path and the reason
 no validation, no save, no deploy, and no `agent_network_hocon_text`
 - Validates the network definition for structural and instruction errors; re-injects any errors as a human message so the agent can self-correct
 - Converts the `agent_network_definition` to HOCON format and either saves it to the local registries directory (file mode) or registers it as a temporary network (reservations mode)
+- Writes each agent's description and instructions between triple quotes, so a multi-line text keeps its lines
+in the file; a tab there reads back as spaces. A text with three double quotes, which triple quotes cannot hold,
+goes on one line as a double-quoted string, with `\n` for each line break, and reads back as written
 - Writes the network's top-level `metadata` block from the `agent_network_metadata` sly data the client sent
 back, so the block survives a save the same way the definition and the name do: `description`, `tags` and any
 other key are written as sent, `sample_queries` is replaced only when `agent_network_query_generator` ran on
