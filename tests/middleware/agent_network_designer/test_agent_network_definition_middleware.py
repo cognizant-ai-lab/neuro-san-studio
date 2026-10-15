@@ -128,7 +128,8 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
 
     Finally covers the removal of copies of the designer's common instructions from the definition,
     for a definition sent in sly_data, a network loaded from a generated file and one
-    loaded from an S3 reservation, and where the AAOSA instructions to strip come from.
+    loaded from an S3 reservation, and where the AAOSA instructions to strip come from, and the requests that
+    only load a network.
     """
 
     def setUp(self) -> None:
@@ -1198,3 +1199,96 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         adds is what gets recognized.
         """
         self.assertIn(f'include "{AAOSA_FILE}"', HOCON_HEADER_START)
+
+    # Tests for a turn that only loads a network: skip_designer with a file or a reservation and no definition.
+
+    def test_is_load_only_request_needs_skip_designer_a_network_to_load_and_no_definition(self) -> None:
+        """
+        A request only loads a network when skip_designer is true, it names a file or a reservation, and it sends
+        no definition. Any other request is not load-only.
+        """
+        reservations: list[dict[str, Any]] = [{RESERVATION_ID: RESERVATION_ID_VALUE}]
+        cases: list[tuple[str, dict[str, Any], bool]] = [
+            ("file", {SKIP_DESIGNER: True, AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, True),
+            ("reservation", {SKIP_DESIGNER: True, AGENT_RESERVATIONS: reservations}, True),
+            (
+                "definition too",
+                {SKIP_DESIGNER: True, AGENT_NETWORK_HOCON_FILE: "travel.hocon", AGENT_NETWORK_DEFINITION: {"a": {}}},
+                False,
+            ),
+            ("no skip_designer", {AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, False),
+            ("skip_designer false", {SKIP_DESIGNER: False, AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, False),
+            ("skip_designer as a string", {SKIP_DESIGNER: "true", AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, False),
+            ("nothing to load", {SKIP_DESIGNER: True}, False),
+            (
+                "empty file and reservations",
+                {SKIP_DESIGNER: True, AGENT_NETWORK_HOCON_FILE: "", AGENT_RESERVATIONS: []},
+                False,
+            ),
+        ]
+        for label, sly_data, expected in cases:
+            with self.subTest(case=label):
+                self.assertIs(AgentNetworkDefinitionMiddleware.is_load_only_request(sly_data), expected)
+
+    async def test_abefore_model_only_loads_a_file_with_skip_designer_and_no_definition(self) -> None:
+        """
+        A load-only request ends the turn with a reply that says the network was loaded, and leaves the loaded
+        definition and its name in sly_data for the client.
+        """
+        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        path: str = self._write_config_file("travel.hocon", text)
+        sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path, SKIP_DESIGNER: True}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertEqual(result.get("jump_to"), "end")
+        self.assertEqual(result.get("messages")[0].content, "The network travel has been loaded.")
+        self.assertEqual(sly_data.get(AGENT_NETWORK_NAME), "travel")
+        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        for agent_name, agent in OWN_TEXT_DEFINITION.items():
+            with self.subTest(agent_name=agent_name):
+                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+
+    async def test_abefore_model_ends_a_load_only_turn_that_loads_nothing(self) -> None:
+        """
+        A load-only request whose reservation entry has no reservation_id loads nothing. The turn ends with an
+        error instead of reaching the model, whose work would not be saved.
+        """
+        sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{"not_a_reservation_id": "x"}], SKIP_DESIGNER: True}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertEqual(result.get("jump_to"), "end")
+        self.assertTrue(result.get("messages")[0].content.startswith("Error: nothing was loaded."))
+        self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
+        self.assertEqual(len(self._messages_at_level(captured.records, "ERROR")), 1)
+
+    async def test_abefore_model_saves_the_sent_definition_and_warns_when_a_file_is_sent_too(self) -> None:
+        """
+        With skip_designer, a definition wins over a file sent with it, and a warning says the
+        file was not loaded. The warning names the keys, not their values.
+        """
+        sent: dict[str, Any] = deepcopy(OWN_TEXT_DEFINITION)
+        hocon_file: str = "registries/basic/music_nerd.hocon"
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_DEFINITION: sent,
+            AGENT_NETWORK_NAME: "travel",
+            AGENT_NETWORK_HOCON_FILE: hocon_file,
+            SKIP_DESIGNER: True,
+        }
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertEqual(result.get("messages")[0].content, "The network travel has been modified by the user.")
+        self.assertIs(sly_data.get(AGENT_NETWORK_DEFINITION), sent)
+        warnings: list[str] = self._messages_at_level(captured.records, "WARNING")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("the definition is saved and the file is not loaded", warnings[0])
+        self.assertNotIn(hocon_file, warnings[0])
