@@ -20,7 +20,8 @@ handling of the persisted metadata block (issue #1398) in both file mode and res
 including the compatibility fallback that reads the block of the network about to be overwritten
 when the client sent no agent_network_metadata key at all, the surfacing of a failed
 temporary-network deployment (issue #1425), and the single copy of the common instructions a
-skip_designer save writes for resolved instructions sent back.
+skip_designer save writes for resolved instructions sent back. Also covers turns that only load a
+network, run through abefore_agent, AgentNetworkDefinitionMiddleware.abefore_model and aafter_agent.
 """
 
 # This is the one-class test module for AgentNetworkPersistenceMiddleware (one file per class,
@@ -59,10 +60,14 @@ from middleware.agent_network_designer.persistence.agent_network_persistence_mid
     AgentNetworkPersistenceMiddleware,
 )
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
+from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (
+    DeployableAgentNetworkAssembler,
+)
 from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
     FileSystemAgentNetworkPersistor,
 )
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 from middleware.agent_network_designer.persistence.reservations_agent_network_persistor import (
     ReservationsAgentNetworkPersistor,
 )
@@ -111,6 +116,10 @@ RESERVATION_ID: str = "probe_net-0123abcd"
 # Words that occur once in registries/aaosa.hocon and once in the front man's lines, for counting copies.
 AAOSA_MARKER: str = "When you receive an inquiry, you will:"
 FRONT_MAN_MARKER: str = "Never express irrelevance"
+# A reservation id the way neuro-san mints them, <name>-<uuid4>, for a network loaded from S3 as NETWORK_NAME.
+LOADED_RESERVATION_ID: str = f"{NETWORK_NAME}-550e8400-e29b-41d4-a716-446655440000"
+# HOCON text a request may carry; a turn that only loads writes none, so it must not return this.
+REQUEST_HOCON_TEXT: str = "{ HOCON text sent with the request }"
 LIFETIME_SECONDS: float = 3600.0
 EXPIRATION_SECONDS: float = 1_800_000_000.0
 
@@ -1069,3 +1078,198 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
             self.assertEqual(front_man.count(AAOSA_MARKER), 1)
             self.assertEqual(helper.count(DesignerCommonInstructions.PREFIX_OPENING), 1)
             self.assertEqual(helper.count(DesignerCommonInstructions.DEMO_SENTENCE), 1 if demo_mode else 0)
+
+    # ------------------------------------------------------------------ load-only turns
+
+    async def _write_network_to_load(self) -> str:
+        """
+        Write _network_def() as the designer saves it to a file directly under the registries directory, where
+        the definition middleware may load it from.
+
+        :return: The absolute path of the file, named after NETWORK_NAME
+        """
+        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
+            self._network_def(), "front_man", NETWORK_NAME, [], metadata=deepcopy(CLIENT_METADATA)
+        )
+        path: Path = Path(self.registries_dir) / f"{NETWORK_NAME}.hocon"
+        path.write_text(text, encoding="utf-8")
+        return str(path)
+
+    @staticmethod
+    async def _run_turn(sly_data: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """
+        Run the hooks of one designer turn in the order LangChain calls them, with the repo root as CWD and no
+        model call in between.
+
+        LangChain runs every before-agent hook first, then the before-model hooks, and still runs the after-agent
+        hooks when a before-model hook jumps to end.
+
+        :param sly_data: The request's sly_data, mutated in place by the hooks
+        :return: What AgentNetworkDefinitionMiddleware.abefore_model and AgentNetworkPersistenceMiddleware.aafter_agent
+                returned
+        """
+        persistence: AgentNetworkPersistenceMiddleware = AgentNetworkPersistenceMiddleware(Reservationist(), sly_data)
+        definition: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data)
+        cwd: str = os.getcwd()
+        os.chdir(REPO_ROOT)
+        try:
+            await persistence.abefore_agent({}, None)
+            hand_off: dict[str, Any] | None = await definition.abefore_model({}, None)
+            after: dict[str, Any] | None = await persistence.aafter_agent({}, None)
+        finally:
+            os.chdir(cwd)
+        return hand_off, after
+
+    async def test_load_only_turn_returns_the_file_and_writes_nothing(self) -> None:
+        """
+        skip_designer with agent_network_hocon_file and no definition loads the network and hands it back: its
+        definition, name and metadata block are in sly_data, nothing is validated, no file or manifest line is
+        written, and the HOCON text the request carried is not returned.
+        """
+        self._start(mock.patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None))
+        validate: AsyncMock = AsyncMock(return_value=([], []))
+        self._start(mock.patch.object(AgentNetworkPersistenceMiddleware, "_validate_network", new=validate))
+        sly_data: dict[str, Any] = {
+            "agent_network_hocon_file": await self._write_network_to_load(),
+            "skip_designer": True,
+            "agent_network_hocon_text": REQUEST_HOCON_TEXT,
+        }
+
+        hand_off, after = await self._run_turn(sly_data)
+
+        self.assertEqual(hand_off.get("messages")[0].content, f"The network {NETWORK_NAME} has been loaded.")
+        self.assertIsNone(after)
+        validate.assert_not_awaited()
+        self.assertFalse((Path(self.registries_dir) / "generated").exists())
+        self.assertEqual(sly_data.get("agent_network_name"), NETWORK_NAME)
+        self.assertEqual(sly_data.get("agent_network_definition").get("helper").get("instructions"), "Answer.")
+        self.assertEqual(sly_data.get("agent_network_metadata").get("description"), CLIENT_METADATA.get("description"))
+        self.assertNotIn("agent_network_hocon_text", sly_data)
+        # Nothing was saved, so the turn did not flip skip_designer the way a failed validation does.
+        self.assertIs(sly_data.get("skip_designer"), True)
+
+    async def test_load_only_turn_exports_the_definition_in_connectivity_style(self) -> None:
+        """
+        The loaded definition goes back in the shape AGENT_NETWORK_DESIGNER_PROGRESS_STYLE asks for, as a saved
+        one does.
+        """
+        self._start(mock.patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None))
+        self._start(mock.patch.dict(os.environ, {"AGENT_NETWORK_DESIGNER_PROGRESS_STYLE": "connectivity"}))
+        sly_data: dict[str, Any] = {
+            "agent_network_hocon_file": await self._write_network_to_load(),
+            "skip_designer": True,
+        }
+
+        await self._run_turn(sly_data)
+
+        exported: Any = sly_data.get("agent_network_definition")
+        self.assertIsInstance(exported, list)
+        origins: list[str] = []
+        for node in exported:
+            origins.append(node.get("origin"))
+        self.assertEqual(sorted(origins), ["front_man", "helper"])
+
+    async def test_load_only_turn_in_reservations_mode_deploys_nothing(self) -> None:
+        """
+        In reservations mode a load-only turn on a reservation deploys no new temporary network, and the
+        reservation handle the request carried goes back unchanged.
+        """
+        self._start(mock.patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None))
+        wait_for_one: AsyncMock = self._enter_reservations_mode()
+        spec: dict[str, Any] = await DeployableAgentNetworkAssembler(True).assemble_agent_network(
+            self._network_def(), "front_man", NETWORK_NAME, []
+        )
+        self._start(mock.patch.dict(os.environ, {"AGENT_RESERVATIONS_S3_BUCKET": "bucket"}))
+        self._start(
+            mock.patch.object(AgentNetworkDefinitionMiddleware, "fetch_reservation_from_s3", return_value=spec)
+        )
+        reservations: list[dict[str, Any]] = [{"reservation_id": LOADED_RESERVATION_ID}]
+        sly_data: dict[str, Any] = {"agent_reservations": reservations, "skip_designer": True}
+
+        hand_off, after = await self._run_turn(sly_data)
+
+        self.assertEqual(hand_off.get("messages")[0].content, f"The network {NETWORK_NAME} has been loaded.")
+        self.assertIsNone(after)
+        wait_for_one.assert_not_awaited()
+        self.assertEqual(sly_data.get("agent_reservations"), [{"reservation_id": LOADED_RESERVATION_ID}])
+        self.assertEqual(sly_data.get("agent_network_definition").get("helper").get("instructions"), "Answer.")
+        self.assertNotIn("agent_network_hocon_text", sly_data)
+
+    async def test_skip_designer_save_through_every_hook_still_saves(self) -> None:
+        """
+        A skip_designer request that sends its definition is a save, not a load, when the turn runs through
+        abefore_agent too.
+        """
+        sly_data: dict[str, Any] = self._request(skip_designer=True, client_block={})
+
+        hand_off, after = await self._run_turn(sly_data)
+
+        self.assertEqual(hand_off.get("jump_to"), "end")
+        self.assertIsNone(after)
+        self.assertTrue(self._generated_path().exists())
+        self.assertIn("agent_network_hocon_text", sly_data)
+
+    async def test_load_without_skip_designer_is_still_saved_at_the_end_of_the_turn(self) -> None:
+        """
+        Without skip_designer a load starts an LLM turn, and the network is saved at its end. The model
+        call is left out here; only the hooks run.
+        """
+        self._start(mock.patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None))
+        sly_data: dict[str, Any] = {"agent_network_hocon_file": await self._write_network_to_load()}
+
+        hand_off, after = await self._run_turn(sly_data)
+
+        self.assertIsNone(hand_off)
+        self.assertIsNone(after)
+        self.assertTrue(self._generated_path().exists())
+        self.assertIn("agent_network_hocon_text", sly_data)
+
+    async def test_reservations_save_that_carries_the_previous_handle_deploys_and_warns_nothing(self) -> None:
+        """
+        In reservations mode a client sends the handle of the previous deploy back with every save. A skip_designer
+        save that carries it, with its definition, is still a save: a new temporary network is deployed, and no
+        warning is logged about a network that was not loaded.
+        """
+        self._start(mock.patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None))
+        wait_for_one: AsyncMock = self._enter_reservations_mode()
+        sly_data: dict[str, Any] = self._request(skip_designer=True, client_block={})
+        sly_data["agent_reservations"] = [{"reservation_id": LOADED_RESERVATION_ID}]
+
+        with self.assertNoLogs("AgentNetworkDefinitionMiddleware", level="WARNING"):
+            hand_off, after = await self._run_turn(sly_data)
+
+        self.assertEqual(
+            hand_off.get("messages")[0].content, f"The network {NETWORK_NAME} has been modified by the user."
+        )
+        self.assertIsNone(after)
+        wait_for_one.assert_awaited_once()
+        self.assertEqual(sly_data.get("agent_reservations")[0].get("reservation_id"), RESERVATION_ID)
+
+    async def test_load_only_turn_run_again_on_the_same_instances_still_saves_nothing(self) -> None:
+        """
+        neuro-san may run the agent again on the same middleware instances after an error, when the first run has
+        already cached the loaded definition in sly_data. The second run is still load-only: nothing is written,
+        and no warning says a definition was saved instead of the file.
+        """
+        self._start(mock.patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None))
+        sly_data: dict[str, Any] = {
+            "agent_network_hocon_file": await self._write_network_to_load(),
+            "skip_designer": True,
+        }
+        persistence: AgentNetworkPersistenceMiddleware = AgentNetworkPersistenceMiddleware(Reservationist(), sly_data)
+        definition: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data)
+        cwd: str = os.getcwd()
+        os.chdir(REPO_ROOT)
+        try:
+            replies: list[str] = []
+            for _ in range(2):
+                with self.assertNoLogs("AgentNetworkDefinitionMiddleware", level="WARNING"):
+                    await persistence.abefore_agent({}, None)
+                    hand_off: dict[str, Any] | None = await definition.abefore_model({}, None)
+                    self.assertIsNone(await persistence.aafter_agent({}, None))
+                replies.append(hand_off.get("messages")[0].content)
+        finally:
+            os.chdir(cwd)
+
+        self.assertEqual(replies, [f"The network {NETWORK_NAME} has been loaded."] * 2)
+        self.assertFalse((Path(self.registries_dir) / "generated").exists())

@@ -340,6 +340,16 @@ any `agent_network_metadata` sent with the same request
 - A load that yields no agent (a `tools` list that is missing, not a list, empty, or whose every entry is skipped)
 ends the turn with an error message, as a missing or unparseable file does. `agent_network_name` is set from the
 file name or the reservation id only once the load has produced a definition
+- With `skip_designer` set to `true`, what happens depends on what the request sends:
+  - `agent_network_definition`: the definition is validated and saved without the LLM. If it fails validation,
+    `skip_designer` comes back `false` and the LLM fixes the definition before the save
+  - `agent_network_hocon_file` or `agent_reservations`, and no definition: the network is only loaded. Its
+    definition, name and metadata are returned, and nothing is validated, saved or deployed. A request that
+    names nothing to load, such as a reservation entry with no `reservation_id`, ends the turn with an error
+  - both: the definition is saved and nothing is loaded. When the request names a file, a warning says that the
+    file was not loaded
+- Without `skip_designer`, loading a file or a reservation starts an LLM turn, and the network is saved at the end
+of it
 - Each agent's `instructions` in the `agent_network_definition` hold only its custom instructions, the agent's own
 text, since every save adds the common instructions again: the instructions prefix, the front man's fixed lines, the
 demo mode sentence and the AAOSA instructions. Copies of the common instructions already in the instructions, such
@@ -360,6 +370,8 @@ error message; the server log records the path and the reason
 
 [`AgentNetworkPersistenceMiddleware`](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
 - Runs after the agent finishes (no pending tool calls remain)
+- Does nothing more than return the definition on a turn that only loads a network (see `skip_designer` above):
+no validation, no save, no deploy, and no `agent_network_hocon_text`
 - Validates the network definition for structural and instruction errors; re-injects any errors as a human message so the agent can self-correct
 - Converts the `agent_network_definition` to HOCON format and either saves it to the local registries directory (file mode) or registers it as a temporary network (reservations mode)
 - Writes the network's top-level `metadata` block from the `agent_network_metadata` sly data the client sent

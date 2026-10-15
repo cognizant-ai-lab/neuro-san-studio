@@ -129,7 +129,8 @@ The resolved file must remain inside a registries directory: the directory of an
 Absolute paths, '..' traversal and symlinks whose target is outside those directories are rejected; a working-directory match outside them falls back to (3).
 This is for users who want to provide the full agent network definition as input.
 The file's top-level metadata block is returned under agent_network_metadata and replaces any block sent
-with the same request.
+with the same request. With skip_designer and no agent_network_definition, the network is only loaded and
+returned, not saved.
 """
                         },
                         "agent_network_metadata": {
@@ -164,6 +165,7 @@ A list of reservation structures describing the temporary agent networks that we
 with this agent. By convention, the last one in the list is a top-level handle which may reference any others listed.
 When a reservation is loaded, its metadata block is returned under agent_network_metadata (without the
 reservation and stored_at keys neuro-san's storage adds) and replaces any block sent with the same request.
+With skip_designer and no agent_network_definition, the network is only loaded and returned, not saved.
 """,
                             "items": {
                                 "type": "object",
@@ -192,8 +194,15 @@ No specific URLs are declared here because the set depends on what the user has 
                         "skip_designer": {
                             "type": "boolean",
                             "description": """
-Use this key when you want to persist the agent network definition without having the LLM make any modifications.
-Send agent_network_metadata back with it so the saved network keeps its metadata block.
+Skip the LLM for a save or a load.
+With agent_network_definition, the definition is validated and saved without the LLM. If it fails validation,
+skip_designer comes back false and the designer's LLM fixes the definition before it is saved. Send
+agent_network_metadata back with it so the saved network keeps its metadata block.
+Without agent_network_definition, the network named in agent_network_hocon_file or agent_reservations is only
+loaded: it is returned under agent_network_definition, agent_network_name and agent_network_metadata, and it is
+not validated, saved or deployed. If nothing can be loaded, for example a reservation entry with no
+reservation_id, the turn ends with an error.
+When both a definition and a file or reservation are sent, the definition is saved and nothing is loaded.
 """
                         }
                     }
@@ -219,7 +228,8 @@ instructions again.
                             "description": """
 The contents of an agent network HOCON file describing the created network. In file mode this is exactly
 the saved file. In reservations mode it is the downloadable form of the network, returned whether or not the
-deploy succeeded, and carries a date_created the deployed spec does not have.
+deploy succeeded, and carries a date_created the deployed spec does not have. Absent after a turn that only
+loads a network (see skip_designer in the input schema).
 """
                         },
                         "agent_network_metadata": {
@@ -276,8 +286,9 @@ After this time the network can no longer be counted upon to exist.
                             }
                         }
                     },
-                    # Note: "agent_reservations" is not strictly required depending on env vars.
-                    "required": ["agent_network_definition", "agent_network_hocon_text", "agent_network_name"]
+                    # Note: "agent_reservations" is not strictly required depending on env vars, and
+                    # "agent_network_hocon_text" is absent after a turn that only loads a network.
+                    "required": ["agent_network_definition", "agent_network_name"]
                 }
             },
             "instructions": ${expertise_scoping_instructions} """
