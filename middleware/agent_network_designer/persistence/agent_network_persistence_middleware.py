@@ -184,7 +184,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         agent_reservations is cleared, a handle the request carried included, see
         _deploy_error_response (issue #1425).
         A turn that only loads a network skips validation and the save; the loaded definition is returned in the
-        export shape, without HOCON text.
+        export shape. Such a turn returns no HOCON text, even when the load fails.
 
         This validation acts as a final safety net: even if the agent bypassed calling
         the necessary tools or subnetworks (and thus their built-in validators never ran),
@@ -197,6 +197,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
+        if self._load_only:
+            # A load-only turn writes no HOCON text, so it returns none, even when the load fails. Any text the
+            # request carried does not describe a network this turn loaded.
+            self.sly_data.pop(AGENT_NETWORK_HOCON_TEXT, None)
         # Only validate and persist if there is an agent_network_definition with a valid name; otherwise let
         # the agent respond to the user freely. This allows the agent to ask clarifying questions or report
         # issues without being forced to produce a network definition — for example, when
@@ -205,9 +209,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # A valid name is also required for file path and reservation name construction.
         if network_def and agent_network_name and isinstance(agent_network_name, str):
             if self._load_only:
-                # A load-only turn hands the loaded network back as it is: no validation, no save and no
-                # deploy. It writes no HOCON text, so any the request carried does not describe this network.
-                self.sly_data.pop(AGENT_NETWORK_HOCON_TEXT, None)
+                # A load-only turn hands the loaded network back as it is: no validation, no save and no deploy.
                 await self._export_network_definition()
                 return None
 

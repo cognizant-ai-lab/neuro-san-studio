@@ -1195,6 +1195,31 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self.assertEqual(sly_data.get("agent_network_definition").get("helper").get("instructions"), "Answer.")
         self.assertNotIn("agent_network_hocon_text", sly_data)
 
+    async def test_load_only_turn_whose_load_fails_returns_no_hocon_text(self) -> None:
+        """
+        A load-only turn whose load fails, for a missing file or a reservation entry with no reservation_id, ends
+        with an error. It writes nothing, and the HOCON text the request carried is not returned.
+        """
+        requests: dict[str, dict[str, Any]] = {
+            "missing file": {"agent_network_hocon_file": str(Path(self.registries_dir) / "missing.hocon")},
+            "reservation with no id": {"agent_reservations": [{"not_a_reservation_id": "x"}]},
+        }
+        for case, request in requests.items():
+            with self.subTest(case=case):
+                sly_data: dict[str, Any] = deepcopy(request)
+                sly_data["skip_designer"] = True
+                sly_data["agent_network_hocon_text"] = REQUEST_HOCON_TEXT
+
+                with self.assertLogs("AgentNetworkDefinitionMiddleware", level="ERROR"):
+                    hand_off, after = await self._run_turn(sly_data)
+
+                self.assertEqual(hand_off.get("jump_to"), "end")
+                self.assertTrue(hand_off.get("messages")[0].content.startswith("Error"))
+                self.assertIsNone(after)
+                self.assertNotIn("agent_network_definition", sly_data)
+                self.assertNotIn("agent_network_hocon_text", sly_data)
+                self.assertFalse((Path(self.registries_dir) / "generated").exists())
+
     async def test_skip_designer_save_through_every_hook_still_saves(self) -> None:
         """
         A skip_designer request that sends its definition is a save, not a load, when the turn runs through
