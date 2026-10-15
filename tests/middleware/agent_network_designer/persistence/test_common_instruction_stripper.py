@@ -86,18 +86,18 @@ class TestCommonInstructionStripper(IsolatedAsyncioTestCase):
 
     async def test_reservations_round_trip_returns_the_own_text(self) -> None:
         """
-        A definition deployed as a reservations spec in demo mode comes back as the own text. Demo mode off is not
-        covered: there the leaf template's "{demo_mode}" placeholder stays in the deployed text as written, because
-        neuro-san's StringCommonDefsConfigFilter skips an empty replacement string.
+        A definition deployed as a reservations spec comes back as the own text, demo mode on or off.
         """
-        deployed: dict[str, Any] = await self._reservations_round_trip(DEFINITION, NETWORK_NAME, True)
-        self.assertEqual(deployed.get("front").get("instructions").count(FRONT_MAN_MARKER), 1)
-        self.assertEqual(deployed.get("weather").get("instructions").count(DEMO_MARKER), 1)
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                deployed: dict[str, Any] = await self._reservations_round_trip(DEFINITION, NETWORK_NAME, demo_mode)
+                self.assertEqual(deployed.get("front").get("instructions").count(FRONT_MAN_MARKER), 1)
+                self.assertEqual(deployed.get("weather").get("instructions").count(DEMO_MARKER), 1 if demo_mode else 0)
 
-        stripped: dict[str, Any]
-        stripped, _ = self._stripper().strip_definition(deployed)
+                stripped: dict[str, Any]
+                stripped, _ = self._stripper().strip_definition(deployed)
 
-        self.assertEqual(stripped, DEFINITION)
+                self.assertEqual(stripped, DEFINITION)
 
     async def test_heals_the_copies_left_by_earlier_saves(self) -> None:
         """
