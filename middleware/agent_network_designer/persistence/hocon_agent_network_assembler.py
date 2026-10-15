@@ -64,25 +64,20 @@ HOCON_HEADER_REMAINDER = (
     "%s"
     '   "tools": [\n'
 )
-# The top-agent template indents the front man's lines by this much inside the triple-quoted body.
+# Preserve the indentation of the front man's common instructions in the rendered value.
 FRONT_MAN_LINES_INDENT: str = " " * 12
+# The JSON string ends in a newline; a space before ${aaosa_instructions} would become extra prompt text.
 TOP_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
-    '                "description": """\n'
-    "%s\n"
-    # The slot after the closing triple quotes takes the optional
+    '                "description": %s'
+    # The slot after the description takes the optional
     # sly_data_schema block (see _render_sly_data_schema_block), which
     # starts with the separating comma when present.
-    '                """%s\n'
-    "            },\n"
-    '            "instructions": ${instructions_prefix} """\n'
-    + FRONT_MAN_LINES_INDENT
-    + DesignerCommonInstructions.FRONT_MAN_LINES.replace("\n", "\n" + FRONT_MAN_LINES_INDENT)
-    + "\n"
     "%s\n"
-    '""" ${aaosa_instructions},\n'
+    "            },\n"
+    '            "instructions": ${instructions_prefix} %s${aaosa_instructions},\n'
     '            "tools": [%s]\n'
     "        },\n"
 )
@@ -90,13 +85,9 @@ REGULAR_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
-    '                "description": """\n'
-    "%s\n"
-    '                """\n'
+    '                "description": %s\n'
     "            },\n"
-    '            "instructions": ${instructions_prefix} """\n'
-    "%s\n"
-    '""" ${aaosa_instructions},\n'
+    '            "instructions": ${instructions_prefix} %s${aaosa_instructions},\n'
     '            "tools": [%s]\n'
     "        },\n"
 )
@@ -104,13 +95,9 @@ LEAF_NODE_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
-    '                "description": """\n'
-    "%s\n"
-    '                """\n'
+    '                "description": %s\n'
     "            },\n"
-    '            "instructions": ${instructions_prefix} %s """\n'
-    "%s\n"
-    '""",\n'
+    '            "instructions": ${instructions_prefix} %s %s,\n'
     "        },\n"
 )
 # fmt: off
@@ -228,9 +215,9 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         return HOCON_HEADER_START % metadata_block + agent_network_name + HOCON_HEADER_REMAINDER % demo_mode_block
 
     @staticmethod
-    def _render_json_block(value: dict[str, Any], indent: str) -> str:
+    def _render_json_block(value: dict[str, Any] | str, indent: str) -> str:
         """
-        Render a dict as an indented HOCON object fragment.
+        Render a dict or string as a JSON-quoted HOCON fragment.
 
         JSON is valid HOCON, and json.dumps keeps every key and value double-quoted, so the
         fragment always parses as written: HOCON performs no ${...} substitution inside
@@ -246,10 +233,10 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         text is split on the newline character only: str.splitlines() would also split on the
         Unicode line and paragraph separators and on NEL inside a value and corrupt the file.
 
-        :param value: The dict to render
+        :param value: The dict or string to render
         :param indent: The indentation of the key the fragment follows; every line but the
                 first ("{", which lands right after the key) is prefixed with it
-        :return: The rendered fragment, starting with "{" and ending with "}"
+        :return: The rendered object or double-quoted string fragment
         """
         lines: list[str] = json.dumps(value, indent=4, ensure_ascii=False).split("\n")
         body_lines: list[str] = [lines[0]]
@@ -261,8 +248,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     def _render_sly_data_schema_block(schema: dict[str, Any] | None) -> str:
         """
         Render the front man's sly_data_schema as a HOCON fragment for the
-        TOP_AGENT_TEMPLATE slot that follows the description's closing
-        triple quotes.
+        TOP_AGENT_TEMPLATE slot that follows the JSON-quoted description.
 
         :param schema: The schema dict from build_mcp_sly_data_schema, or None
 
@@ -306,15 +292,32 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         instructions: str = (agent.get("instructions") or "").strip()
 
         if agent_name == top_agent_name:
-            use_description = description or "An assistant that answers inquiries from the user."
-            return TOP_AGENT_TEMPLATE % (agent_name, use_description, sly_data_schema_block, instructions, tools)
+            description = description or "An assistant that answers inquiries from the user."
+            front_man_lines: str = FRONT_MAN_LINES_INDENT + DesignerCommonInstructions.FRONT_MAN_LINES.replace(
+                "\n", "\n" + FRONT_MAN_LINES_INDENT
+            )
+            instructions = f"{front_man_lines}\n{instructions}"
+
+        # Keep the template's existing whitespace in the parsed values, but quote the whole text so
+        # embedded triple quotes cannot end it and tabs survive pyhocon's triple-quoted-string handling.
+        rendered_description: str = self._render_json_block(f"\n{description}\n                ", "")
+        rendered_instructions: str = self._render_json_block(f"\n{instructions}\n", "")
+
+        if agent_name == top_agent_name:
+            return TOP_AGENT_TEMPLATE % (
+                agent_name,
+                rendered_description,
+                sly_data_schema_block,
+                rendered_instructions,
+                tools,
+            )
 
         if raw_tools:
-            return REGULAR_AGENT_TEMPLATE % (agent_name, description, instructions, tools)
+            return REGULAR_AGENT_TEMPLATE % (agent_name, rendered_description, rendered_instructions, tools)
 
         if instructions:
             demo_prefix = "${demo_mode}" if self.demo_mode else ""
-            return LEAF_NODE_AGENT_TEMPLATE % (agent_name, description, demo_prefix, instructions)
+            return LEAF_NODE_AGENT_TEMPLATE % (agent_name, rendered_description, demo_prefix, rendered_instructions)
         return TOOLBOX_AGENT_TEMPLATE % (agent_name, agent_name)
 
     def _format_tools(self, tools: list[str]) -> str:

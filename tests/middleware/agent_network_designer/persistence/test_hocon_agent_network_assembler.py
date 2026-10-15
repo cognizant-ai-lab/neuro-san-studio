@@ -15,8 +15,8 @@
 # END COPYRIGHT
 
 """
-Tests for HoconAgentNetworkAssembler: sly_data_schema emission, the generated-network execution timeout and
-metadata block rendering.
+Tests for HoconAgentNetworkAssembler: sly_data_schema emission, the generated-network execution timeout,
+metadata block rendering and safe agent text.
 """
 
 import asyncio
@@ -24,11 +24,13 @@ import os
 import re
 import tempfile
 from copy import deepcopy
+from itertools import product
 from pathlib import Path
 from typing import Any
 from unittest import TestCase
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from parameterized import parameterized
 from pyhocon import ConfigFactory
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import (
@@ -206,6 +208,37 @@ class TestHoconAgentNetworkAssembler(TestCase):
         "tab\there",
         "sep\u2028arated",
     ]
+
+    @parameterized.expand(
+        product(
+            ("description", "instructions"),
+            ("front_man", "helper", "leaf"),
+            HOSTILE_STRINGS + [r"C:\new\tools\end", "line one\r\nline two"],
+            (False, True),
+        )
+    )
+    def test_agent_text_round_trips(self, field: str, agent_name: str, text: str, demo_mode: bool) -> None:
+        """
+        Custom descriptions and instructions survive HOCON rendering for every LLM role, including demo mode.
+        """
+        network_def: dict[str, Any] = deepcopy(NETWORK_DEF)
+        network_def.get("helper").update({"tools": ["leaf"]})
+        network_def.update({"leaf": {"description": "leaf", "instructions": "Own instructions."}})
+        network_def.get(agent_name).update({field: text})
+        original: dict[str, Any] = deepcopy(network_def)
+        assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode=demo_mode)
+
+        content: str = asyncio.run(
+            assembler.assemble_agent_network(network_def, "front_man", "test_net", [], CLIENT_TOKEN_MCP_HEADERS)
+        )
+        config: dict[str, Any] = self._parse(content)
+        agent: dict[str, Any] = next(item for item in config.get("tools") if item.get("name") == agent_name)
+
+        self.assertEqual(
+            agent.get("function").get("description").strip(), network_def.get(agent_name).get("description")
+        )
+        self.assertIn(network_def.get(agent_name).get("instructions"), agent.get("instructions"))
+        self.assertEqual(network_def, original)
 
     @staticmethod
     def _assemble_text(sample_queries: list[str], metadata: dict[str, Any] | None) -> str:
