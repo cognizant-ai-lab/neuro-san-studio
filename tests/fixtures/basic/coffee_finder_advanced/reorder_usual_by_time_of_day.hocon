@@ -1,0 +1,123 @@
+
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# This file defines everything necessary for a data-driven test.
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
+
+# The agent routes "the usual" by time of day, selecting the morning preference at 8 am and the evening preference at 7 pm.
+
+{
+    # Describes what agent to test against.
+    "agent": "basic/coffee_finder_advanced",
+
+    # Minimum pass ratio for intermittent-failure triage.
+    "success_ratio": "1/1",
+
+    # Interactions are a series of dictionaries with request elements paired with
+    # descriptions of response checks.
+    "interactions": [
+        {
+            "timeout_in_seconds": 120,
+
+            # Step 1 of 2: morning -> latte from Bob's Coffee Shop -> order 101.
+
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
+            # Using the sly_data to set a hard time.
+            "sly_data": {
+                "test_mode": true,
+                "time": "8 am"
+            },
+
+            # This is what we send as input to streaming_chat()
+            "text": """
+Hey, it's Pixel Smith. Get me my usual please.
+""",
+
+            # The response block describes how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    # Each component of the list needs to pass muster in order to pass.
+                    "gist": [
+"The response mentions order ID 101.",
+"The response identifies the customer as Pixel Smith.",
+"The response identifies the item as a latte.",
+"The response identifies the shop as Bob's Coffee Shop."
+                    ],
+                    "not_gist": [
+"The response says the order was placed at Henry's Fast Food.",
+"The response says the order was placed at Joe's Gas Station.",
+"The response says the order was placed at Jack's Liquor Store.",
+"The response says the item ordered was black coffee."
+                    ]
+                }
+            }
+        },
+        {
+            "timeout_in_seconds": 120,
+
+            # Step 2 of 2: evening -> black coffee from Henry's Fast Food
+            # (morning's Bob's is closed at 7 pm, so the morning preference
+            # cannot be served even as a fallback).
+
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
+            # Using the sly_data to set a hard time.
+            "sly_data": {
+                "test_mode": true,
+                "time": "7 pm"
+            },
+
+            # This is what we send as input to streaming_chat()
+            "text": """
+Hey, it's Pixel Smith. Get me my usual please.
+""",
+
+            # The response block describes how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    # Each component of the list needs to pass muster in order to pass.
+                    "gist": [
+"The response mentions order ID 201.",
+"The response identifies the customer as Pixel Smith.",
+"The response identifies the item as black coffee.",
+"The response identifies the shop as Henry's Fast Food."
+                    ],
+                    "not_gist": [
+"The response says the order was placed at Bob's Coffee Shop.",
+"The response says the order was placed at Joe's Gas Station.",
+"The response says the order was placed at Jack's Liquor Store.",
+"The response says the item ordered was a latte."
+                    ]
+                }
+            }
+        }
+    ]
+}
