@@ -14,7 +14,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - ✅ Login page responds correctly
 - ✅ API endpoints return expected authentication requirements
 
-**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_servicenow_connectivity.py`
+**Run**: `python tests/integration/now_agents/integration_test_servicenow_connectivity.py`
 
 ### `debug_servicenow_credentials.py`  
 **Purpose**: Validates ServiceNow credentials and permissions  
@@ -25,7 +25,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Permission to access required tables
 - Detailed error reporting for troubleshooting
 
-**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py`
+**Run**: `python tests/integration/now_agents/debug_servicenow_credentials.py`
 
 ### `integration_test_agent_discovery_simple.py`
 **Purpose**: Simple test of ServiceNow agent discovery  
@@ -35,7 +35,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Basic connectivity and authentication
 - Agent data parsing and validation
 
-**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_agent_discovery_simple.py`
+**Run**: `python tests/integration/now_agents/integration_test_agent_discovery_simple.py`
 
 ### `integration_test_agent_discovery_debug.py`
 **Purpose**: Agent discovery with detailed debug output  
@@ -45,7 +45,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Environment variable troubleshooting
 - Detailed error reporting and stack traces
 
-**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_agent_discovery_debug.py`
+**Run**: `python tests/integration/now_agents/integration_test_agent_discovery_debug.py`
 
 ### `integration_test_full_workflow_e2e.py`
 **Purpose**: Complete end-to-end workflow test  
@@ -56,7 +56,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Real timeout and retry behavior
 - Complete integration validation
 
-**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_full_workflow_e2e.py`
+**Run**: `python tests/integration/now_agents/integration_test_full_workflow_e2e.py`
 
 ## Setup Requirements
 
