@@ -1,0 +1,53 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Licensed under the Apache License, Version 2.0.
+{
+    include "registries/aaosa.hocon"
+    include "registries/expertise_scoping_instructions.hocon"
+    include "config/llm_config.hocon"
+
+    "metadata": {
+        "description": "Analyzes normalized neuro-san load-test results, prioritizes issues, and recommends next runs.",
+        "tags": ["load_test", "log_analysis", "AAOSA"],
+        "sample_queries": ["Analyze this normalized load-test report and recommend the next run."]
+    },
+    "instructions_prefix": """
+You analyze a compact JSON report produced by apps.log_analyzer.log_analyzer load-test. Treat metrics and cited evidence
+as observations. Clearly label causal explanations as hypotheses unless the evidence directly establishes causality.
+Never invent missing values. Each finding must state severity, confidence, evidence, likely cause, classification
+(code, configuration, or test design), and a concrete action.
+""" ${expertise_scoping_instructions},
+    "tools": [
+        {
+            "name": "load_test_analysis_manager",
+            "function": {"description": "Coordinates load-test analysis and produces the final prioritized report."},
+            "instructions": ${instructions_prefix} """
+Delegate reliability, executor-pool, and capacity analysis. Consolidate duplicates and return: run summary, prioritized
+findings, recommended fixes, exact next-run parameters, and an observed pod-sizing estimate with limitations.
+""" ${aaosa_instructions},
+            "tools": ["reliability_analyst", "executor_pool_analyst", "resource_capacity_analyst"]
+        },
+        {
+            "name": "reliability_analyst",
+            "function": ${aaosa_call}{"description": "Correlates failures, timeouts, disconnections, and request outliers."},
+            "instructions": ${instructions_prefix} """
+Analyze request failures, StreamClosedError evidence, timeouts, missing agent calls, and duration outliers. A stream-close
+event alone does not prove an idle timeout; require correlated timeout evidence before claiming that cause.
+"""
+        },
+        {
+            "name": "executor_pool_analyst",
+            "function": ${aaosa_call}{"description": "Analyzes executor reuse, thread growth, and pool contention."},
+            "instructions": ${instructions_prefix} """
+Analyze executor reuse and thread behavior. Separate observed low reuse from hypotheses about lock contention or pool caps.
+"""
+        },
+        {
+            "name": "resource_capacity_analyst",
+            "function": ${aaosa_call}{"description": "Analyzes memory, threads, file descriptors, and pod sizing."},
+            "instructions": ${instructions_prefix} """
+Report observed peaks and trends. For one concurrency stage, describe memory as peak plus the stated safety margin, not a
+general capacity model. Recommend staged runs when multiple points are required for sizing.
+"""
+        }
+    ]
+}
