@@ -1,0 +1,98 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+
+# Follow-ups whose meaning depends on earlier turns (same path with the conversation as inquiry), then a department switch.
+# Requires TYPESAFE_API_KEY. The sly_data assertions check the path the middleware recorded and the tools
+# the LLM was given on that path (jev_turn.llm_tools).
+{
+    "agent": "industry/intranet_agents_with_jev_routing",
+    "timeout_in_seconds": 900,
+    "success_ratio": "1/1",
+    "interactions": [
+        {
+            "text": """
+I need to take a sick day tomorrow
+""",
+            "response": {
+                "text": {
+                    "gist": ["""
+Books a one-day sick leave for tomorrow (with a confirmation id) or asks for the details needed to book it.
+                             """]
+                },
+                "sly_data": {
+                    "jev_turn": {
+                        "path": { "value": "jev" },
+                        "department": { "value": "AbsenceManagement" },
+                    }
+                }
+            }
+        },
+        {
+            "text": """
+Just the one day, yes - please book it
+""",
+            "response": {
+                "text": {
+                    "gist": ["""
+Confirms that a one-day sick leave has been booked, with a confirmation id and a date, without asking for the date again.
+                             """]
+                },
+                "sly_data": {
+                    "jev_turn": {
+                        "path": { "value": "same" },
+                        "department": { "value": "AbsenceManagement" },
+                    }
+                }
+            }
+        },
+        {
+            "text": """
+How many vacation days will I have left after that?
+""",
+            "response": {
+                "text": {
+                    "gist": ["""
+Addresses the vacation balance: gives the remaining vacation days, or explains that sick leave is tracked separately from vacation, possibly asking which balance is meant.
+                             """]
+                },
+                "sly_data": {
+                    "jev_turn": {
+                        "path": { "not_value": "jev" },
+                    }
+                }
+            }
+        },
+        {
+            "text": """
+How do I check my pay stub?
+""",
+            "response": {
+                "text": {
+                    "gist": ["""
+Explains how an employee can view or access their pay stub (payslip), possibly with a link.
+                             """]
+                },
+                "sly_data": {
+                    "jev_turn": {
+                        "path": { "value": "jev" },
+                        "department": { "value": "Payroll" },
+                    }
+                }
+            }
+        },
+    ]
+}
