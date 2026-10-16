@@ -102,6 +102,22 @@ OWN_TEXT_DEFINITION: dict[str, Any] = {
     "booker": {"instructions": "Book trips.\n\nSteps:\n  1. Find a flight.\n  2. Book it.", "tools": ["weather"]},
     "weather": {"instructions": "Report the weather.\n    Use Celsius."},
 }
+# Own text with three double quotes, four in a row, a tab next to them, backslashes, a control character and
+# substitution syntax, in a front man, an agent with tools and a leaf. All of it must come back as written from a
+# saved file.
+QUOTED_TEXT_DEFINITION: dict[str, Any] = {
+    "front": {
+        "description": 'Routes "notes" requests.',
+        "instructions": 'Write docstrings as """Text.""" lines.\nKeep ${HOME} as written.',
+        "tools": ["writer"],
+    },
+    "writer": {
+        "description": "Writes notes to C:\\notes.",
+        "instructions": 'Indent each docstring with a tab:\n\t"""Text."""\nPaths look like C:\\notes\\new.',
+        "tools": ["checker"],
+    },
+    "checker": {"description": 'Checks """ quotes.', "instructions": 'Reject """" runs of quotes and \x1b codes.'},
+}
 # Words that occur once in the AAOSA instructions and nowhere in OWN_TEXT_DEFINITION, for counting copies.
 AAOSA_MARKER: str = "When you receive an inquiry, you will:"
 
@@ -1102,6 +1118,33 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
                 self.assertEqual(saved_again, text)
                 # The AAOSA instructions are read from registries/aaosa.hocon, so nothing is cached in sly_data.
                 self.assertNotIn("aaosa_instructions", sly_data)
+
+    async def test_abefore_model_loads_quotes_tabs_and_backslashes_back_from_a_saved_file(self) -> None:
+        """
+        Descriptions and own text holding three double quotes, a tab next to them, backslashes, a control character
+        or substitution syntax are saved and loaded back as written, demo mode on or off, and saving the loaded
+        definition again writes the same file.
+        """
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode)
+                text: str = await assembler.assemble_agent_network(QUOTED_TEXT_DEFINITION, "front", "notes", [])
+                path: str = self._write_config_file("notes.hocon", text)
+                sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+                result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+                self.assertIsNone(result)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in QUOTED_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                        self.assertEqual(loaded.get(agent_name).get("description"), agent.get("description"))
+                saved_again: str = await assembler.assemble_agent_network(
+                    loaded, "front", "notes", [], metadata=sly_data.get(AGENT_NETWORK_METADATA)
+                )
+                self.assertEqual(saved_again, text)
 
     async def test_abefore_model_strips_a_network_loaded_from_an_s3_reservation(self) -> None:
         """

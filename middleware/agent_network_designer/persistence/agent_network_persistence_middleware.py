@@ -277,8 +277,6 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         """Return a jump-to-model response with the given error content."""
         # Set the skip designer value to False to prevent infinite loop since jumping to model actually jump to the
         # before model method in AgentNetworkDefinitionMiddleware, which jumps back to here if skip designer is True.
-        # This is also an indicator for client that there are issues with input agent_network_definition and that the
-        # designer has made changes to the definition.
         if self.sly_data.get(SKIP_DESIGNER) is True:
             self.sly_data[SKIP_DESIGNER] = False
         return {
