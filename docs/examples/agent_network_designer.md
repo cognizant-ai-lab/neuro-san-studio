@@ -344,7 +344,8 @@ file name or the reservation id only once the load has produced a definition
   - `agent_network_definition`: the definition is validated and saved without the LLM. If it fails validation,
     the LLM fixes the definition before the save
   - `agent_network_hocon_file` or `agent_reservations`, and no definition: the network is only loaded. Its
-    definition, name and metadata are returned, and nothing is validated, saved or deployed. A request that
+    definition, name and metadata are returned, and nothing is validated, saved or deployed. nsflow's Load Existing
+    sends this load-only request, so it works only when the server serves `agent_network_designer`. A request that
     names nothing to load, such as a reservation entry with no `reservation_id`, ends the turn with an error
   - both: the definition is saved and nothing is loaded. When the request names a file, a warning says that the
     file was not loaded
@@ -385,8 +386,8 @@ network gets no studio dates in its deployed spec (neuro-san records `stored_at`
 for download always carries a `date_created`, as a saved file would. The resulting block
 is returned under `agent_network_metadata` for the client to send back with its next request. A
 `skip_designer` save that carries the block therefore leaves `metadata` intact. A client that sends no
-`agent_network_metadata` at all (nsflow's manual save sends nothing as of nsflow 0.7.1) gets the existing file's
-block kept in file mode; sending the key, even empty, makes the block client-owned and nothing is read from disk.
+`agent_network_metadata` at all gets the existing file's block kept in file mode; sending the key, even empty,
+makes the block client-owned and nothing is read from disk.
 - In reservations mode a deployment the server rejects ends the turn with an error message
 (`Error: the agent network could not be deployed as a temporary network: ...`) and clears `agent_reservations`,
 a handle the request carried from an earlier deploy included; `agent_network_definition`,

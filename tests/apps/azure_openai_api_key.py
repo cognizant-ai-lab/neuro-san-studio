@@ -16,14 +16,16 @@
 
 import os
 
-from openai import AzureOpenAI
+from openai import OpenAI
+from openai.types.responses import Response
 
 
 def test_azure_open_ai_api_key():
     """
     Method to test the Azure OpenAI API key.
-    Reads the Azure OpenAI API key from an environment variable,
-    Creates a client, and submits a simple query ("What's the capital of France?").
+    Reads the Azure OpenAI API key, endpoint and deployment name from environment variables,
+    creates a client for Azure's v1 API, and submits a simple query ("What's the capital of France?")
+    through the Responses API, which neuro-san uses for Azure OpenAI by default.
     The response should include the word "Paris".
     Any exceptions (Invalid API Key, Azure OpenAI access being blocked, etc.) are reported.
     See Azure OpenAI Quickstart for more information
@@ -33,30 +35,44 @@ def test_azure_open_ai_api_key():
 
     # Set your Azure details
     api_key = os.getenv("AZURE_OPENAI_API_KEY")  # or use a string directly
-    api_version = os.getenv("OPENAI_API_VERSION")  # or use a string directly
-    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")  # e.g., "https://your-resource.openai.azure.com/"
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")  # e.g., "https://your-resource.openai.azure.com/"
     # Azure OpenAI requires you to first deploy a model and then reference it using the deployment name in API calls
     # deployment name is NOT the model name itself. It's a label you assign to the model when you deploy it. E.g., you
-    # may deploy a "gpt-4" model and label it "my-gpt-4"
-    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")  # e.g., "gpt-4" or "gpt-3.5-turbo"
+    # may deploy a "gpt-4o" model and label it "my-gpt-4o"
+    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")  # e.g., "my-gpt-4o"
 
-    # Create AzureOpenAI client
-    client = AzureOpenAI(api_key=api_key, api_version=api_version, azure_endpoint=azure_endpoint)
+    # Name a missing setting here: the OpenAI client reports a missing endpoint only as "Connection error."
+    missing: list[str] = []
+    for name, value in (
+        ("AZURE_OPENAI_API_KEY", api_key),
+        ("AZURE_OPENAI_ENDPOINT", azure_endpoint.strip()),
+        ("AZURE_OPENAI_DEPLOYMENT_NAME", deployment_name),
+    ):
+        if not value:
+            missing.append(name)
+    if missing:
+        print(f"Failed call to Azure OpenAI. Set these environment variables: {', '.join(missing)}")
+        return
 
     # Set up the client with your API key
     try:
-        # Make a chat completion request
-        response = client.chat.completions.create(
-            model=deployment_name,  # or "gpt-3.5-turbo"
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "What's the capital of France?"},
-            ],
+        # Azure's v1 API serves the OpenAI API under <endpoint>/openai/v1/ and takes no api-version.
+        # Accept an endpoint that already ends in the v1 path, as neuro-san does.
+        base_url: str = azure_endpoint.strip().rstrip("/")
+        if not base_url.endswith("/openai/v1"):
+            base_url += "/openai/v1"
+        client = OpenAI(api_key=api_key, base_url=f"{base_url}/")
+
+        # Make a Responses API request
+        response: Response = client.responses.create(
+            model=deployment_name,
+            instructions="You are a helpful assistant.",
+            input="What's the capital of France?",
         )
 
         # Print the assistant's reply
         print("Successful call to Azure OpenAI")
-        print(f"response: {response.choices[0].message.content}")
+        print(f"response: {response.output_text}")
 
     except Exception as e:  # pylint: disable=broad-except
         print("Failed call to Azure OpenAI. Exception:")
