@@ -241,11 +241,12 @@ class ReadFile(CodedTool):
         return start, end
 
     def _validate_max_content_chars(self, args: dict[str, Any]) -> int:
-        """Return a validated max_content_chars value, raising invalid_input on bad input."""
-        value: Any = args.get("max_content_chars", MAX_CHARS)
-        if not isinstance(value, int) or value <= 0:
-            raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
-        return value
+        """Return a validated max_content_chars value, raising invalid_input on bad input.
+
+        Delegates to the shared validator so the whole tool family judges the same
+        input the same way (notably: bool is rejected, not accepted as 0/1).
+        """
+        return PathAccess.validate_positive_int(args, "max_content_chars", MAX_CHARS)
 
     def _slice_text(
         self, raw_text: str, start_line: int, end_line: int | None, max_chars: int
