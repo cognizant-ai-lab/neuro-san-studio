@@ -426,11 +426,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         temporary-network deploy included, so it flows upstream and the client can send it
         again. A client value that is not a dict is ignored with a warning.
 
-        A client that says nothing about the block (key absent or null) predates the contract;
-        nsflow's manual save, as of nsflow 0.7.1, is the known case. Erasing the block on its behalf
-        would be the very loss this fixes, so the persistor is asked once for the block of the
-        network about to be overwritten and that block is the base instead. A client that sends
-        the key, even as an empty object, owns the block and nothing is read.
+        When the request says nothing about the block (key absent or null), the block of the
+        network about to be overwritten is the base: the persistor is asked for it once, so the
+        save does not erase it. A client that sends the key, even as an empty object, owns the
+        block and nothing is read.
 
         :param persistor: The persistor this save goes through; the fallback reads the network
                 it is about to overwrite (the reservations persistor has none and answers None)
@@ -441,9 +440,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         candidate: Any = self.sly_data.get(AGENT_NETWORK_METADATA)
         source: str = f"sly_data['{AGENT_NETWORK_METADATA}']"
         if candidate is None:
-            # Compatibility fallback for clients that predate the key: the only read of the
-            # network being saved (manifest and cached config reads are unrelated), and only
-            # when the client said nothing.
+            # No block in the request: keep the saved network's block. This is the only read of
+            # the network being saved (manifest and cached config reads are unrelated).
             candidate = await persistor.async_restore_metadata(agent_network_name)
             source = f"existing network {agent_network_name}"
         block: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(candidate, source).merge_sample_queries(

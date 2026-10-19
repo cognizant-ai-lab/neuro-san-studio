@@ -17,7 +17,7 @@
 """
 Tests for AgentNetworkPersistenceMiddleware.aafter_agent: validation gating and the stateless
 handling of the persisted metadata block (issue #1398) in both file mode and reservations mode,
-including the compatibility fallback that reads the block of the network about to be overwritten
+including the fallback that reads the block of the network about to be overwritten
 when the client sent no agent_network_metadata key at all, the surfacing of a failed
 temporary-network deployment (issue #1425), and the single copy of the common instructions a
 skip_designer save writes for resolved instructions sent back. Also covers turns that only load a
@@ -130,7 +130,7 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
 
     The designer is stateless: the client owns the metadata block and sends it back under
     sly_data["agent_network_metadata"], so most tests feed that block and check what the save
-    wrote and what it handed back. The one bounded exception is the compatibility fallback for a
+    wrote and what it handed back. The one bounded exception is the fallback for a
     client that sends no key (or an explicit null): the middleware then asks the persistor once
     for the block of the network it is about to overwrite. The fallback tests plant an existing
     file (or make a first save) and check that block is carried forward, that a client sending
@@ -838,11 +838,10 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
 
     async def test_absent_key_carries_forward_the_block_of_the_file_being_overwritten(self) -> None:
         """
-        A client that sends no agent_network_metadata key at all (nsflow's manual save as of 0.7.1)
-        over a network the middleware itself saved earlier keeps that file's whole block: description,
-        tags, sample_queries, export_user and date_created survive, date_modified takes this save's
-        stamp, the block handed back is what the file now says, and reading the middleware's own
-        HOCON output raises no warning on either logger.
+        A client that sends no agent_network_metadata key at all over a network the middleware itself
+        saved earlier keeps that file's whole block: description, tags, sample_queries, export_user and
+        date_created survive, date_modified takes this save's stamp, the block handed back is what the
+        file now says, and reading the middleware's own HOCON output raises no warning on either logger.
         """
         clock: mock.MagicMock = self._freeze_clock(NOW_STAMP, LATER_STAMP)
         first: dict[str, Any] = self._request(skip_designer=True, client_block=deepcopy(CLIENT_METADATA))
