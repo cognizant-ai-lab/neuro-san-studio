@@ -1,0 +1,191 @@
+{
+    include "registries/aaosa.hocon",
+    include "config/llm_config.hocon",
+
+    "metadata": {
+        "description": "Broker submission intake-completeness checking with synthetic policy data. Deterministic Python tools own readiness status; agents may only assist with narrative. No underwriting, pricing, acceptance, rejection, or email sending.",
+        "tags": ["insurance", "broker-submissions", "synthetic-data", "human-review"],
+        "sample_queries": [
+            "Check policy POL-1001 for missing information and material changes.",
+            "Summarize a complete broker submission for underwriter review.",
+        ]
+    },
+
+    "instructions_prefix": """
+This application checks only broker-submission intake completeness. It does not perform
+underwriting, pricing, risk selection, acceptance, or rejection. Never invent or alter a
+readiness status: use ReadinessDecisionTool and report its exact deterministic result.
+Use synthetic policy data only. Never send an email; the Email Agent drafts text for
+human review only.
+""",
+
+    "tools": [
+        {
+            "name": "broker_submission_readiness",
+            "function": {
+                "description": "Coordinates deterministic checks and creates supplemental narrative for a broker submission."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "A JSON-encoded submission and request for an intake-completeness review."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            "instructions": ${instructions_prefix} """
+Delegate policy retrieval, required-field/document checks, policy comparison, and
+completeness status to their named specialist agents. The completion status returned by
+Readiness Decision Agent is authoritative and deterministic. Summaries and email text
+are drafts only. Do not make an underwriting or risk-selection decision.
+""",
+            "tools": [
+                "policy_context_agent",
+                "submission_validation_agent",
+                "consistency_agent",
+                "readiness_decision_agent",
+                "summary_agent",
+                "email_agent",
+                "explainability_agent"
+            ]
+        },
+        {
+            "name": "policy_context_agent",
+            "function": ${aaosa_call}{
+                "description": "Retrieves the requested policy from synthetic local JSON data."
+            },
+            "instructions": ${instructions_prefix} """
+Call PolicyLookupTool with the policy number from the request. Do not claim to contact a
+live IBM i system.
+""",
+            "tools": ["PolicyLookupTool"]
+        },
+        {
+            "name": "PolicyLookupTool",
+            "function": {
+                "description": "Returns one synthetic policy record from the local policy JSON file."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "policy_number": {"type": "string", "description": "Synthetic policy number."}
+                    },
+                    "required": ["policy_number"]
+                }
+            },
+            "class": "readiness_tools.PolicyLookupTool"
+        },
+        {
+            "name": "submission_validation_agent",
+            "function": ${aaosa_call}{
+                "description": "Checks required submission fields and documents using deterministic Python rules."
+            },
+            "instructions": ${instructions_prefix} """
+Call SubmissionValidationTool. Report its missing fields, missing documents, and input
+errors without guessing or hiding a missing item.
+""",
+            "tools": ["SubmissionValidationTool"]
+        },
+        {
+            "name": "SubmissionValidationTool",
+            "function": {
+                "description": "Deterministically validates required fields and documents."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "policy_number": {"type": "string"},
+                        "submission": {"type": "object", "description": "Structured submission object."}
+                    },
+                    "required": ["policy_number", "submission"]
+                }
+            },
+            "class": "readiness_tools.SubmissionValidationTool"
+        },
+        {
+            "name": "consistency_agent",
+            "function": ${aaosa_call}{
+                "description": "Compares submission values with current policy values and flags material changes."
+            },
+            "instructions": ${instructions_prefix} """
+Call ConsistencyCheckTool and report its field comparisons as supplied. A material change
+is a flag for a human underwriter, not an acceptance, rejection, or risk assessment.
+""",
+            "tools": ["ConsistencyCheckTool"]
+        },
+        {
+            "name": "ConsistencyCheckTool",
+            "function": {
+                "description": "Returns deterministic field-by-field policy comparisons."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "policy_number": {"type": "string"},
+                        "submission": {"type": "object", "description": "Structured submission object."}
+                    },
+                    "required": ["policy_number", "submission"]
+                }
+            },
+            "class": "readiness_tools.ConsistencyCheckTool"
+        },
+        {
+            "name": "readiness_decision_agent",
+            "function": ${aaosa_call}{
+                "description": "Gets the authoritative deterministic completeness status."
+            },
+            "instructions": ${instructions_prefix} """
+Call ReadinessDecisionTool using the exact validation output. Return its readiness_status
+verbatim. This is only an intake completeness label, never an underwriting decision.
+""",
+            "tools": ["ReadinessDecisionTool"]
+        },
+        {
+            "name": "ReadinessDecisionTool",
+            "function": {
+                "description": "Deterministically decides whether required intake information is complete."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "missing_fields": {"type": "array", "items": {"type": "string"}},
+                        "missing_documents": {"type": "array", "items": {"type": "string"}},
+                        "field_errors": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["missing_fields", "missing_documents", "field_errors"]
+                }
+            },
+            "class": "readiness_tools.ReadinessDecisionTool"
+        },
+        {
+            "name": "summary_agent",
+            "function": ${aaosa_call}{
+                "description": "Writes a concise supplemental summary using only supplied report facts."
+            },
+            "instructions": ${instructions_prefix} """
+Write a short summary from the supplied report. Do not create, change, or infer the
+readiness status. Do not recommend coverage, pricing, acceptance, rejection, or risk
+selection. Make clear this is intake completeness for human review.
+"""
+        },
+        {
+            "name": "email_agent",
+            "function": ${aaosa_call}{
+                "description": "Drafts broker follow-up text without sending email."
+            },
+            "instructions": ${instructions_prefix} """
+Draft concise broker correspondence from supplied missing fields and documents only. Never
+send the message, invoke a mail service, or claim the message was sent. The human must
+review and approve before copying.
+"""
+        },
+        {
+            "name": "explainability_agent",
+            "function": ${aaosa_call}{
+                "description": "Explains deterministic validation and materiality rules."
+            },
+            "instructions": ${instructions_prefix} """
+Explain only the supplied triggered rule identifiers and their rule descriptions. Do not
+invent additional rules or a policy outcome.
+"""
+        }
+    ]
+}

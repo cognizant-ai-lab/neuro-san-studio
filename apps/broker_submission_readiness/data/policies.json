@@ -1,0 +1,76 @@
+{
+  "POL-1001": {
+    "policy_number": "POL-1001",
+    "insured_name": "Northstar Printworks LLC",
+    "business_description": "Commercial printing and office stationery production",
+    "mailing_address": "1200 Market Street, Columbus, OH 43215",
+    "annual_revenue": 1000000,
+    "requested_limit": 2000000,
+    "required_documents": [
+      "acord_125",
+      "acord_126",
+      "loss_runs",
+      "property_schedule"
+    ],
+    "required_fields": [
+      "business_name",
+      "business_description",
+      "mailing_address",
+      "annual_revenue",
+      "requested_limit",
+      "broker_name",
+      "broker_email"
+    ],
+    "annual_revenue_materiality_percent": 20,
+    "requested_limit_materiality_percent": 10
+  },
+  "POL-2002": {
+    "policy_number": "POL-2002",
+    "insured_name": "Cedar Grove Distribution Inc.",
+    "business_description": "Regional wholesale food distribution",
+    "mailing_address": "88 River Road, Albany, NY 12207",
+    "annual_revenue": 2400000,
+    "requested_limit": 3000000,
+    "required_documents": [
+      "acord_125",
+      "acord_126",
+      "loss_runs",
+      "property_schedule"
+    ],
+    "required_fields": [
+      "business_name",
+      "business_description",
+      "mailing_address",
+      "annual_revenue",
+      "requested_limit",
+      "broker_name",
+      "broker_email"
+    ],
+    "annual_revenue_materiality_percent": 20,
+    "requested_limit_materiality_percent": 10
+  },
+  "POL-3003": {
+    "policy_number": "POL-3003",
+    "insured_name": "Lakeside Design Studio LLC",
+    "business_description": "Interior design consulting and space planning",
+    "mailing_address": "410 Lake Avenue, Madison, WI 53703",
+    "annual_revenue": 650000,
+    "requested_limit": 1500000,
+    "required_documents": [
+      "acord_125",
+      "acord_126",
+      "loss_runs"
+    ],
+    "required_fields": [
+      "business_name",
+      "business_description",
+      "mailing_address",
+      "annual_revenue",
+      "requested_limit",
+      "broker_name",
+      "broker_email"
+    ],
+    "annual_revenue_materiality_percent": 20,
+    "requested_limit_materiality_percent": 10
+  }
+}
