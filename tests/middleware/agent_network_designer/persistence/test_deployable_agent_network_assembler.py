@@ -29,6 +29,7 @@ from typing import Any
 from unittest import TestCase
 
 import pytest
+from pyhocon import ConfigFactory
 
 pytest.importorskip("middleware.agent_network_designer.persistence.deployable_agent_network_assembler")
 
@@ -113,6 +114,20 @@ class TestDeployableAgentNetworkAssembler(TestCase):
         config: dict[str, Any] = self._assemble(None)
 
         self.assertEqual(config["max_execution_seconds"], GENERATED_NETWORK_MAX_EXECUTION_SECONDS)
+
+    def test_deployable_network_carries_the_deployment_llm_config(self) -> None:
+        """
+        The deployed network holds the llm_config of config/llm_config.hocon. The template includes that file
+        by a path relative to its own folder, and pyhocon only logs a warning for an include it cannot find,
+        so without this check a wrong path would deploy networks with no llm_config of their own.
+        """
+        config: dict[str, Any] = self._assemble(None)
+        deployment: dict[str, Any] = ConfigFactory.parse_file(
+            str(REPO_ROOT / "config" / "llm_config.hocon")
+        ).as_plain_ordered_dict()
+
+        self.assertTrue(config.get("llm_config"))
+        self.assertEqual(config.get("llm_config"), deployment.get("llm_config"))
 
     def test_front_man_declares_the_schema(self) -> None:
         """
