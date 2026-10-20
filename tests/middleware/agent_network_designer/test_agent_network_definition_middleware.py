@@ -33,15 +33,20 @@ from logging import LogRecord
 from pathlib import Path
 from typing import Any
 from unittest import IsolatedAsyncioTestCase
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
+from langchain.agents.middleware.types import ModelRequest
 from langchain_core.messages import AIMessage
+from langchain_core.messages import SystemMessage
 from pyhocon import ConfigFactory
 from pyhocon import ConfigTree
 
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from middleware.agent_network_designer.agent_network_definition_middleware import AAOSA_FILE
 from middleware.agent_network_designer.agent_network_definition_middleware import AGENT_NETWORK_HOCON_FILE
 from middleware.agent_network_designer.agent_network_definition_middleware import AGENT_RESERVATIONS
@@ -120,6 +125,9 @@ QUOTED_TEXT_DEFINITION: dict[str, Any] = {
 }
 # Words that occur once in the AAOSA instructions and nowhere in OWN_TEXT_DEFINITION, for counting copies.
 AAOSA_MARKER: str = "When you receive an inquiry, you will:"
+# The system prompt a model request starts with, and what the stubbed model call answers.
+BASE_PROMPT: str = "You design agent networks."
+MODEL_RESPONSE: object = object()
 
 
 class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-methods
@@ -142,10 +150,13 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     extension, an unreadable path and a missing file, driven through the real restorer, plus
     the hook's hand-off of that error to the client.
 
-    Finally covers the removal of copies of the designer's common instructions from the definition,
+    Also covers the removal of copies of the designer's common instructions from the definition,
     for a definition sent in sly_data, a network loaded from a generated file and one
     loaded from an S3 reservation, and where the AAOSA instructions to strip come from, and the requests that
     only load a network.
+
+    Finally covers the model-call hook, which adds the definition to the system prompt and reports progress,
+    and the after-agent hook, which sends the progress report the throttle held back.
     """
 
     def setUp(self) -> None:
@@ -1335,3 +1346,131 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertEqual(len(warnings), 1)
         self.assertIn("the definition is saved and the file is not loaded", warnings[0])
         self.assertNotIn(hocon_file, warnings[0])
+
+    # Tests for the model-call and after-agent hooks.
+
+    @staticmethod
+    def _model_request(system_message: SystemMessage | None) -> ModelRequest:
+        """
+        Build a model request with the given system prompt and nothing else of note.
+
+        :param system_message: The system prompt of the request, or None for a request without one
+        :return: The model request
+        """
+        return ModelRequest(
+            model=MagicMock(),
+            messages=[],
+            system_message=system_message,
+            tool_choice=None,
+            tools=[],
+            response_format=None,
+            state={},
+            runtime=None,
+        )
+
+    @staticmethod
+    def _definition_sly_data() -> dict[str, Any]:
+        """
+        Build sly_data that holds OWN_TEXT_DEFINITION and a network name.
+
+        :return: A new sly_data dict, so a test may change it freely
+        """
+        return {
+            AGENT_NETWORK_DEFINITION: deepcopy(OWN_TEXT_DEFINITION),
+            AGENT_NETWORK_NAME: "travel",
+        }
+
+    @staticmethod
+    async def _middleware_with_definition(
+        sly_data: dict[str, Any],
+        progress_reporter: MagicMock | None = None,
+    ) -> AgentNetworkDefinitionMiddleware:
+        """
+        Build a middleware whose before-model hook has resolved the definition in sly_data.
+
+        :param sly_data: The sly_data to give the middleware, holding a definition and a network name
+        :param progress_reporter: The progress reporter to give the middleware, or None for none
+        :return: The middleware, ready for a model call
+        """
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(
+            sly_data=sly_data, progress_reporter=progress_reporter
+        )
+        await middleware.abefore_model({}, None)
+        return middleware
+
+    async def test_model_call_without_a_definition_passes_the_request_through(self) -> None:
+        """
+        With no definition resolved, a model call reaches the handler with the request unchanged.
+        """
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+        request: ModelRequest = self._model_request(SystemMessage(BASE_PROMPT))
+        handler: AsyncMock = AsyncMock(return_value=MODEL_RESPONSE)
+
+        response: Any = await middleware.awrap_model_call(request, handler)
+
+        self.assertIs(response, MODEL_RESPONSE)
+        handler.assert_awaited_once_with(request)
+
+    async def test_model_call_adds_the_definition_to_the_system_prompt(self) -> None:
+        """
+        The definition is added to the end of the system prompt, so the model sees the current network.
+        """
+        middleware: AgentNetworkDefinitionMiddleware = await self._middleware_with_definition(
+            self._definition_sly_data()
+        )
+        handler: AsyncMock = AsyncMock(return_value=MODEL_RESPONSE)
+
+        response: Any = await middleware.awrap_model_call(self._model_request(SystemMessage(BASE_PROMPT)), handler)
+
+        self.assertIs(response, MODEL_RESPONSE)
+        sent: ModelRequest = handler.await_args.args[0]
+        definition_prompt: str = middleware.format_definition_prompt(OWN_TEXT_DEFINITION)
+        self.assertEqual(sent.system_message.content, f"{BASE_PROMPT}\n\n{definition_prompt}")
+
+    async def test_model_call_without_a_system_prompt_sends_the_definition_alone(self) -> None:
+        """
+        A request without a system prompt gets one that holds only the definition.
+        """
+        middleware: AgentNetworkDefinitionMiddleware = await self._middleware_with_definition(
+            self._definition_sly_data()
+        )
+        handler: AsyncMock = AsyncMock(return_value=MODEL_RESPONSE)
+
+        await middleware.awrap_model_call(self._model_request(None), handler)
+
+        sent: ModelRequest = handler.await_args.args[0]
+        self.assertEqual(sent.system_message.content, middleware.format_definition_prompt(OWN_TEXT_DEFINITION))
+
+    async def test_model_call_reports_progress_without_the_throttle(self) -> None:
+        """
+        With a progress reporter, each model call sends the current network to the client, forced past the
+        throttle so the client always sees the whole network before the model answers.
+        """
+        reporter: MagicMock = MagicMock()
+        sly_data: dict[str, Any] = self._definition_sly_data()
+        middleware: AgentNetworkDefinitionMiddleware = await self._middleware_with_definition(sly_data, reporter)
+
+        with patch.object(ProgressHandler, "report_progress", new=AsyncMock()) as report_progress:
+            await middleware.awrap_model_call(self._model_request(None), AsyncMock(return_value=MODEL_RESPONSE))
+
+        report_progress.assert_awaited_once()
+        self.assertEqual(report_progress.await_args.args[0], {"progress_reporter": reporter})
+        self.assertIs(report_progress.await_args.args[1], sly_data)
+        self.assertEqual(report_progress.await_args.args[2], OWN_TEXT_DEFINITION)
+        self.assertEqual(report_progress.await_args.args[3], "travel")
+        self.assertIs(report_progress.await_args.kwargs.get("force"), True)
+
+    async def test_after_agent_sends_the_progress_report_the_throttle_held_back(self) -> None:
+        """
+        When the agent finishes, the hook sends the last progress report the throttle held back, and lets the
+        turn end normally.
+        """
+        sly_data: dict[str, Any] = {}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with patch.object(ProgressHandler, "flush_pending", new=AsyncMock()) as flush_pending:
+            result: dict[str, Any] | None = await middleware.aafter_agent({}, None)
+
+        self.assertIsNone(result)
+        flush_pending.assert_awaited_once()
+        self.assertIs(flush_pending.await_args.args[0], sly_data)
