@@ -9,8 +9,10 @@ catch problems before starting a server, for example:
 - Invalid URL references
 - Malformed `tools` fields and unrecognized keywords
 
-Unlike [`check-config`](./check_config.md), `validate` does **not** call any LLM — it performs purely structural
-validation, so it needs no API keys.
+When the structure is valid, it also loads every coded tool and middleware class the network names, the way the
+server does. See "Class check" below.
+
+Unlike [`check-config`](./check_config.md), `validate` does **not** call any LLM, so it needs no API keys.
 
 Under the hood this command delegates to neuro-san's `HoconValidatorCli` (the tool also available as
 `python -m neuro_san.client.hocon_validator_cli`), so it stays in sync with the library's validation rules. On top of
@@ -30,12 +32,13 @@ ns validate registries/basic/music_nerd.hocon
 # "/agent_network_editor" and friends are looked up in registries/manifest.hocon
 ns validate registries/agent_network_designer.hocon
 
-# Print the manifest discovery summary, and an agent network summary when validation passes
+# Also print the manifest discovery summary, an agent network summary when validation passes,
+# and the full error for each class that cannot be loaded
 ns validate registries/basic/music_nerd.hocon --verbose
 ```
 
-The command exits with code `0` when the file is valid and `1` when it is invalid or cannot be found, parsed, or
-otherwise loaded.
+The command exits with code `0` when the file is valid and `1` when it is invalid, names a class that cannot be
+loaded, or cannot be found, parsed, or otherwise loaded.
 
 ## Options
 
@@ -43,7 +46,7 @@ otherwise loaded.
 
 | Option | Description |
 |---|---|
-| `--verbose` | Print how many external agent names were taken from the manifest, and an agent network summary (agents, their type, and sub-tools) when validation passes. |
+| `--verbose` | Print how many external agent names were taken from the manifest, an agent network summary (agents, their type, and sub-tools) when validation passes, and the full error for each class that cannot be loaded. |
 | `--manifest` | Manifest HOCON whose served networks are accepted as external agents. Defaults to `AGENT_MANIFEST_FILE`, then `<registry-dir>/registries/manifest.hocon`. |
 | `--external-agents` | Additional comma-separated external agent references to treat as valid, on top of those discovered from the manifest, e.g. `'/agent1,/agent2'`. |
 | `--mcp-servers` | Comma-separated MCP server URLs to treat as valid. |
@@ -80,8 +83,45 @@ with the remaining manifests and any explicitly provided `--external-agents`, so
 
 `--mcp-servers` plays the same role for MCP tool servers that the network references by URL.
 
+## Class check
+
+The structure checks never import the network's code, so a `"class"` that points at a module that was moved or
+renamed would only fail when the server first uses it. After the structure checks pass, `validate` therefore loads
+each coded tool and middleware class the network names, the way the server does:
+
+- A coded tool's `"class"` is looked up from `AGENT_TOOL_PATH` and the network's name with neuro-san's own lookup, and
+  must be a `CodedTool`. With `AGENT_TOOL_PATH_ONLY=true`, a reference is only looked up under `AGENT_TOOL_PATH`, as on
+  the server, so a fully-qualified reference fails.
+- An LLM agent's `"middleware"`, when it is not empty, must be a list of dictionaries, and the `"class"` of each
+  one must be an `AgentMiddleware`.
+
+Classes are loaded but not created, so a constructor that needs arguments is not caught. Toolbox tools are not checked,
+because their classes come from the toolbox file, not the network file. A middleware's `"checkpointer"` class and an
+`"llm_config"` class are not checked either.
+
+Loading a class imports its module and runs the module's top-level code, as the server does. Modules come from the
+project, or from installed packages for a class such as `langchain.agents.middleware.PIIMiddleware`. The check only
+runs where the server would load the network:
+
+- From the project root, the folder that holds the first manifest's `registries` folder. `ns run` is started there
+  and reads the project's `.env`, which can set `AGENT_TOOL_PATH` and `AGENT_TOOL_PATH_ONLY`. A manifest that is not
+  in a `registries` folder has no project root, so its networks are not checked.
+- For a file inside the folder of a manifest. The path under that folder is the network's name:
+  `registries/basic/music_nerd.hocon` is `basic/music_nerd`. With several manifests, the first one whose folder holds
+  the file gives the name.
+
+Otherwise the command prints `Class check skipped: ...` with the reason, and the class check does not affect the exit
+code.
+
+The check runs with the process set up the way `ns run` sets up the server. The project root comes first on the Python
+path, ahead of the copies installed with the package, and `AGENT_TOOL_PATH` defaults to the project's `coded_tools`
+folder.
+
 ## Output
 
 On success the command prints `Validation passed: No errors found.` (followed by the agent network summary when
-`--verbose` is set). On failure it prints each validation error on its own numbered line. A manifest that could not be
-read produces a `Warning: ...` line on stderr before the validation result.
+`--verbose` is set), then `Class check passed: N class reference(s) loaded.` On failure it prints each validation error
+on its own numbered line. When a class cannot be loaded it prints `Class check failed with N error(s):` and one
+numbered line per problem, naming the agent, or saying why no coded tool could be looked up at all. With `--verbose`, a
+coded tool that cannot be found shows the server's full error, hints included. A manifest that could not be read
+produces a `Warning: ...` line on stderr before the validation result.
