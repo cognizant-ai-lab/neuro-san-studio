@@ -161,6 +161,8 @@ def test_hocon_is_parseable_and_registered() -> None:
     )
 
     assert len(network["tools"]) == 12
+    assert network["llm_config"]["class"] == "langchain_mistralai.chat_models.ChatMistralAI"
+    assert network["llm_config"]["model_name"] == "mistral-medium-latest"
     assert manifest['"industry/broker_submission_readiness.hocon"'] is True
     tool_classes = {
         tool["name"]: tool["class"]

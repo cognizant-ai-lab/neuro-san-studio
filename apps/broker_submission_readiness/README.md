@@ -95,7 +95,7 @@ The network is registered as `"industry/broker_submission_readiness.hocon": true
 
 ## 11. Model-provider configuration
 
-The network includes the repository's `config/llm_config.hocon`, which in turn uses `config/developer_llm_config.hocon`. Configure the model and provider using the existing Neuro-SAN Studio setup and provider environment variables described by the repository documentation. Keep provider keys in your local environment or an ignored secrets file; never commit them. The application runs the deterministic workflow without a provider key.
+The network selects `langchain_mistralai.chat_models.ChatMistralAI` with the `mistral-medium-latest` model in its HOCON `llm_config`. Neuro-SAN reads the `MISTRAL_API_KEY` environment variable, loaded from the project-root `.env` when using `ns chat`. Keep the key in that ignored local file; never put the secret in HOCON or commit it. The deterministic Streamlit workflow does not require a provider key.
 
 ## 12. How to start Neuro-SAN
 

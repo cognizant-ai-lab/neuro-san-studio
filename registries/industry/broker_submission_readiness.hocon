@@ -1,6 +1,12 @@
 {
     include "registries/aaosa.hocon",
-    include "config/llm_config.hocon",
+
+    # Select Mistral for this network. The MISTRAL_API_KEY is loaded from the
+    # project-root .env by `ns chat`; never put the secret in this file.
+    "llm_config": {
+        "class": "langchain_mistralai.chat_models.ChatMistralAI",
+        "model_name": "mistral-medium-latest"
+    },
 
     "metadata": {
         "description": "Broker submission intake-completeness checking with synthetic policy data. Deterministic Python tools own readiness status; agents may only assist with narrative. No underwriting, pricing, acceptance, rejection, or email sending.",
