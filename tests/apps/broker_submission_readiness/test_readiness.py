@@ -161,8 +161,8 @@ def test_hocon_is_parseable_and_registered() -> None:
     )
 
     assert len(network["tools"]) == 12
-    assert network["llm_config"]["class"] == "openai"
-    assert network["llm_config"]["model_name"] == "gpt-5.2"
+    assert network["llm_config"]["class"] == "openrouter"
+    assert network["llm_config"]["model_name"] == "openai/gpt-5.2"
     assert manifest['"industry/broker_submission_readiness.hocon"'] is True
     tool_classes = {
         tool["name"]: tool["class"]
