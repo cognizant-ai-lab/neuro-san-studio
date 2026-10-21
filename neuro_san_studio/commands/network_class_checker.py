@@ -85,34 +85,36 @@ class NetworkClassChecker:
         for manifest_file in self.manifest_files:
             # The server resolves the folder of the manifest path, not the manifest file itself.
             manifest_dir: Path = Path(manifest_file).parent.resolve()
-            relative_path: str | None = self._path_under_manifest_folder(manifest_file, manifest_dir)
+            relative_path: str | None = self._path_under_manifest_folder(manifest_dir)
             if relative_path is not None:
                 return manifest_dir, relative_path
         return None
 
-    def _path_under_manifest_folder(self, manifest_file: str, manifest_dir: Path) -> str | None:
+    def _path_under_manifest_folder(self, manifest_dir: Path) -> str | None:
         """
         Return the network file's path under a manifest's folder.
 
-        The paths are compared as given first, so a symlinked folder or file under the manifest's folder
-        keeps its place there. Then the file's folder is resolved, for another path to the same folder,
-        such as /tmp for /private/tmp on macOS. Last, the file itself is resolved, for a symlink elsewhere
-        that points into the folder.
+        The server resolves only the manifest's folder and keeps the path below it as written, so a
+        symlinked folder below it keeps its name. The file's folders are therefore resolved one at a time
+        from the top, and the first one that lands in the manifest's folder gives the file's place there,
+        with the rest of the path kept as given. A file that is a symlink from elsewhere into the folder is
+        placed by resolving the file itself.
 
-        :param manifest_file: The manifest file, as given
         :param manifest_dir: The manifest's folder, resolved
         :return: The file's path under the folder in POSIX form, or None when the file is not in the folder
         """
-        network_file: Path = Path(self.hocon_path)
-        forms: list[tuple[Path, Path]] = [
-            (Path(os.path.abspath(network_file)), Path(os.path.abspath(manifest_file)).parent),
-            (network_file.parent.resolve() / network_file.name, manifest_dir),
-            (network_file.resolve(), manifest_dir),
-        ]
-        for file_path, folder in forms:
+        network_file: Path = Path(os.path.abspath(self.hocon_path))
+        # Top first: a deeper folder can be a symlink inside the manifest's folder, which the server never
+        # resolves. parents runs from the file's folder up to the root, so it is reversed.
+        for folder in reversed(network_file.parents):
+            resolved_folder: Path = folder.resolve()
             # is_relative_to answers False for a path on another Windows drive instead of raising.
-            if file_path.is_relative_to(folder):
-                return file_path.relative_to(folder).as_posix()
+            if resolved_folder.is_relative_to(manifest_dir):
+                place: Path = resolved_folder.relative_to(manifest_dir)
+                return (place / network_file.relative_to(folder)).as_posix()
+        resolved_file: Path = network_file.resolve()
+        if resolved_file.is_relative_to(manifest_dir):
+            return resolved_file.relative_to(manifest_dir).as_posix()
         return None
 
     def check(self) -> list[str] | None:

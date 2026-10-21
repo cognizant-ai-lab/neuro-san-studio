@@ -643,6 +643,91 @@ class TestNetworkClassChecker(TestCase):  # pylint: disable=too-many-public-meth
         self.assertEqual(location, (self.registries_dir, "group/sub_net.hocon"))
         self.assertEqual(errors, [])
 
+    def test_symlinked_folder_given_through_another_path_to_the_manifest_folder_keeps_its_name(self) -> None:
+        """
+        A network in a symlinked folder that points outside the manifest's folder, given through another
+        path to the manifest's folder, keeps the symlinked folder's name, so its short reference is found.
+        """
+        shared_dir: Path = self.project_dir / "shared_networks"
+        network: dict[str, Any] = {
+            "tools": [
+                self._front_man(["local"], []),
+                self._coded_tool("local", "local_tool.LocalTool"),
+            ],
+        }
+        self._write(shared_dir / "sub_net.hocon", json.dumps(network))
+        self._link(self.registries_dir / "group", shared_dir)
+        alias_dir: Path = self.project_dir / "registries_alias"
+        self._link(alias_dir, self.registries_dir)
+        checker: NetworkClassChecker = NetworkClassChecker(
+            str(alias_dir / "group" / "sub_net.hocon"), [self.manifest_file]
+        )
+
+        location: tuple[Path, str] | None = checker.find_network_location()
+        errors: list[str] | None = checker.check()
+
+        self.assertEqual(location, (self.registries_dir, "group/sub_net.hocon"))
+        self.assertEqual(errors, [])
+
+    def test_symlinked_folder_keeps_its_name_when_the_manifest_is_given_through_another_path(self) -> None:
+        """
+        A network in a symlinked folder that points outside the manifest's folder keeps the symlinked
+        folder's name when the manifest is given through another path to its folder.
+        """
+        shared_dir: Path = self.project_dir / "shared_networks"
+        self._write(shared_dir / "sub_net.hocon", json.dumps({"tools": [self._front_man([], [])]}))
+        self._link(self.registries_dir / "group", shared_dir)
+        alias_dir: Path = self.project_dir / "registries_alias"
+        self._link(alias_dir, self.registries_dir)
+        checker: NetworkClassChecker = NetworkClassChecker(
+            str(self.registries_dir / "group" / "sub_net.hocon"), [str(alias_dir / "manifest.hocon")]
+        )
+
+        self.assertEqual(checker.find_network_location(), (self.registries_dir, "group/sub_net.hocon"))
+
+    def test_symlinked_folder_that_points_inside_the_manifest_folder_keeps_its_own_name(self) -> None:
+        """
+        A network in a symlinked folder that points at another folder inside the manifest's folder is named
+        from the symlinked folder, as the server names it, also when the manifest's folder is given through
+        another path.
+        """
+        network: dict[str, Any] = {
+            "tools": [
+                self._front_man(["local"], []),
+                self._coded_tool("local", "local_tool.LocalTool"),
+            ],
+        }
+        self._write(self.registries_dir / "basic" / "sub_net.hocon", json.dumps(network))
+        self._link(self.registries_dir / "group", self.registries_dir / "basic")
+        alias_dir: Path = self.project_dir / "registries_alias"
+        self._link(alias_dir, self.registries_dir)
+        for folder in (self.registries_dir, alias_dir):
+            with self.subTest(folder=folder.name):
+                checker: NetworkClassChecker = NetworkClassChecker(
+                    str(folder / "group" / "sub_net.hocon"), [self.manifest_file]
+                )
+
+                location: tuple[Path, str] | None = checker.find_network_location()
+                errors: list[str] | None = checker.check()
+
+                self.assertEqual(location, (self.registries_dir, "group/sub_net.hocon"))
+                self.assertEqual(errors, [])
+
+    def test_folder_given_through_a_symlink_into_the_manifest_folder_is_named_from_its_target(self) -> None:
+        """
+        A file given through a symlink outside the manifest's folder that points at a folder inside it is
+        named from the folder it points at. A symlinked file in that folder keeps its own name.
+        """
+        self._write_network("basic/net.hocon", [self._front_man([], [])])
+        self._link(self.registries_dir / "basic" / "linked.hocon", self.registries_dir / "basic" / "net.hocon")
+        alias_dir: Path = self.project_dir / "alias_basic"
+        self._link(alias_dir, self.registries_dir / "basic")
+        for name in ("net.hocon", "linked.hocon"):
+            with self.subTest(name=name):
+                checker: NetworkClassChecker = NetworkClassChecker(str(alias_dir / name), [self.manifest_file])
+
+                self.assertEqual(checker.find_network_location(), (self.registries_dir, f"basic/{name}"))
+
     def test_network_in_a_later_manifest_folder_is_found(self) -> None:
         """
         With several manifests, a file in the folder of a later one is found there and named from it.

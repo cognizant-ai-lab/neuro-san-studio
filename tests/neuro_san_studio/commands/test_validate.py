@@ -17,6 +17,7 @@
 """Tests for the validate command wrapper and its manifest-driven external agent discovery."""
 
 import io
+import json
 import os
 import shutil
 import sys
@@ -27,10 +28,28 @@ from typing import Any
 from unittest import TestCase
 from unittest.mock import patch
 
+from neuro_san_studio.commands.network_class_checker import NetworkClassChecker
 from neuro_san_studio.commands.validate import ValidateCommand
 from neuro_san_studio.discovery.manifest_read_error import ManifestReadError
 
 _MODULE = "neuro_san_studio.commands.validate"
+
+# A network whose coded tool and front man middleware come from an included file. The include path
+# is written the studio way, relative to the project root.
+INCLUDING_NETWORK: str = """{
+    include "registries/order_tools.hocon",
+    "tools": [
+        {
+            "name": "OrderHelper",
+            "function": {"description": "Answers questions about an order."},
+            "instructions": "Look the order up, then answer.",
+            "tools": ["OrderLookup"],
+            "middleware": ${front_man_middleware}
+        },
+        ${order_lookup_tool}
+    ]
+}
+"""
 
 
 class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-methods
@@ -201,6 +220,37 @@ class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-metho
         seen["agent_tool_path_only"] = os.environ.get("AGENT_TOOL_PATH_ONLY")
         return []
 
+    @staticmethod
+    def _write_text(path: Path, text: str) -> None:
+        """
+        Write a text file, creating its folder first.
+
+        :param path: The file to write
+        :param text: The file's contents
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    @staticmethod
+    def _order_tools_hocon(tool_name: str, tool_class: str, middleware_class: str) -> str:
+        """
+        Build an included file that defines the network's coded tool and the front man's middleware.
+
+        :param tool_name: The coded tool's name
+        :param tool_class: The coded tool's class
+        :param middleware_class: The class of the front man's one middleware entry
+        :return: The file's text. JSON is valid HOCON.
+        """
+        values: dict[str, Any] = {
+            "front_man_middleware": [{"class": middleware_class}],
+            "order_lookup_tool": {
+                "name": tool_name,
+                "function": {"description": "Looks up an order."},
+                "class": tool_class,
+            },
+        }
+        return json.dumps(values, indent=4)
+
     def test_class_check_failures_return_one_and_are_listed(self) -> None:
         """
         Classes that cannot be loaded make the command fail, and each one is listed, numbered.
@@ -289,8 +339,8 @@ class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-metho
 
     def test_registry_dir_does_not_make_another_folder_the_project_root(self) -> None:
         """
-        --registry-dir only says where includes are found. It cannot make the current folder the root of
-        another project, whose .env the check would then miss.
+        --registry-dir sets where the default manifest is and how the manifest's includes are found. It
+        cannot make the current folder the root of another project, whose .env the check would then miss.
         """
         self._enter_project_dir()
         manifest_file: str = os.path.join(self._make_project_dir(), "registries", "manifest.hocon")
@@ -402,6 +452,45 @@ class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-metho
 
         self.assertEqual(exit_code, 1)
         self.assertEqual(sys.path, path_before)
+
+    def test_class_check_reads_includes_from_the_project_root_like_the_server(self) -> None:
+        """
+        Classes named in an included file are checked as the server reads them. The include path is
+        relative to the project root, where ns run starts the server, so another copy of the included
+        file under --registry-dir changes neither the structure check nor the class check.
+        """
+        project_dir: str = self._enter_project_dir()
+        other_dir: str = self._make_project_dir()
+        os.environ.pop("AGENT_TOOL_PATH", None)
+        os.environ.pop("AGENT_TOOL_PATH_ONLY", None)
+        manifest_file: Path = Path(project_dir, "registries", "manifest.hocon")
+        self._write_text(manifest_file, '{"orders.hocon": true}\n')
+        self._write_text(Path(project_dir, "registries", "orders.hocon"), INCLUDING_NETWORK)
+        self._write_text(
+            Path(project_dir, "registries", "order_tools.hocon"),
+            self._order_tools_hocon("OrderLookup", "project_tool.ProjectTool", "project_middleware.ProjectMiddleware"),
+        )
+        # If a check read this copy, the front man's tool would be missing and the class names would differ.
+        self._write_text(
+            Path(other_dir, "registries", "order_tools.hocon"),
+            self._order_tools_hocon("OtherLookup", "other_tool.OtherTool", "other_middleware.OtherMiddleware"),
+        )
+        self.mock_checker.side_effect = NetworkClassChecker
+        stdout: io.StringIO = io.StringIO()
+
+        with patch("sys.stdout", stdout):
+            exit_code: int = ValidateCommand(
+                "registries/orders.hocon", registry_dir=other_dir, manifest=str(manifest_file)
+            ).run()
+
+        output: str = stdout.getvalue()
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Validation passed: No errors found.", output)
+        self.assertIn("Class check failed with 2 error(s):", output)
+        self.assertIn('Could not find class "ProjectTool"', output)
+        self.assertIn("project_middleware", output)
+        self.assertNotIn("OtherTool", output)
+        self.assertNotIn("other_middleware", output)
 
 
 class TestValidateCommandManifestDiscovery(TestCase):
