@@ -45,7 +45,7 @@
         # | OpenAI           | `openai`        | https://platform.openai.com/docs/models |
         #
         # Note:
-        # - For Ollama, the model must be downloaded locally before use.
+        # - Local Ollama models must be downloaded before use. Ollama Cloud models do not.
         # - Additional LLM parameters (e.g., `temperature`, `max_tokens`) can be configured below.
         # - Agent-level control (e.g., `max_steps`) can also be set here.
         # - It is possible to have a separate llm_config describing a different LLM with different parameters for each agent network hocon file
@@ -57,12 +57,19 @@
 
         "fallbacks": [
             {
-                # Try OpenAI first
+                # Try Ollama Cloud first via its OpenAI-compatible API.
+                "class": "openai",
+                "model_name": "gemma4:31b",
+                "openai_api_base": "https://ollama.com/v1",
+                "openai_api_key": ${?OLLAMA_API_KEY},
+            },
+            {
+                # Try Mistral next
                 "class": "langchain_mistralai.chat_models.ChatMistralAI",
                 "model_name": "mistral-medium-latest",
             },
             {
-                # Try OpenAI first
+                # Fall back to OpenAI if Ollama Cloud or Mistral is unavailable.
                 "class": "openai",
                 "model_name": "gpt-5.2",
             },

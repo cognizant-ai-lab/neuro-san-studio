@@ -1,11 +1,13 @@
 {
     include "registries/aaosa.hocon",
 
-    # Select OpenAI's GPT model directly. Set OPENAI_API_KEY in
+    # Use Ollama Cloud via its OpenAI-compatible API. Set OLLAMA_API_KEY in
     # the project-root .env; never put the secret in this file.
     "llm_config": {
         "class": "openai",
-        "model_name": "gpt-5.2"
+        "model_name": "gemma4:31b",
+        "openai_api_base": "https://ollama.com/v1",
+        "openai_api_key": ${?OLLAMA_API_KEY}
     },
 
     "metadata": {

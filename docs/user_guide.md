@@ -640,6 +640,25 @@ see [ChatOllama documentation](https://python.langchain.com/api_reference/ollama
 
 Make sure the model you specify is already downloaded and available in the Ollama server.
 
+#### Ollama Cloud
+
+Ollama Cloud models can be used without installing Ollama or downloading the model. Set `OLLAMA_API_KEY`
+in your `.env` file using a key from [Ollama settings](https://ollama.com/settings/keys). The default
+developer LLM configuration tries `gemma4:31b` through Ollama's OpenAI-compatible API first; it can also
+be configured explicitly in an agent network:
+
+```hocon
+    "llm_config": {
+        "class": "openai",
+        "model_name": "gemma4:31b",
+        "openai_api_base": "https://ollama.com/v1",
+        "openai_api_key": ${?OLLAMA_API_KEY}
+    }
+```
+
+The key is read from the environment and should not be committed to source control. See
+[Ollama's cloud API documentation](https://docs.ollama.com/cloud) for available models and usage.
+
 > Tip: Ollama models may respond slowly depending on model size and hardware.
 If you're encountering the default 120 seconds timeouts,
 you can increase it by setting the `max_execution_seconds` key in the agent network HOCON.
