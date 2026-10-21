@@ -1,11 +1,11 @@
 {
     include "registries/aaosa.hocon",
 
-    # Select OpenAI's GPT model through OpenRouter. Set OPENROUTER_API_KEY in
+    # Select OpenAI's GPT model directly. Set OPENAI_API_KEY in
     # the project-root .env; never put the secret in this file.
     "llm_config": {
-        "class": "openrouter",
-        "model_name": "openai/gpt-5.2"
+        "class": "openai",
+        "model_name": "gpt-5.2"
     },
 
     "metadata": {

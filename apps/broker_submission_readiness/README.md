@@ -95,7 +95,7 @@ The network is registered as `"industry/broker_submission_readiness.hocon": true
 
 ## 11. Model-provider configuration
 
-The network selects OpenAI's `openai/gpt-5.2` model through OpenRouter. Set `OPENROUTER_API_KEY` in the project-root `.env` (rename the existing `OPENAI_API_KEY` variable, keeping its value unchanged). Neuro-SAN loads the project `.env` when using `ns chat`. Keep the key in that ignored local file; never put the secret in HOCON or commit it. The deterministic Streamlit workflow does not require a provider key.
+The network selects OpenAI's `gpt-5.2` model directly. Set `OPENAI_API_KEY` in the project-root `.env`. Neuro-SAN loads the project `.env` when using `ns chat`. Keep the key in that ignored local file; never put the secret in HOCON or commit it. The deterministic Streamlit workflow does not require a provider key.
 
 ## 12. How to start Neuro-SAN
 
