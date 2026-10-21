@@ -104,8 +104,8 @@ project, or from installed packages for a class such as `langchain.agents.middle
 runs where the server would load the network:
 
 - From the project root, the folder that holds the first manifest's `registries` folder. `ns run` is started there
-  and reads the project's `.env`, which can set `AGENT_TOOL_PATH` and `AGENT_TOOL_PATH_ONLY`. A manifest that is not
-  in a `registries` folder has no project root, so its networks are not checked.
+  and reads the project's `.env`, which can set `AGENT_TOOL_PATH`, `AGENT_TOOL_PATH_ONLY` and `PYTHONPATH`. A
+  manifest that is not in a `registries` folder has no project root, so its networks are not checked.
 - For a file inside the folder of a manifest. The path under that folder is the network's name:
   `registries/basic/music_nerd.hocon` is `basic/music_nerd`. With several manifests, the first one whose folder holds
   the file gives the name.
@@ -114,8 +114,8 @@ Otherwise the command prints `Class check skipped: ...` with the reason, and the
 code.
 
 The check runs with the process set up the way `ns run` sets up the server. The project root comes first on the Python
-path, ahead of the copies installed with the package, and `AGENT_TOOL_PATH` defaults to the project's `coded_tools`
-folder.
+path, then each `PYTHONPATH` entry, ahead of the copies installed with the package, and `AGENT_TOOL_PATH` defaults to
+the project's `coded_tools` folder.
 
 ## Output
 

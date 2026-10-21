@@ -211,10 +211,11 @@ class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-metho
         """
         Stand in for the class check, and record how the process was set up for it.
 
-        :param seen: Where to record sys.path[0], AGENT_TOOL_PATH, PYTHONPATH and AGENT_TOOL_PATH_ONLY
+        :param seen: Where to record the start of sys.path, AGENT_TOOL_PATH, PYTHONPATH and AGENT_TOOL_PATH_ONLY
         :return: No errors
         """
         seen["path_first"] = sys.path[0]
+        seen["path_start"] = sys.path[:2]
         seen["agent_tool_path"] = os.environ.get("AGENT_TOOL_PATH")
         seen["pythonpath"] = os.environ.get("PYTHONPATH")
         seen["agent_tool_path_only"] = os.environ.get("AGENT_TOOL_PATH_ONLY")
@@ -412,6 +413,23 @@ class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-metho
         self.assertEqual(sys.path, path_before)
         self.assertIsNone(os.environ.get("AGENT_TOOL_PATH"))
         self.assertIsNone(os.environ.get("PYTHONPATH"))
+
+    def test_class_check_puts_pythonpath_entries_on_sys_path_like_the_server(self) -> None:
+        """
+        A PYTHONPATH entry, as .env can set it, follows the project root on sys.path during the check, as
+        it does in the server that ns run starts from the project root. Afterwards PYTHONPATH is as before.
+        """
+        project_dir: str = self._enter_project_dir()
+        source_dir: str = os.path.join(".", "src")
+        os.environ["PYTHONPATH"] = source_dir
+        seen: dict[str, Any] = {}
+        self.mock_checker.return_value.check.side_effect = partial(self._record_environment, seen)
+
+        self._run_with_class_check(ValidateCommand("agent.hocon", registry_dir=project_dir))
+
+        root: str = str(Path(project_dir).resolve())
+        self.assertEqual(seen.get("path_start"), [root, os.path.join(root, "src")])
+        self.assertEqual(os.environ.get("PYTHONPATH"), source_dir)
 
     def test_class_check_keeps_the_agent_tool_path_the_user_set(self) -> None:
         """

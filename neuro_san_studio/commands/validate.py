@@ -287,10 +287,11 @@ class ValidateCommand:  # pylint: disable=too-few-public-methods
         """
         Set the process up the way `ns run` sets up the server, so classes load from the project.
 
-        The project root goes first on sys.path, ahead of the copies of coded_tools and middleware that
-        are installed with the package, and into PYTHONPATH, which neuro-san uses to turn AGENT_TOOL_PATH
-        into a module path. AGENT_TOOL_PATH defaults to the project's coded_tools folder. AGENT_TOOL_PATH_ONLY
-        stays as the user set it.
+        The project root goes into PYTHONPATH, which neuro-san uses to turn AGENT_TOOL_PATH into a module
+        path. AGENT_TOOL_PATH defaults to the project's coded_tools folder, and AGENT_TOOL_PATH_ONLY stays
+        as the user set it. The server starts in the project root, so its sys.path begins with the root and
+        then each PYTHONPATH entry, ahead of the copies of coded_tools and middleware installed with the
+        package. This process read .env after Python set up sys.path, so the same entries go first here.
 
         :param root: The project root, as an absolute path
         """
@@ -298,7 +299,12 @@ class ValidateCommand:  # pylint: disable=too-few-public-methods
         environment.set_pythonpath()
         if not os.environ.get("AGENT_TOOL_PATH"):
             os.environ["AGENT_TOOL_PATH"] = environment.resolve_tool_path()
-        sys.path.insert(0, str(root))
+        import_paths: list[str] = [str(root)]
+        for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+            # Python makes each PYTHONPATH entry absolute at startup, from the folder it starts in.
+            if entry:
+                import_paths.append(os.path.abspath(entry))
+        sys.path[0:0] = import_paths
 
     @staticmethod
     def _restore_environ(saved_environ: dict[str, str | None]) -> None:
