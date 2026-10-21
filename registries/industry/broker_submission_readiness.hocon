@@ -1,11 +1,11 @@
 {
     include "registries/aaosa.hocon",
 
-    # Select Mistral for this network. The MISTRAL_API_KEY is loaded from the
+    # Select OpenAI for this network. The OPENAI_API_KEY is loaded from the
     # project-root .env by `ns chat`; never put the secret in this file.
     "llm_config": {
-        "class": "langchain_mistralai.chat_models.ChatMistralAI",
-        "model_name": "mistral-medium-latest"
+        "class": "openai",
+        "model_name": "gpt-5.2"
     },
 
     "metadata": {
