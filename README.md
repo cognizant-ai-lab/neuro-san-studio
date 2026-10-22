@@ -19,7 +19,7 @@
   <a href="https://pypi.org/project/neuro-san-studio/">
   <img alt="neuro-san-studio@PyPI" src="https://img.shields.io/pypi/v/neuro-san-studio.svg?style=flat-square"></a>
   <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san-studio">
-  <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN Studio" /></a>
+  <img src="https://img.shields.io/badge/Ask-DeepWiki-blue" alt="Ask DeepWiki: Neuro SAN Studio" /></a>
 
 </p>
 
@@ -37,7 +37,7 @@
   <a href="https://pypi.org/project/neuro-san/">
   <img alt="neuro-san@PyPI" src="https://img.shields.io/pypi/v/neuro-san.svg?style=flat-square"></a>
   <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san">
-  <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN" /></a>
+  <img src="https://img.shields.io/badge/Ask-DeepWiki-blue" alt="Ask DeepWiki: Neuro SAN" /></a>
 </p>
 
 # Neuro SAN Studio
