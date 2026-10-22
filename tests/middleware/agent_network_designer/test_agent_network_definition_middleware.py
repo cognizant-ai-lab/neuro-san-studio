@@ -19,6 +19,10 @@ Tests for AgentNetworkDefinitionMiddleware: path resolution, the loaded metadata
 removal of copies of the designer's common instructions from the definition.
 """
 
+# This is the one-class test module for AgentNetworkDefinitionMiddleware (one file per class,
+# per the repo convention), so it legitimately exceeds pylint's default line limit.
+# pylint: disable=too-many-lines
+
 import asyncio
 import json
 import os
@@ -29,24 +33,31 @@ from logging import LogRecord
 from pathlib import Path
 from typing import Any
 from unittest import IsolatedAsyncioTestCase
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
+from langchain.agents.middleware.types import ModelRequest
 from langchain_core.messages import AIMessage
+from langchain_core.messages import SystemMessage
 from pyhocon import ConfigFactory
 from pyhocon import ConfigTree
 
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from middleware.agent_network_designer.agent_network_definition_middleware import AAOSA_FILE
 from middleware.agent_network_designer.agent_network_definition_middleware import AGENT_NETWORK_HOCON_FILE
 from middleware.agent_network_designer.agent_network_definition_middleware import AGENT_RESERVATIONS
+from middleware.agent_network_designer.agent_network_definition_middleware import CONFIG_FILE_UNAVAILABLE_MESSAGE
 from middleware.agent_network_designer.agent_network_definition_middleware import RESERVATION_ID
 from middleware.agent_network_designer.agent_network_definition_middleware import SKIP_DESIGNER
 from middleware.agent_network_designer.agent_network_definition_middleware import AgentNetworkDefinitionMiddleware
 from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (
     DeployableAgentNetworkAssembler,
 )
+from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HOCON_HEADER_START
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
@@ -89,15 +100,34 @@ MIDDLEWARE_LOGGER: str = "AgentNetworkDefinitionMiddleware"
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 # Patched to point the once-per-process read of the AAOSA instructions at another file.
 AAOSA_FILE_TARGET: str = "middleware.agent_network_designer.agent_network_definition_middleware.AAOSA_FILE"
-# A definition holding only the agents' own text: a front man, an agent with tools and a leaf. The texts are
-# one line each because the load path still collapses the whitespace of a network loaded from a file.
+# A definition holding only the agents' own text: a front man, an agent with tools and a leaf. The line breaks,
+# the blank line and the indentation must come back as written, whatever the source.
 OWN_TEXT_DEFINITION: dict[str, Any] = {
-    "front": {"instructions": "Route travel requests.", "tools": ["booker", "weather"]},
-    "booker": {"instructions": "Book trips.", "tools": ["weather"]},
-    "weather": {"instructions": "Report the weather."},
+    "front": {"instructions": "Route travel requests.\nKeep answers short.", "tools": ["booker", "weather"]},
+    "booker": {"instructions": "Book trips.\n\nSteps:\n  1. Find a flight.\n  2. Book it.", "tools": ["weather"]},
+    "weather": {"instructions": "Report the weather.\n    Use Celsius."},
+}
+# Own text with three double quotes, four in a row, a tab next to them, backslashes, a control character and
+# substitution syntax, in a front man, an agent with tools and a leaf. All of it must come back as written from a
+# saved file.
+QUOTED_TEXT_DEFINITION: dict[str, Any] = {
+    "front": {
+        "description": 'Routes "notes" requests.',
+        "instructions": 'Write docstrings as """Text.""" lines.\nKeep ${HOME} as written.',
+        "tools": ["writer"],
+    },
+    "writer": {
+        "description": "Writes notes to C:\\notes.",
+        "instructions": 'Indent each docstring with a tab:\n\t"""Text."""\nPaths look like C:\\notes\\new.',
+        "tools": ["checker"],
+    },
+    "checker": {"description": 'Checks """ quotes.', "instructions": 'Reject """" runs of quotes and \x1b codes.'},
 }
 # Words that occur once in the AAOSA instructions and nowhere in OWN_TEXT_DEFINITION, for counting copies.
 AAOSA_MARKER: str = "When you receive an inquiry, you will:"
+# The system prompt a model request starts with, and what the stubbed model call answers.
+BASE_PROMPT: str = "You design agent networks."
+MODEL_RESPONSE: object = object()
 
 
 class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-methods
@@ -120,9 +150,13 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     extension, an unreadable path and a missing file, driven through the real restorer, plus
     the hook's hand-off of that error to the client.
 
-    Finally covers the removal of copies of the designer's common instructions from the definition,
+    Also covers the removal of copies of the designer's common instructions from the definition,
     for a definition sent in sly_data, a network loaded from a generated file and one
-    loaded from an S3 reservation, and where the AAOSA instructions to strip come from.
+    loaded from an S3 reservation, and where the AAOSA instructions to strip come from, and the requests that
+    only load a network.
+
+    Finally covers the model-call hook, which adds the definition to the system prompt and reports progress,
+    and the after-agent hook, which sends the progress report the throttle held back.
     """
 
     def setUp(self) -> None:
@@ -133,6 +167,10 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         # with consider-using-with (R1732), and fail-under=10.0 turns any message into a CI failure.
         self.temp_dir: str = tempfile.mkdtemp(prefix="and_definition_mw_")
         self.addCleanup(shutil.rmtree, self.temp_dir, True)
+        manifest_path: str = os.path.join(self.temp_dir, "manifest.hocon")
+        manifest_environment: Any = patch.dict(os.environ, {"AGENT_MANIFEST_FILE": manifest_path})
+        manifest_environment.start()
+        self.addCleanup(manifest_environment.stop)
 
     # Tests for AGENT_MANIFEST_FILE parsing, mirroring the persistor's parsing tests
     # so loads and saves stay in agreement on file location.
@@ -150,7 +188,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
             resolved: str | None = middleware._resolve_hocon_path(  # pylint: disable=protected-access
                 "generated/does_not_exist.hocon"
             )
-        self.assertEqual(resolved, "first_dir/generated/does_not_exist.hocon")
+        self.assertEqual(resolved, os.path.realpath("first_dir/generated/does_not_exist.hocon"))
 
     def test_resolve_skips_empty_leading_entry(self) -> None:
         """
@@ -162,7 +200,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
             resolved: str | None = middleware._resolve_hocon_path(  # pylint: disable=protected-access
                 "generated/does_not_exist.hocon"
             )
-        self.assertEqual(resolved, "first_dir/generated/does_not_exist.hocon")
+        self.assertEqual(resolved, os.path.realpath("first_dir/generated/does_not_exist.hocon"))
 
     def test_resolve_defaults_when_manifest_env_var_empty(self) -> None:
         """
@@ -173,7 +211,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
             resolved: str | None = middleware._resolve_hocon_path(  # pylint: disable=protected-access
                 "generated/does_not_exist.hocon"
             )
-        self.assertEqual(resolved, "registries/generated/does_not_exist.hocon")
+        self.assertEqual(resolved, os.path.realpath("registries/generated/does_not_exist.hocon"))
 
     # Tests for the error branches of _hocon_to_config (issue #1440). Every message here is what the
     # client sees: abefore_model puts self.error_message straight into the AIMessage it jumps to end with.
@@ -193,7 +231,11 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         return path
 
     async def _assert_load_error(
-        self, name: str, contents: str | None, expected: str, details: tuple[str, ...] = ()
+        self,
+        name: str,
+        contents: str | None,
+        expected: tuple[str, str],
+        details: tuple[str, ...] = (),
     ) -> AgentNetworkDefinitionMiddleware:
         """
         Load a config file through _hocon_to_config and check the error it reports.
@@ -201,7 +243,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         :param name: File name to load from the scratch directory
         :param contents: Text to write first, or None to write nothing, for a path that is absent or a
                 directory the test created
-        :param expected: Substring the reported message and the logged ERROR line must both contain
+        :param expected: Client-facing message substring and server-log substring
         :param details: Additional substrings required in the reported message
         :return: Middleware instance that reported the error
         """
@@ -214,9 +256,15 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
             config: dict[str, Any] | None = await middleware._hocon_to_config(path)  # pylint: disable=protected-access
 
         self.assertIsNone(config)
-        self.assertIn(expected, middleware.error_message)
-        self.assertIn(path, middleware.error_message)
-        self.assertIn(expected, captured.output[0])
+        if expected[0] == CONFIG_FILE_UNAVAILABLE_MESSAGE:
+            # The one generic message #1459 asks for, with nothing appended.
+            self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        else:
+            self.assertIn(expected[0], middleware.error_message)
+            self.assertIn(path, middleware.error_message)
+        self.assertIn(expected[1], captured.output[0])
+        # The log holds the canonical path, which differs from the raw one when TMPDIR is behind a symlink.
+        self.assertIn(os.path.realpath(path), captured.output[0])
         for detail in details:
             self.assertIn(detail, middleware.error_message)
         return middleware
@@ -244,9 +292,13 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertNotIn(AGENT_NETWORK_NAME, sly_data)
         self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
         self.assertNotIn(AGENT_NETWORK_METADATA, sly_data)
-        # Exactly one record at WARNING or above, and it is the ERROR carrying the error text.
+        # Exactly one record at WARNING or above, and it is the ERROR logging the parse failure. The log
+        # names the canonical path while the client message names the path as sent (issue #1459).
         self.assertEqual(len(captured.records), 1)
-        self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [middleware.error_message])
+        errors: list[str] = self._messages_at_level(captured.records, "ERROR")
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Failed to parse agent network config file", errors[0])
+        self.assertIn(os.path.realpath(path), errors[0])
 
     async def test_hocon_to_config_reports_parse_failure_for_malformed_hocon(self) -> None:
         """
@@ -258,7 +310,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         await self._assert_load_error(
             "malformed.hocon",
             '{"tools": [{"name": "a")',
-            "Failed to parse agent network config file",
+            ("Failed to parse agent network config file", "Failed to parse agent network config file"),
             ("ParseSyntaxException",),
         )
 
@@ -272,7 +324,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         await self._assert_load_error(
             "missing_sub.hocon",
             "tools = [${nope}]",
-            "Failed to parse agent network config file",
+            ("Failed to parse agent network config file", "Failed to parse agent network config file"),
             ("ConfigSubstitutionException", "nope"),
         )
 
@@ -282,50 +334,308 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         .json as readily as .hocon, and its JSONDecodeError arrives as the same ValueError.
         """
         await self._assert_load_error(
-            "bad.json", '{"tools": [}', "Failed to parse agent network config file", ("JSONDecodeError",)
+            "bad.json",
+            '{"tools": [}',
+            ("Failed to parse agent network config file", "Failed to parse agent network config file"),
+            ("JSONDecodeError",),
         )
 
-    async def test_hocon_to_config_reports_unsupported_extension_and_names_the_accepted_ones(self) -> None:
+    async def test_hocon_to_config_reports_generic_error_for_unsupported_extension(self) -> None:
         """
         A file whose extension is neither .hocon nor .json is the one genuinely unsupported case, and
-        the message names the extensions that would work.
+        its client-facing message is generic while the server log records the unsupported extension.
         """
-        middleware: AgentNetworkDefinitionMiddleware = await self._assert_load_error(
-            "wrong.txt", "tools = []", "Unsupported agent network config file"
+        await self._assert_load_error(
+            "wrong.txt",
+            "tools = []",
+            (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Unsupported agent network config path"),
         )
-        self.assertIn(".hocon", middleware.error_message)
-        self.assertIn(".json", middleware.error_message)
 
     async def test_hocon_to_config_reports_unsupported_extension_before_checking_existence(self) -> None:
         """
-        A path that does not exist and ends in an unsupported extension is reported as unsupported, not
-        as not found: the extension check runs before the restorer reads anything, so a typo'd path with
-        the wrong suffix gets the more actionable message.
+        The server log identifies the unsupported extension before any file-existence check, while the
+        client receives the same generic response used for missing and disallowed paths.
         """
-        await self._assert_load_error("absent.txt", None, "Unsupported agent network config file")
+        await self._assert_load_error(
+            "absent.txt", None, (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Unsupported agent network config path")
+        )
 
     async def test_hocon_to_config_rejects_an_upper_case_extension(self) -> None:
         """
         The extension check is case-sensitive, like the restorer's own, so network.HOCON is unsupported.
         Were the check ever relaxed, the restorer would still reject the file with its ValueError and the
-        parse handler would report it as "Failed to parse": the #1440 mix-up in reverse.
+        parse handler would report it as "Failed to parse": the #1440 mix-up in reverse. The server log
+        identifies the unsupported extension and the client receives the generic response.
         """
-        await self._assert_load_error("network.HOCON", "tools = []", "Unsupported agent network config file")
+        await self._assert_load_error(
+            "network.HOCON",
+            "tools = []",
+            (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Unsupported agent network config path"),
+        )
 
     async def test_hocon_to_config_reports_read_failure_for_a_directory(self) -> None:
         """
         A directory whose name ends in .hocon passes the extension check and then fails to open, which
-        the OSError handler reports as a read failure rather than a parse failure or a missing file.
+        the OSError handler logs as a read failure while returning a generic client-facing message.
         """
         os.mkdir(os.path.join(self.temp_dir, "directory.hocon"))
-        await self._assert_load_error("directory.hocon", None, "Failed to read agent network config file")
+        await self._assert_load_error(
+            "directory.hocon",
+            None,
+            (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Failed to read agent network config file"),
+        )
 
     async def test_hocon_to_config_reports_missing_file(self) -> None:
         """
-        A supported extension that does not exist is reported as missing, not as a parse failure:
-        the extension screen passes it through to the restorer, which raises FileNotFoundError.
+        A missing supported file has a distinct log reason and the generic client-facing response.
         """
-        await self._assert_load_error("absent.hocon", None, "Agent network config file not found")
+        await self._assert_load_error(
+            "absent.hocon", None, (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Agent network config file not found")
+        )
+
+    def test_resolve_rejects_absolute_path_outside_registry_root(self) -> None:
+        """An absolute path outside configured registries is rejected without exposing it to the client."""
+        outside_directory: str = tempfile.mkdtemp(prefix="and_definition_outside_")
+        self.addCleanup(shutil.rmtree, outside_directory, True)
+        outside_path: str = os.path.join(outside_directory, "network.hocon")
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            resolved: str | None = middleware._resolve_hocon_path(outside_path)  # pylint: disable=protected-access
+
+        self.assertIsNone(resolved)
+        self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", captured.output[0])
+        # The log names both what the client sent and the canonical target it resolved to.
+        self.assertIn(repr(outside_path), captured.output[0])
+        self.assertIn(os.path.realpath(outside_path), captured.output[0])
+
+    def test_resolve_rejects_parent_traversal_outside_registry_root(self) -> None:
+        """A relative path that traverses outside its registry root is rejected."""
+        outside_path: str = os.path.join(os.path.dirname(self.temp_dir), "outside_network.hocon")
+        relative_path: str = os.path.relpath(outside_path, self.temp_dir)
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            resolved: str | None = middleware._resolve_hocon_path(relative_path)  # pylint: disable=protected-access
+
+        self.assertIsNone(resolved)
+        self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", captured.output[0])
+        self.assertIn(os.path.realpath(outside_path), captured.output[0])
+
+    def test_resolve_rejects_symlink_to_file_outside_registry_root(self) -> None:
+        """A symlink inside a registry cannot authorize a target outside that registry."""
+        outside_directory: str = tempfile.mkdtemp(prefix="and_definition_outside_")
+        self.addCleanup(shutil.rmtree, outside_directory, True)
+        outside_path: str = os.path.join(outside_directory, "network.hocon")
+        with open(outside_path, "w", encoding="utf-8") as config_file:
+            config_file.write("tools = []")
+        link_path: str = os.path.join(self.temp_dir, "link.hocon")
+        try:
+            os.symlink(outside_path, link_path)
+        except OSError as symlink_error:
+            self.skipTest(f"Symlink creation is unavailable: {symlink_error}")
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            resolved: str | None = middleware._resolve_hocon_path(link_path)  # pylint: disable=protected-access
+
+        self.assertIsNone(resolved)
+        self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", captured.output[0])
+        self.assertIn(os.path.realpath(outside_path), captured.output[0])
+
+    async def test_hocon_to_config_loads_absolute_path_inside_registry_root(self) -> None:
+        """An absolute path remains supported when its canonical target is inside a registry root."""
+        file_path: str = self._write_config_file("allowed.hocon", '{"tools": []}')
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        config: dict[str, Any] | None = await middleware._hocon_to_config(file_path)  # pylint: disable=protected-access
+
+        self.assertEqual(config, {"tools": []})
+
+    async def test_hocon_to_config_accepts_files_under_each_manifest_root(self) -> None:
+        """Each configured manifest directory is an allowed registry root."""
+        second_root: str = tempfile.mkdtemp(prefix="and_definition_second_root_")
+        self.addCleanup(shutil.rmtree, second_root, True)
+        second_manifest: str = os.path.join(second_root, "manifest.hocon")
+        file_path: str = os.path.join(second_root, "allowed.hocon")
+        with open(file_path, "w", encoding="utf-8") as config_file:
+            config_file.write('{"tools": []}')
+        first_manifest: str = os.path.join(self.temp_dir, "manifest.hocon")
+        with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": os.pathsep.join([first_manifest, second_manifest])}):
+            middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+            config: dict[str, Any] | None = await middleware._hocon_to_config(file_path)  # pylint: disable=protected-access
+
+        self.assertEqual(config, {"tools": []})
+
+    def _use_working_directory_with_registry(self) -> str:
+        """
+        Make a fresh scratch directory the cwd, with a "registries" subdirectory as the only registry root.
+
+        :return: The canonical path of the registry root
+        """
+        workspace: str = tempfile.mkdtemp(prefix="and_definition_cwd_")
+        self.addCleanup(shutil.rmtree, workspace, True)
+        registry_root: str = os.path.join(workspace, "registries")
+        os.mkdir(registry_root)
+        original_cwd: str = os.getcwd()
+        os.chdir(workspace)
+        self.addCleanup(os.chdir, original_cwd)
+        manifest_environment: Any = patch.dict(
+            os.environ, {"AGENT_MANIFEST_FILE": os.path.join(registry_root, "manifest.hocon")}
+        )
+        manifest_environment.start()
+        self.addCleanup(manifest_environment.stop)
+        return os.path.realpath(registry_root)
+
+    @staticmethod
+    def _write_file(path: str, contents: str) -> None:
+        """
+        Write text to a file at an arbitrary path.
+
+        :param path: Destination file path
+        :param contents: Text to write
+        """
+        with open(path, "w", encoding="utf-8") as config_file:
+            config_file.write(contents)
+
+    def test_resolve_uses_cwd_relative_path_inside_registry_root(self) -> None:
+        """A path relative to the working directory loads when its target is inside a registry root."""
+        registry_root: str = self._use_working_directory_with_registry()
+        # Only the cwd tier finds this file: resolving it against the root would look for registries/registries/.
+        self._write_file(os.path.join(registry_root, "net.hocon"), '{"tools": ["cwd"]}')
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        resolved: str | None = middleware._resolve_hocon_path("registries/net.hocon")  # pylint: disable=protected-access
+
+        self.assertEqual(resolved, os.path.join(registry_root, "net.hocon"))
+
+    async def test_hocon_to_config_skips_cwd_match_outside_registry_root(self) -> None:
+        """A same-named file in the working directory does not block the registry's copy (issue #1459)."""
+        registry_root: str = self._use_working_directory_with_registry()
+        self._write_file("net.hocon", '{"tools": ["cwd"]}')
+        self._write_file(os.path.join(registry_root, "net.hocon"), '{"tools": ["registry"]}')
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            config: dict[str, Any] | None = await middleware._hocon_to_config("net.hocon")  # pylint: disable=protected-access
+
+        self.assertEqual(config, {"tools": ["registry"]})
+        self.assertEqual(middleware.error_message, "")
+        self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [])
+        self.assertIn("relative to the working directory", captured.output[0])
+
+    def test_resolve_never_uses_cwd_match_outside_registry_root(self) -> None:
+        """A file only in the working directory, outside every registry root, is not used."""
+        self._use_working_directory_with_registry()
+        self._write_file("net.hocon", '{"tools": []}')
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING"):
+            resolved: str | None = middleware._resolve_hocon_path("net.hocon")  # pylint: disable=protected-access
+
+        # The registry lookup finds no file, but the path is inside the root, so the restorer reports it missing.
+        self.assertEqual(resolved, os.path.join(os.path.realpath("registries"), "net.hocon"))
+
+    async def test_hocon_to_config_rejects_cwd_traversal_outside_registry_root(self) -> None:
+        """A cwd file reached by traversal fails both tiers and gets the generic message."""
+        self._use_working_directory_with_registry()
+        self._write_file("net.hocon", '{"tools": []}')
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            # "../net.hocon" is the cwd file seen from the registry root, so neither tier is inside it.
+            config: dict[str, Any] | None = await middleware._hocon_to_config("../net.hocon")  # pylint: disable=protected-access
+
+        self.assertIsNone(config)
+        self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", self._messages_at_level(captured.records, "ERROR")[0])
+
+    def test_resolve_rejects_sibling_directory_sharing_the_root_prefix(self) -> None:
+        """A sibling such as registries_backup shares the root's string prefix but is outside it."""
+        registry_root: str = self._use_working_directory_with_registry()
+        sibling_directory: str = registry_root + "_backup"
+        os.mkdir(sibling_directory)
+        sibling_path: str = os.path.join(sibling_directory, "net.hocon")
+        self._write_file(sibling_path, '{"tools": []}')
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR"):
+            resolved: str | None = middleware._resolve_hocon_path(sibling_path)  # pylint: disable=protected-access
+
+        self.assertIsNone(resolved)
+        self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+
+    async def test_hocon_to_config_reports_generic_error_for_nul_byte(self) -> None:
+        """A NUL byte, which realpath() cannot encode, ends the load with the generic message, not a crash."""
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            config: dict[str, Any] | None = await middleware._hocon_to_config(  # pylint: disable=protected-access
+                "generated/x\x00.hocon"
+            )
+
+        self.assertIsNone(config)
+        self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", captured.output[0])
+
+    def test_resolve_rejects_symlink_loop_hiding_outside_target(self) -> None:
+        """
+        A symlink loop cannot hide an outside target: on Python 3.12 realpath() stops at the loop and
+        "loopdir_a/../link_out.hocon" came back as an unresolved in-root symlink to an outside file.
+        """
+        outside_directory: str = tempfile.mkdtemp(prefix="and_definition_outside_")
+        self.addCleanup(shutil.rmtree, outside_directory, True)
+        outside_path: str = os.path.join(outside_directory, "network.hocon")
+        self._write_file(outside_path, '{"tools": []}')
+        try:
+            os.symlink(os.path.join(self.temp_dir, "loopdir_b"), os.path.join(self.temp_dir, "loopdir_a"))
+            os.symlink(os.path.join(self.temp_dir, "loopdir_a"), os.path.join(self.temp_dir, "loopdir_b"))
+            os.symlink(outside_path, os.path.join(self.temp_dir, "link_out.hocon"))
+        except OSError as symlink_error:
+            self.skipTest(f"Symlink creation is unavailable: {symlink_error}")
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR"):
+            resolved: str | None = middleware._resolve_hocon_path(  # pylint: disable=protected-access
+                os.path.join(self.temp_dir, "loopdir_a", "..", "link_out.hocon")
+            )
+
+        self.assertIsNone(resolved)
+        self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+
+    async def test_hocon_to_config_treats_cwd_stat_failure_as_no_match(self) -> None:
+        """An is_file() that raises, as PermissionError can on 3.12 and 3.13, falls through to the registries."""
+        self._write_config_file("net.hocon", '{"tools": []}')
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with patch(
+            "middleware.agent_network_designer.agent_network_config_path_resolver.Path.is_file",
+            side_effect=PermissionError("denied"),
+        ):
+            with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+                config: dict[str, Any] | None = await middleware._hocon_to_config(  # pylint: disable=protected-access
+                    "net.hocon"
+                )
+
+        self.assertEqual(config, {"tools": []})
+        self.assertIn("Could not check agent network config path", captured.output[0])
+
+    async def test_hocon_to_config_parse_error_names_the_path_as_sent(self) -> None:
+        """A parse error shows the client the path it sent; the server's canonical path stays in the log."""
+        self._write_config_file("bad.hocon", '{"tools": [}')
+        canonical_path: str = os.path.realpath(os.path.join(self.temp_dir, "bad.hocon"))
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            config: dict[str, Any] | None = await middleware._hocon_to_config("bad.hocon")  # pylint: disable=protected-access
+
+        self.assertIsNone(config)
+        self.assertIn("Failed to parse agent network config file 'bad.hocon'", middleware.error_message)
+        self.assertNotIn(canonical_path, middleware.error_message)
+        self.assertIn(canonical_path, captured.output[0])
 
     # Tests for the metadata block abefore_model returns in sly_data after a load (issue #1398).
 
@@ -749,6 +1059,34 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertEqual(loaded.get("house").get("instructions"), "Control the house.")
         self.assertEqual(loaded.get("Book").get("instructions"), "Your name is Book. You are a book.")
 
+    async def test_abefore_model_keeps_a_hand_written_prefix_and_a_demo_sentence_in_the_middle(self) -> None:
+        """
+        A file load strips the common instructions only in the wording a save writes today, and only at the ends of
+        the text. A hand-written prefix in another wording stays, and so does a demo sentence in the middle of the
+        text, once each and as written.
+        """
+        desk: str = "You run the front desk.\n" + DesignerCommonInstructions.DEMO_SENTENCE + "\nGreet guests."
+        rooms: str = (
+            "You are part of a hotel of assistants.\n"
+            + DesignerCommonInstructions.PREFIX_RULES
+            + "\n\nAnswer room questions."
+        )
+        config: dict[str, Any] = {
+            "tools": [
+                {"name": "desk", "instructions": desk, "tools": ["rooms"]},
+                {"name": "rooms", "instructions": rooms},
+            ]
+        }
+        sly_data: dict[str, Any] = self._sly_data_for_file("hotel", config)
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertIsNone(result)
+        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        self.assertEqual(loaded.get("desk").get("instructions"), desk)
+        self.assertEqual(loaded.get("rooms").get("instructions"), rooms)
+
     async def test_abefore_model_keeps_a_definition_without_common_instructions_as_sent(self) -> None:
         """
         A definition holding only own text is neither copied nor changed: sly_data keeps the very dict the client
@@ -766,57 +1104,114 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     async def test_abefore_model_strips_a_network_loaded_from_a_generated_hocon_file(self) -> None:
         """
         A network the designer saved and then loads again through agent_network_hocon_file comes back as the own
-        text, instead of the resolved common instructions the next save would add to.
+        text, line breaks and indentation included, demo mode on or off. Saving the loaded definition again writes
+        the same file, so nothing grows.
         """
-        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
-            OWN_TEXT_DEFINITION, "front", "travel", []
-        )
-        path: str = self._write_config_file("travel.hocon", text)
-        sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
-        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode)
+                text: str = await assembler.assemble_agent_network(OWN_TEXT_DEFINITION, "front", "travel", [])
+                path: str = self._write_config_file("travel.hocon", text)
+                sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
 
-        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+                result: dict[str, Any] | None = await middleware.abefore_model({}, None)
 
-        self.assertIsNone(result)
-        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
-        for agent_name, agent in OWN_TEXT_DEFINITION.items():
-            with self.subTest(agent_name=agent_name):
-                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                self.assertIsNone(result)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in OWN_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                # With the metadata block the load returned, as a client sends it back, so date_created is kept.
+                saved_again: str = await assembler.assemble_agent_network(
+                    loaded, "front", "travel", [], metadata=sly_data.get(AGENT_NETWORK_METADATA)
+                )
+                self.assertEqual(saved_again, text)
+                # The AAOSA instructions are read from registries/aaosa.hocon, so nothing is cached in sly_data.
+                self.assertNotIn("aaosa_instructions", sly_data)
+
+    async def test_abefore_model_loads_quotes_tabs_and_backslashes_back_from_a_saved_file(self) -> None:
+        """
+        Descriptions and own text holding three double quotes, a tab next to them, backslashes, a control character
+        or substitution syntax are saved and loaded back as written, demo mode on or off, and saving the loaded
+        definition again writes the same file.
+        """
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode)
+                text: str = await assembler.assemble_agent_network(QUOTED_TEXT_DEFINITION, "front", "notes", [])
+                path: str = self._write_config_file("notes.hocon", text)
+                sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+                result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+                self.assertIsNone(result)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in QUOTED_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                        self.assertEqual(loaded.get(agent_name).get("description"), agent.get("description"))
+                saved_again: str = await assembler.assemble_agent_network(
+                    loaded, "front", "notes", [], metadata=sly_data.get(AGENT_NETWORK_METADATA)
+                )
+                self.assertEqual(saved_again, text)
 
     async def test_abefore_model_strips_a_network_loaded_from_an_s3_reservation(self) -> None:
         """
-        A network deployed in reservations mode and loaded again from its S3 copy comes back as the own text.
+        A network deployed in reservations mode and loaded again from its S3 copy comes back as the own text, demo
+        mode on or off, and deploying the loaded definition again gives the same spec, so nothing grows.
         """
-        spec: dict[str, Any] = await DeployableAgentNetworkAssembler(True).assemble_agent_network(
-            OWN_TEXT_DEFINITION, "front", "travel", []
-        )
-        sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]}
-        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+        for demo_mode in (True, False):
+            with self.subTest(demo_mode=demo_mode):
+                assembler: DeployableAgentNetworkAssembler = DeployableAgentNetworkAssembler(demo_mode)
+                spec: dict[str, Any] = await assembler.assemble_agent_network(
+                    OWN_TEXT_DEFINITION, "front", "travel", []
+                )
+                sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]}
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
 
-        result: dict[str, Any] | None = await self._abefore_model_from_s3(middleware, spec)
+                result: dict[str, Any] | None = await self._abefore_model_from_s3(middleware, spec)
 
-        self.assertIsNone(result)
-        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
-        for agent_name, agent in OWN_TEXT_DEFINITION.items():
-            with self.subTest(agent_name=agent_name):
-                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                self.assertIsNone(result)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in OWN_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+                redeployed: dict[str, Any] = await assembler.assemble_agent_network(loaded, "front", "travel", [])
+                self.assertEqual(redeployed, spec)
 
     async def test_abefore_model_ignores_aaosa_instructions_sent_in_sly_data(self) -> None:
         """
         The AAOSA instructions to strip come from registries/aaosa.hocon, never from sly_data, which the client
-        writes: a value planted under the key the load path caches it in changes nothing.
+        writes: a value planted under "aaosa_instructions" removes nothing, whether the definition is sent in
+        sly_data or loaded from a file or an S3 reservation.
         """
         resolved: dict[str, Any] = await self._resolved_definition(OWN_TEXT_DEFINITION, "travel")
-        sly_data: dict[str, Any] = {
-            AGENT_NETWORK_DEFINITION: resolved,
-            AGENT_NETWORK_NAME: "travel",
-            "aaosa_instructions": "Not the AAOSA instructions.",
+        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        spec: dict[str, Any] = await DeployableAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        sources: dict[str, dict[str, Any]] = {
+            "definition": {AGENT_NETWORK_DEFINITION: resolved, AGENT_NETWORK_NAME: "travel"},
+            "file": {AGENT_NETWORK_HOCON_FILE: self._write_config_file("travel.hocon", text)},
+            "reservation": {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]},
         }
-        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+        for source, sly_data in sources.items():
+            with self.subTest(source=source):
+                # Words from the booker's own text, so stripping by this value would show.
+                sly_data["aaosa_instructions"] = "Book trips."
+                middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
 
-        await middleware.abefore_model({}, None)
+                # The S3 stand-in is only reached for the reservation; the other two sources come first.
+                await self._abefore_model_from_s3(middleware, spec)
 
-        self.assertEqual(sly_data.get(AGENT_NETWORK_DEFINITION), OWN_TEXT_DEFINITION)
+                loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+                for agent_name, agent in OWN_TEXT_DEFINITION.items():
+                    with self.subTest(agent_name=agent_name):
+                        self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
 
     async def test_abefore_model_warns_once_and_keeps_aaosa_copies_when_the_aaosa_file_is_missing(self) -> None:
         """
@@ -858,3 +1253,224 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         adds is what gets recognized.
         """
         self.assertIn(f'include "{AAOSA_FILE}"', HOCON_HEADER_START)
+
+    # Tests for a turn that only loads a network: skip_designer with a file or a reservation and no definition.
+
+    def test_is_load_only_request_needs_skip_designer_a_network_to_load_and_no_definition(self) -> None:
+        """
+        A request only loads a network when skip_designer is true, it names a file or a reservation, and it sends
+        no definition. Any other request is not load-only.
+        """
+        reservations: list[dict[str, Any]] = [{RESERVATION_ID: RESERVATION_ID_VALUE}]
+        cases: list[tuple[str, dict[str, Any], bool]] = [
+            ("file", {SKIP_DESIGNER: True, AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, True),
+            ("reservation", {SKIP_DESIGNER: True, AGENT_RESERVATIONS: reservations}, True),
+            (
+                "definition too",
+                {SKIP_DESIGNER: True, AGENT_NETWORK_HOCON_FILE: "travel.hocon", AGENT_NETWORK_DEFINITION: {"a": {}}},
+                False,
+            ),
+            ("no skip_designer", {AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, False),
+            ("skip_designer false", {SKIP_DESIGNER: False, AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, False),
+            ("skip_designer as a string", {SKIP_DESIGNER: "true", AGENT_NETWORK_HOCON_FILE: "travel.hocon"}, False),
+            ("nothing to load", {SKIP_DESIGNER: True}, False),
+            (
+                "empty file and reservations",
+                {SKIP_DESIGNER: True, AGENT_NETWORK_HOCON_FILE: "", AGENT_RESERVATIONS: []},
+                False,
+            ),
+        ]
+        for label, sly_data, expected in cases:
+            with self.subTest(case=label):
+                self.assertIs(AgentNetworkDefinitionMiddleware.is_load_only_request(sly_data), expected)
+
+    async def test_abefore_model_only_loads_a_file_with_skip_designer_and_no_definition(self) -> None:
+        """
+        A load-only request ends the turn with a reply that says the network was loaded, and leaves the loaded
+        definition and its name in sly_data for the client.
+        """
+        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        path: str = self._write_config_file("travel.hocon", text)
+        sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path, SKIP_DESIGNER: True}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertEqual(result.get("jump_to"), "end")
+        self.assertEqual(result.get("messages")[0].content, "The network travel has been loaded.")
+        self.assertEqual(sly_data.get(AGENT_NETWORK_NAME), "travel")
+        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        for agent_name, agent in OWN_TEXT_DEFINITION.items():
+            with self.subTest(agent_name=agent_name):
+                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+
+    async def test_abefore_model_ends_a_load_only_turn_that_loads_nothing(self) -> None:
+        """
+        A load-only request whose reservation entry has no reservation_id loads nothing. The turn ends with an
+        error instead of reaching the model, whose work would not be saved.
+        """
+        sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{"not_a_reservation_id": "x"}], SKIP_DESIGNER: True}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertEqual(result.get("jump_to"), "end")
+        self.assertTrue(result.get("messages")[0].content.startswith("Error: nothing was loaded."))
+        self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
+        self.assertEqual(len(self._messages_at_level(captured.records, "ERROR")), 1)
+
+    async def test_abefore_model_saves_the_sent_definition_and_warns_when_a_file_is_sent_too(self) -> None:
+        """
+        With skip_designer, a definition wins over a file sent with it, and a warning says the
+        file was not loaded. The warning names the keys, not their values.
+        """
+        sent: dict[str, Any] = deepcopy(OWN_TEXT_DEFINITION)
+        hocon_file: str = "registries/basic/music_nerd.hocon"
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_DEFINITION: sent,
+            AGENT_NETWORK_NAME: "travel",
+            AGENT_NETWORK_HOCON_FILE: hocon_file,
+            SKIP_DESIGNER: True,
+        }
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertEqual(result.get("messages")[0].content, "The network travel has been modified by the user.")
+        self.assertIs(sly_data.get(AGENT_NETWORK_DEFINITION), sent)
+        warnings: list[str] = self._messages_at_level(captured.records, "WARNING")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("the definition is saved and the file is not loaded", warnings[0])
+        self.assertNotIn(hocon_file, warnings[0])
+
+    # Tests for the model-call and after-agent hooks.
+
+    @staticmethod
+    def _model_request(system_message: SystemMessage | None) -> ModelRequest:
+        """
+        Build a model request with the given system prompt and nothing else of note.
+
+        :param system_message: The system prompt of the request, or None for a request without one
+        :return: The model request
+        """
+        return ModelRequest(
+            model=MagicMock(),
+            messages=[],
+            system_message=system_message,
+            tool_choice=None,
+            tools=[],
+            response_format=None,
+            state={},
+            runtime=None,
+        )
+
+    @staticmethod
+    def _definition_sly_data() -> dict[str, Any]:
+        """
+        Build sly_data that holds OWN_TEXT_DEFINITION and a network name.
+
+        :return: A new sly_data dict, so a test may change it freely
+        """
+        return {
+            AGENT_NETWORK_DEFINITION: deepcopy(OWN_TEXT_DEFINITION),
+            AGENT_NETWORK_NAME: "travel",
+        }
+
+    @staticmethod
+    async def _middleware_with_definition(
+        sly_data: dict[str, Any],
+        progress_reporter: MagicMock | None = None,
+    ) -> AgentNetworkDefinitionMiddleware:
+        """
+        Build a middleware whose before-model hook has resolved the definition in sly_data.
+
+        :param sly_data: The sly_data to give the middleware, holding a definition and a network name
+        :param progress_reporter: The progress reporter to give the middleware, or None for none
+        :return: The middleware, ready for a model call
+        """
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(
+            sly_data=sly_data, progress_reporter=progress_reporter
+        )
+        await middleware.abefore_model({}, None)
+        return middleware
+
+    async def test_model_call_without_a_definition_passes_the_request_through(self) -> None:
+        """
+        With no definition resolved, a model call reaches the handler with the request unchanged.
+        """
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+        request: ModelRequest = self._model_request(SystemMessage(BASE_PROMPT))
+        handler: AsyncMock = AsyncMock(return_value=MODEL_RESPONSE)
+
+        response: Any = await middleware.awrap_model_call(request, handler)
+
+        self.assertIs(response, MODEL_RESPONSE)
+        handler.assert_awaited_once_with(request)
+
+    async def test_model_call_adds_the_definition_to_the_system_prompt(self) -> None:
+        """
+        The definition is added to the end of the system prompt, so the model sees the current network.
+        """
+        middleware: AgentNetworkDefinitionMiddleware = await self._middleware_with_definition(
+            self._definition_sly_data()
+        )
+        handler: AsyncMock = AsyncMock(return_value=MODEL_RESPONSE)
+
+        response: Any = await middleware.awrap_model_call(self._model_request(SystemMessage(BASE_PROMPT)), handler)
+
+        self.assertIs(response, MODEL_RESPONSE)
+        sent: ModelRequest = handler.await_args.args[0]
+        definition_prompt: str = middleware.format_definition_prompt(OWN_TEXT_DEFINITION)
+        self.assertEqual(sent.system_message.content, f"{BASE_PROMPT}\n\n{definition_prompt}")
+
+    async def test_model_call_without_a_system_prompt_sends_the_definition_alone(self) -> None:
+        """
+        A request without a system prompt gets one that holds only the definition.
+        """
+        middleware: AgentNetworkDefinitionMiddleware = await self._middleware_with_definition(
+            self._definition_sly_data()
+        )
+        handler: AsyncMock = AsyncMock(return_value=MODEL_RESPONSE)
+
+        await middleware.awrap_model_call(self._model_request(None), handler)
+
+        sent: ModelRequest = handler.await_args.args[0]
+        self.assertEqual(sent.system_message.content, middleware.format_definition_prompt(OWN_TEXT_DEFINITION))
+
+    async def test_model_call_reports_progress_without_the_throttle(self) -> None:
+        """
+        With a progress reporter, each model call sends the current network to the client, forced past the
+        throttle so the client always sees the whole network before the model answers.
+        """
+        reporter: MagicMock = MagicMock()
+        sly_data: dict[str, Any] = self._definition_sly_data()
+        middleware: AgentNetworkDefinitionMiddleware = await self._middleware_with_definition(sly_data, reporter)
+
+        with patch.object(ProgressHandler, "report_progress", new=AsyncMock()) as report_progress:
+            await middleware.awrap_model_call(self._model_request(None), AsyncMock(return_value=MODEL_RESPONSE))
+
+        report_progress.assert_awaited_once()
+        self.assertEqual(report_progress.await_args.args[0], {"progress_reporter": reporter})
+        self.assertIs(report_progress.await_args.args[1], sly_data)
+        self.assertEqual(report_progress.await_args.args[2], OWN_TEXT_DEFINITION)
+        self.assertEqual(report_progress.await_args.args[3], "travel")
+        self.assertIs(report_progress.await_args.kwargs.get("force"), True)
+
+    async def test_after_agent_sends_the_progress_report_the_throttle_held_back(self) -> None:
+        """
+        When the agent finishes, the hook sends the last progress report the throttle held back, and lets the
+        turn end normally.
+        """
+        sly_data: dict[str, Any] = {}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with patch.object(ProgressHandler, "flush_pending", new=AsyncMock()) as flush_pending:
+            result: dict[str, Any] | None = await middleware.aafter_agent({}, None)
+
+        self.assertIsNone(result)
+        flush_pending.assert_awaited_once()
+        self.assertIs(flush_pending.await_args.args[0], sly_data)

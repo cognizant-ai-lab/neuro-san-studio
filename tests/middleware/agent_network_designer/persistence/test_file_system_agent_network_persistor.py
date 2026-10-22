@@ -125,6 +125,18 @@ class TestFileSystemAgentNetworkPersistor(IsolatedAsyncioTestCase):  # pylint: d
         self.assertEqual(persistor.output_path, "registries")
         self.assertEqual(persistor.main_manifest_path, os.path.join("registries", "manifest.hocon"))
 
+    def test_get_manifest_paths_returns_every_non_empty_entry_in_order(self) -> None:
+        """
+        get_manifest_paths keeps every entry in order and skips empty ones, as the server does.
+        """
+        first_manifest: str = os.path.join("first_dir", "manifest.hocon")
+        second_manifest: str = os.path.join("second_dir", "manifest.hocon")
+        env_value: str = os.pathsep.join(["", first_manifest, "", second_manifest])
+        with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": env_value}):
+            self.assertEqual(FileSystemAgentNetworkPersistor.get_manifest_paths(), [first_manifest, second_manifest])
+        with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": ""}):
+            self.assertEqual(FileSystemAgentNetworkPersistor.get_manifest_paths(), [])
+
     # Tests for async_persist reading a manifest with various encodings
 
     async def test_persist_appends_to_utf8_manifest(self) -> None:
