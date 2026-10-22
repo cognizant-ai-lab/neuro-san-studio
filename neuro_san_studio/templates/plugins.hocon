@@ -6,12 +6,6 @@ plugins = [
         # Override the enabled value with an environment variable, if provided.
         enabled = ${?PHOENIX_ENABLED}
     }
-    {
-        class = neuro_san_studio.plugins.langfuse.langfuse_plugin.LangfusePlugin
-        enabled = false
-        # Override the enabled value with an environment variable, if provided.
-        enabled = ${?LANGFUSE_ENABLED}
-    }
 
     # Logging plugins
     {

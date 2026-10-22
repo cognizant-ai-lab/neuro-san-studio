@@ -20,6 +20,8 @@
 #     pip install pymupdf
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -45,7 +47,7 @@
               "description": "Coordinate ArXiv retrieval and answering by invoking the appropriate tools.",
             },
 
-            "instructions": """You must always use a tool to respond to the user’s query.
+            "instructions": ${expertise_scoping_instructions} """You must always use a tool to respond to the user’s query.
 
 Workflow:
 1. Use the retrieval tool to find relevant ArXiv papers.
@@ -102,7 +104,6 @@ Rules:
                 # True = full PDF text (slower, richer context)
                 # False = abstracts only (faster, smaller)
                 # Default is False.
-                # if this is set to True, pymupdf package is required.
                 "get_full_documents": false,
 
                 # Per-document character cap to keep long pages from inflating context/cost
@@ -125,6 +126,12 @@ Rules:
                 # False = fail fast
                 # Default to True.
                 "continue_on_failure": true,
+
+                # Maximum number of PDFs downloaded in parallel when get_full_documents is True
+                # Bounds transient memory (one raw PDF buffer per in-flight download)
+                # and keeps the connection count to arXiv polite
+                # Default to 5.
+                # "max_concurrent_downloads": 5,
             }
         },
         

@@ -4,7 +4,7 @@ This guide will walk you through setting up the Neuro-SAN Slack bot from scratch
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.12 or higher
 - A Slack workspace where you have admin permissions
 - Neuro-SAN server running locally
 - `slack_bolt>=1.27.0`

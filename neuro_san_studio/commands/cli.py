@@ -16,14 +16,14 @@
 
 """Typer CLI dispatcher for the neuro-san-studio package."""
 
+import os
 import sys
-from typing import Any
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 import typer
 
+from neuro_san_studio.commands.project_environment import ProjectEnvironment
 from neuro_san_studio.commands.run import NeuroSanRunner
 
 
@@ -52,6 +52,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     @staticmethod
     @app.callback()
     def _main(
+        ctx: typer.Context,
         _version: bool = typer.Option(
             False,
             "--version",
@@ -62,32 +63,39 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         ),
     ) -> None:
         """Neuro SAN Studio CLI."""
+        # Click runs this callback before parsing the subcommand's own args, so `ns run --help`
+        # would load the project .env just to render a help screen. Nothing in help output depends
+        # on the environment. (`ns --help`, bare `ns` and `ns --version` already exit before here.)
+        # sys.argv is the only source of those args: Click empties ctx.args before this runs.
+        if any(arg in ctx.help_option_names for arg in sys.argv[1:]):
+            return
+        ProjectEnvironment(os.getcwd()).load_env_file()
 
     @staticmethod
-    def _invoke_run(extra_args: List[str]) -> None:
-        """Run the server, exposing `extra_args` to NeuroSanRunner.parse_args() via sys.argv."""
-        sys.argv = [sys.argv[0], *extra_args]
-        NeuroSanRunner().run()
+    def _validate_run_flags(overrides: dict) -> None:
+        """Reject mutually-exclusive run-flag combinations before starting anything.
 
-    @staticmethod
-    def _build_run_forward_args(valued: List[Tuple[str, Any]], booleans: List[Tuple[str, bool]]) -> List[str]:
-        """Build the forwarded-args list from Typer-parsed valued and boolean flags."""
-        forwarded: List[str] = []
-        for flag, value in valued:
-            if value is not None:
-                forwarded.extend([flag, str(value)])
-        for flag, value in booleans:
-            if value:
-                forwarded.append(flag)
-        return forwarded
+        Only user-supplied flags are present in ``overrides`` (booleans appear only when true),
+        so membership tests double as "did the user pass this flag?".
+        """
+        client_only = "client_only" in overrides
+        server_only = "server_only" in overrides
+        if client_only and server_only:
+            raise typer.BadParameter("You cannot specify both --client-only and --server-only at the same time.")
+        if client_only and ("server_host" in overrides or "server_http_port" in overrides):
+            raise typer.BadParameter(
+                "You cannot specify --server-host or --server-http-port when using --client-only mode."
+            )
+        if server_only and "nsflow_port" in overrides:
+            raise typer.BadParameter("You cannot specify --nsflow-port when using --server-only mode.")
 
     @staticmethod
     @app.command(
         "run",
         help="Start the Neuro SAN server and client (default).",
         context_settings={
-            # Forward unknown options (e.g. plugin-injected flags via
-            # plugin.update_parser_args) through to NeuroSanRunner's argparse layer.
+            # Tolerate unknown options (e.g. plugin-injected flags) without erroring; they are
+            # collected in ctx.args and handed to the runner. Made Typer-native in a follow-up.
             "allow_extra_args": True,
             "ignore_unknown_options": True,
         },
@@ -111,28 +119,28 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             False, "--server-only", help="Run only the NeuroSan server without the default nsflow client."
         ),
     ) -> None:
-        """Forward declared flags + any plugin extras to NeuroSanRunner's argparse layer.
+        """Pass Typer-parsed run flags straight to NeuroSanRunner (single CLI framework: Typer).
 
-        Typer parses the known flags so they appear in `--help` with Typer styling.
-        Only user-supplied values are forwarded; unset options stay `None` so the
-        runner's env-var-driven defaults still apply. Plugin-injected flags arrive
-        via `ctx.args` and are forwarded verbatim.
+        Only user-supplied flags become cli_overrides, so unset options keep the runner's
+        env-var-driven defaults. Unknown/plugin flags arrive via ctx.args and are forwarded
+        verbatim for the runner to handle.
         """
-        forwarded = NeuroSanStudioCli._build_run_forward_args(
-            [
-                ("--server-host", server_host),
-                ("--server-http-port", server_http_port),
-                ("--nsflow-port", nsflow_port),
-                ("--log-level", log_level),
-                ("--thinking-file", thinking_file),
-            ],
-            [
-                ("--client-only", client_only),
-                ("--server-only", server_only),
-            ],
-        )
-        forwarded.extend(ctx.args)
-        NeuroSanStudioCli._invoke_run(forwarded)
+        # Map each self.args key to the flag the user supplied. Valued flags default to None and
+        # booleans to False when unset; forwarding only truthy/non-None values means unset flags
+        # keep the runner's env-var-driven defaults.
+        run_flags: dict = {
+            "server_host": server_host,
+            "server_http_port": server_http_port,
+            "nsflow_port": nsflow_port,
+            "log_level": log_level,
+            "thinking_file": thinking_file,
+            "client_only": client_only,
+            "server_only": server_only,
+        }
+        overrides = {key: value for key, value in run_flags.items() if value not in (None, False)}
+
+        NeuroSanStudioCli._validate_run_flags(overrides)
+        NeuroSanRunner(cli_overrides=overrides, extra_args=list(ctx.args)).run()
 
     @staticmethod
     @app.command("init", help="Scaffold a starter project in the current directory.")
@@ -228,7 +236,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         "chat",
         help=(
             "Chat with an agent network directly (without starting nsflow).\n\n"
-            "Pass the agent name as AGENT, e.g. ns chat music_nerd"
+            "Pass the agent name as AGENT, e.g. ns chat basic/music_nerd"
         ),
         no_args_is_help=True,
         context_settings={
@@ -288,7 +296,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     @app.command("validate", help="Validate the structure of an agent network HOCON file.")
-    def _validate_command(
+    def _validate_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         hocon_path: str = typer.Argument(
             ...,
             help="Path to the agent network HOCON file to validate.",
@@ -296,12 +304,23 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         verbose: bool = typer.Option(
             False,
             "--verbose",
-            help="Print an agent network summary when validation passes.",
+            help="Print the manifest discovery summary, and an agent network summary when validation passes.",
         ),
         external_agents: Optional[str] = typer.Option(
             None,
             "--external-agents",
-            help="Comma-separated external agent references to treat as valid (e.g. '/agent1,/agent2').",
+            help=(
+                "Additional comma-separated external agent references to treat as valid, on top of those "
+                "discovered from the manifest (e.g. '/agent1,/agent2')."
+            ),
+        ),
+        manifest: Optional[str] = typer.Option(
+            None,
+            "--manifest",
+            help=(
+                "Manifest HOCON whose served networks are accepted as external agents. "
+                "Defaults to AGENT_MANIFEST_FILE, then <registry-dir>/registries/manifest.hocon."
+            ),
         ),
         mcp_servers: Optional[str] = typer.Option(
             None,
@@ -311,7 +330,10 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         registry_dir: Optional[str] = typer.Option(
             None,
             "--registry-dir",
-            help="Base directory for resolving HOCON includes. Defaults to the current directory.",
+            help=(
+                "Base directory for resolving HOCON includes and for locating registries/manifest.hocon. "
+                "Defaults to the first manifest's project root, else the current directory."
+            ),
         ),
     ) -> None:
         """Run the agent network HOCON validation and propagate its exit code."""
@@ -325,6 +347,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
                 external_agents=external_agents,
                 mcp_servers=mcp_servers,
                 registry_dir=registry_dir,
+                manifest=manifest,
             ).run()
         )
 

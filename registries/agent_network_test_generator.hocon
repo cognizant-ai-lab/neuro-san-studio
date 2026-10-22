@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
     "metadata": {
         "description": "ANTeGen (Agent Network Test Generator) — generates data-driven test fixture HOCON files for existing agent networks. Provide the name of an agent network and it will read its definition, analyze its capabilities, and produce test cases with interactions, expected responses, and sly_data.",        "tags": ["tool", "testing"],
         "sample_queries": [
@@ -48,11 +49,8 @@
                     "required": ["agent_network_hocon_file"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You orchestrate the generation of data-driven test fixture HOCON files for existing neuro-san agent networks.
-
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
-
 Follow these steps carefully:
 
 1) Read the target agent network

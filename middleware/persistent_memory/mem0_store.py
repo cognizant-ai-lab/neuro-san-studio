@@ -59,8 +59,6 @@ callers see the Mem0-specific type with its ``error_code`` /
 ``suggestion`` attributes intact.
 """
 
-from __future__ import annotations
-
 import os
 from typing import Any
 from typing import Awaitable

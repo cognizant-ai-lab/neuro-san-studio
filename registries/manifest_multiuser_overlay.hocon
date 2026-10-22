@@ -40,7 +40,9 @@
     # To use this file, we simply add a reference to it at the end of our existing
     # AGENT_MANIFEST_FILE specification # like this:
     #
-    #    export AGENT_MANIFEST_FILE="registries/manifest.hocon registries/manifest_multiuser_overlay.hocon"
+    #    export AGENT_MANIFEST_FILE="registries/manifest.hocon:registries/manifest_multiuser_overlay.hocon"
+    #
+    # The list is os.pathsep-separated (like PATH): ":" on Linux/macOS, ";" on Windows.
     #
     # Basically the data for later manifest files gets overlayed on top of earlier ones.
 
@@ -59,6 +61,7 @@
     "tools/agentforce.hocon": false,                    # Reason #2
     "tools/openai_image_generation.hocon": false,       # Reason #1
     "tools/persistent_memory_local.hocon": false,       # Reason #1
+    "tools/google_workspace.hocon": false,              # Reason #7
     "tools/you_search.hocon": false,                    # Reason #7
 
     # Experimental and research

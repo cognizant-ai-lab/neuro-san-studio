@@ -328,12 +328,50 @@ by setting the file to `agent_network_hocon_file` sly data or
 specifically given the hocon file name in the user prompt
 - Used for state inspection throughout workflow
 
+#### Definition (Middleware)
+
+[`AgentNetworkDefinitionMiddleware`](../../middleware/agent_network_designer/agent_network_definition_middleware.py)
+- Runs before the model is called and resolves the `agent_network_definition` from sly data, from the file
+named in `agent_network_hocon_file`, or from the reservation named in `agent_reservations`
+- When the network comes from a file or a reservation, its top-level `metadata` block is returned under
+`agent_network_metadata` (without the `reservation`/`stored_at` keys of a temporary network), so the client
+holds the loaded network's block and sends it back on the next save like any other. The loaded block replaces
+any `agent_network_metadata` sent with the same request
+- A load that yields no agent (a `tools` list that is missing, not a list, empty, or whose every entry is skipped)
+ends the turn with an error message, as a missing or unparseable file does. `agent_network_name` is set from the
+file name or the reservation id only once the load has produced a definition
+- Each agent's `instructions` in the `agent_network_definition` hold only its custom instructions, the agent's own
+text, since every save adds the common instructions again: the instructions prefix, the front man's fixed lines, the
+demo mode sentence and the AAOSA instructions. Copies of the common instructions already in the instructions, such
+as the resolved text of a saved network sent back by a client, are removed before the definition is validated, shown
+to the LLM or saved, so a save writes one copy instead of adding another. Every piece is removed from every agent,
+whatever its role and whatever `AGENT_NETWORK_DESIGNER_DEMO_MODE` is set to, and the save adds back the ones the
+agent's role calls for. So a hand-written network that gives its leaves the AAOSA instructions loses them from those
+leaves once loaded. An agent whose instructions are nothing but common instructions keeps one copy of each piece.
+Only the current wording of each piece is recognized: after a wording changes, a copy of the old wording that a
+client sends back stays in the agent's own text, once, and does not grow
+
 #### Persistence (Middleware)
 
 [`AgentNetworkPersistenceMiddleware`](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
 - Runs after the agent finishes (no pending tool calls remain)
 - Validates the network definition for structural and instruction errors; re-injects any errors as a human message so the agent can self-correct
 - Converts the `agent_network_definition` to HOCON format and either saves it to the local registries directory (file mode) or registers it as a temporary network (reservations mode)
+- Writes the network's top-level `metadata` block from the `agent_network_metadata` sly data the client sent
+back, so the block survives a save the same way the definition and the name do: `description`, `tags` and any
+other key are written as sent, `sample_queries` is replaced only when `agent_network_query_generator` ran on
+that turn, and in file mode `date_created` is stamped once and `date_modified` on every save. A temporary
+network gets no studio dates in its deployed spec (neuro-san records `stored_at`), but the HOCON text returned
+for download always carries a `date_created`, as a saved file would. The resulting block
+is returned under `agent_network_metadata` for the client to send back with its next request. A
+`skip_designer` save that carries the block therefore leaves `metadata` intact. A client that sends no
+`agent_network_metadata` at all (nsflow's manual save sends nothing as of nsflow 0.7.1) gets the existing file's
+block kept in file mode; sending the key, even empty, makes the block client-owned and nothing is read from disk.
+- In reservations mode a deployment the server rejects ends the turn with an error message
+(`Error: the agent network could not be deployed as a temporary network: ...`) and clears `agent_reservations`,
+a handle the request carried from an earlier deploy included; `agent_network_definition`,
+`agent_network_hocon_text` and `agent_network_metadata` are still returned, so the network can be downloaded and
+the save retried
 - Updates the local `manifest.hocon` file in file mode
 
 ### Research Tool

@@ -1,0 +1,91 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Requirements to use this agent network:
+#   - neuro-san >= 0.6.24
+#   - Nothing else: the you.com MCP server's free tier needs no API key or OAuth, and
+#     web_fetch's packages (aiohttp, beautifulsoup4, pypdf) ship in requirements.txt.
+#
+# Why these two tools together: the free you.com tier exposes only the `you-search`
+# tool — search result snippets, no page content (the you-contents and you-research
+# tools require the authenticated tier; see the `you_search` agent network). The
+# `web_fetch` toolbox tool fills that gap: the agent searches to FIND sources, then
+# fetches the promising URLs to actually READ them.
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent that gathers information from the internet: it searches the web through the you.com MCP server's free tier, then reads the pages it finds with the web_fetch toolbox tool to ground its answers in actual page content.",
+        "tags": ["tool", "mcp", "web"],
+        "sample_queries": [
+            "What is the latest news on AI agent frameworks? Read the top articles and summarize.",
+            "Find the official Python 3.13 release notes and list the major new features.",
+            "How do recent articles compare the licensing of open-source LLMs? Cite your sources."
+        ]
+    },
+
+    include "registries/expertise_scoping_instructions.hocon",
+    include "config/llm_config.hocon",
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "info_gatherer",
+
+            "function": {
+                "description": "Assist caller with gathering information from the internet: search the web for sources, read the relevant pages, and answer with grounded, cited findings.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "An inquiry from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": """
+Gather information from the internet to respond to the inquiry:
+1. Search the web with your you.com search tool to find relevant sources. Search results carry
+   only titles, URLs, and snippets — do not answer from snippets alone when the substance matters.
+2. Fetch the most promising result URLs with your web_fetch tool and read the page content
+   (it handles HTML pages and PDFs). Fetch more sources when they disagree or a page falls short.
+3. Answer from what the pages actually say, and cite the URLs you used.
+""" ${expertise_scoping_instructions},
+            "tools": ["https://api.you.com/mcp?profile=free", "web_fetch"]
+        },
+
+        # web_fetch comes from the shared toolbox (see
+        # neuro_san_studio/toolbox/toolbox_info.hocon): it fetches one URL and returns the
+        # plain-text body with metadata, truncated to max_content_chars (default 20000).
+        {
+            "name": "web_fetch",
+            "toolbox": "web_fetch"
+        },
+    ]
+}

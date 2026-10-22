@@ -320,6 +320,9 @@ async def test_llm_configs(
             print(f"    LLM instance created: {type(llm).__name__}")
         except Exception as exc:  # pylint: disable=broad-except
             error_msg: str = f"Failed to create LLM: {exc}"
+            hint: Optional[str] = CheckConfigCommand.adc_hint(exc)
+            if hint:
+                error_msg = f"{error_msg}\n    {hint}"
             print(f"    FAIL (creation): {error_msg}")
             failures.append((labels, llm_cfg, error_msg))
             continue
@@ -331,8 +334,12 @@ async def test_llm_configs(
             successes.append((labels, llm_cfg))
         except Exception as exc:  # pylint: disable=broad-except
             error_msg = f"Failed to invoke LLM: {exc}"
+            hint = CheckConfigCommand.adc_hint(exc)
+            if hint:
+                error_msg = f"{error_msg}\n    {hint}"
             print(f"    FAIL (invocation): {error_msg}")
-            traceback.print_exc()
+            if not hint:
+                traceback.print_exc()
             failures.append((labels, llm_cfg, error_msg))
 
         print()
@@ -433,7 +440,7 @@ async def run_checks(hocon_path: str) -> bool:
     return not failures
 
 
-class CheckConfigCommand:  # pylint: disable=too-few-public-methods
+class CheckConfigCommand:
     """Validate LLM configurations in a HOCON file.
 
     Accepts both agent network files (with a 'tools' list) and standalone
@@ -449,6 +456,27 @@ class CheckConfigCommand:  # pylint: disable=too-few-public-methods
                 config/llm_config.hocon when not provided.
         """
         self.hocon_path = hocon_path or DEFAULT_HOCON_PATH
+
+    @staticmethod
+    def adc_hint(exc: Exception) -> Optional[str]:
+        """Return an actionable hint if *exc* or any chained cause is a Google ADC error, else None."""
+        try:
+            from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            return None
+        # neuro-san may re-raise DefaultCredentialsError wrapped as ValueError("...") from exc,
+        # so walk the cause chain rather than checking only the top-level exception type.
+        candidate: Optional[BaseException] = exc
+        while candidate is not None:
+            if isinstance(candidate, DefaultCredentialsError):
+                return (
+                    "Hint: run 'gcloud auth application-default login', or deploy where the runtime "
+                    "service account has Vertex AI access. See the 'Simpler ADC Alternative' section "
+                    "in https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md"
+                    "#simpler-adc-alternative-built-in-gemini-class"
+                )
+            candidate = candidate.__cause__
+        return None
 
     def run(self) -> int:
         """Run validation and return an exit code (0 on success, 1 on failure)."""

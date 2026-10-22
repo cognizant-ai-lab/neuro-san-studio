@@ -16,7 +16,9 @@
 
 """Tests for the Typer CLI dispatcher and `main()` entry point."""
 
+import os
 import sys
+from pathlib import Path
 
 import pytest
 from pytest import MonkeyPatch
@@ -25,7 +27,19 @@ from neuro_san_studio.commands import cli as cli_module
 from neuro_san_studio.commands import import_networks as import_networks_module
 from neuro_san_studio.commands import init as init_module
 from neuro_san_studio.commands import internalize_agents as internalize_agents_module
+from neuro_san_studio.commands import validate as validate_module
 from neuro_san_studio.commands.cli import main
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cwd(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    """Run every test in this module from an empty directory.
+
+    The CLI's top-level callback loads `<cwd>/.env`. Without this, a test invoking main() from a
+    repo checkout picks up the developer's real .env and injects those variables into os.environ
+    for the rest of the session, making results depend on an untracked file.
+    """
+    monkeypatch.chdir(tmp_path)
 
 
 class TestMainEntryPoint:
@@ -39,7 +53,8 @@ class TestMainEntryPoint:
         class FakeRunner:  # pylint: disable=too-few-public-methods
             """Stand-in for NeuroSanRunner that records method calls."""
 
-            def __init__(self) -> None:
+            # pylint: disable-next=unused-argument
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
                 call_order.append("init")
 
             def run(self) -> None:
@@ -110,6 +125,34 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "a.hocon", "b.zip", "--force"])
         main()
         assert captured == [{"networks_arg": ["a.hocon", "b.zip"], "force": True}]
+
+    def test_main_with_validate_forwards_manifest(self, monkeypatch: MonkeyPatch) -> None:
+        """`neuro-san-studio validate x.hocon --manifest m.hocon` forwards every option to ValidateCommand."""
+        captured: list = []
+
+        class FakeValidate:  # pylint: disable=too-few-public-methods
+            """Stand-in for ValidateCommand that records constructor kwargs."""
+
+            def __init__(self, hocon_path: str, **kwargs: object) -> None:
+                captured.append({"hocon_path": hocon_path, **kwargs})
+
+            def run(self) -> int:
+                """Report success."""
+                return 0
+
+        monkeypatch.setattr(validate_module, "ValidateCommand", FakeValidate)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "validate", "x.hocon", "--manifest", "m.hocon"])
+        main()
+        assert captured == [
+            {
+                "hocon_path": "x.hocon",
+                "verbose": False,
+                "external_agents": None,
+                "mcp_servers": None,
+                "registry_dir": None,
+                "manifest": "m.hocon",
+            }
+        ]
 
     def test_main_with_internalize_agents_passes_args_through(self, monkeypatch: MonkeyPatch) -> None:
         """`internalize-agents <in> -o <out> --search-paths <p>` forwards all three kwargs."""
@@ -188,6 +231,9 @@ class TestMainEntryPoint:
         class ExplodingRunner:  # pylint: disable=too-few-public-methods
             """Runner whose run() raises, to verify main() does not swallow errors."""
 
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
+                """Accept the runner's constructor kwargs; we only care about run() raising."""
+
             def run(self) -> None:
                 """Raise to simulate a runtime failure."""
                 raise RuntimeError("boom")
@@ -196,6 +242,49 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         with pytest.raises(RuntimeError, match="boom"):
             main()
+
+    _BUILTIN_RUN_FLAGS = (
+        "--server-host",
+        "--server-http-port",
+        "--nsflow-port",
+        "--log-level",
+        "--thinking-file",
+        "--client-only",
+        "--server-only",
+    )
+
+    def test_run_help_lists_all_builtin_flags(self) -> None:
+        """Every built-in run flag is a declared Typer option (so it shows in `ns run --help`).
+
+        Inspects the compiled Click command's registered option strings rather than the
+        rendered help text, which wraps/ANSI-styles at the terminal width and is flaky in CI.
+        """
+        # pylint: disable-next=import-outside-toplevel
+        from typer.main import get_command
+
+        run_cmd = get_command(cli_module.NeuroSanStudioCli.app).commands["run"]
+        declared = {opt for param in run_cmd.params for opt in getattr(param, "opts", [])}
+        for flag in self._BUILTIN_RUN_FLAGS:
+            assert flag in declared, f"{flag} not declared as a Typer option on `run`"
+
+    def test_run_forwards_flag_values_as_cli_overrides(self, monkeypatch: MonkeyPatch) -> None:
+        """A user-supplied flag reaches NeuroSanRunner as a cli_overrides entry."""
+        captured: list[dict] = []
+
+        class CapturingRunner:  # pylint: disable=too-few-public-methods
+            """Stand-in that records the cli_overrides it was constructed with."""
+
+            # pylint: disable-next=unused-argument
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
+                captured.append(cli_overrides or {})
+
+            def run(self) -> None:
+                """No-op."""
+
+        monkeypatch.setattr(cli_module, "NeuroSanRunner", CapturingRunner)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--server-host", "myhost"])
+        main()
+        assert captured[0]["server_host"] == "myhost"
 
     @pytest.mark.parametrize("flag", ["--version", "-V"])
     def test_version_flag_prints_version_and_exits(
@@ -212,3 +301,38 @@ class TestMainEntryPoint:
         main()
         assert "neuro-san-studio 1.2.3 (installed)" in capsys.readouterr().out
         assert not call_order
+
+
+class TestLoadsProjectEnvFile:
+    """The top-level callback loads the project .env before a subcommand runs, but not for --help."""
+
+    def test_check_llm_keys_picks_up_dotenv(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A key defined only in <cwd>/.env is visible to `check-llm-keys` via os.getenv."""
+        # tmp_path is already the cwd, via the module's _isolate_cwd fixture.
+        (tmp_path / ".env").write_text("OPENAI_API_KEY=sk-from-dotenv-1234567890abcdef\n")
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "check-llm-keys", "--tier", "1"])
+        try:
+            main()
+        except SystemExit as exc:
+            assert exc.code == 0
+        assert "sk-f...cdef" in capsys.readouterr().out
+
+    def test_subcommand_help_does_not_load_dotenv(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`ns run --help` renders help without loading <cwd>/.env.
+
+        Asserts on the side effect rather than the rendered help text, which wraps/ANSI-styles
+        at the terminal width and is flaky in CI.
+        """
+        # tmp_path is already the cwd, via the module's _isolate_cwd fixture.
+        (tmp_path / ".env").write_text("NS_STUDIO_HELP_PROBE=loaded\n")
+        monkeypatch.delenv("NS_STUDIO_HELP_PROBE", raising=False)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--help"])
+        # --help exits 0 after printing help; main() swallows clean exits.
+        main()
+        assert "Loaded environment variables from" not in capsys.readouterr().out
+        assert os.environ.get("NS_STUDIO_HELP_PROBE") is None

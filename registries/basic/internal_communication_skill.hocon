@@ -28,6 +28,8 @@
         ]
     },
 
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -63,7 +65,7 @@ I can help with internal communications writing.
 
             "instructions": """
 You are an internal communications assistant that helps with internal communications writing.
-""",
+""" ${expertise_scoping_instructions},
             "middleware": [
                 {
                     # This middleware implements the Agent Skills specification:

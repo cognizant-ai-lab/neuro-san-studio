@@ -29,6 +29,8 @@
         ]
     },
 
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -64,7 +66,7 @@ I can help with name-related inquiries.
 
             "instructions": """
 You are a name assistant that provides career information based on user's name.
-""",
+""" ${expertise_scoping_instructions},
             "middleware": [
                 {
                     # This middleware implements the Agent Skills specification:

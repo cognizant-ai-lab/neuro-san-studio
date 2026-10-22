@@ -16,6 +16,8 @@
 
 """Walk a HOCON network's `tools` list to extract its file dependencies."""
 
+import contextlib
+import logging
 import os
 from dataclasses import dataclass
 from dataclasses import field
@@ -27,8 +29,10 @@ from typing import Optional
 from typing import Set
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from neuro_san.internals.run_context.utils.external_agent_parsing import ExternalAgentParsing
+from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
 from pyparsing.exceptions import ParseException
+
+from neuro_san_studio.discovery.local_import_walker import LocalImportWalker
 
 LLM_CLASSES = {"openai", "anthropic", "google", "bedrock", "azure"}
 
@@ -48,9 +52,11 @@ class DependencyAnalyzer:
     """Resolve dependencies referenced by a HOCON agent network."""
 
     def __init__(self, registries_dir: str, coded_tools_dir: str, middleware_dir: str):
-        self.registries_dir = registries_dir
-        self.coded_tools_dir = coded_tools_dir
-        self.middleware_dir = middleware_dir
+        # Absolute, because get_transitive_dependencies chdirs while parsing (see there) and
+        # relpath/exists checks against these roots must not shift underneath it.
+        self.registries_dir = os.path.abspath(registries_dir)
+        self.coded_tools_dir = os.path.abspath(coded_tools_dir)
+        self.middleware_dir = os.path.abspath(middleware_dir)
 
     def analyze_network(self, hocon_path: str) -> AgentNetworkDependencies:
         """Parse one HOCON file and extract its references (one level, no recursion)."""
@@ -155,16 +161,51 @@ class DependencyAnalyzer:
             name = name + ".hocon"
         return name if os.path.exists(os.path.join(self.registries_dir, name)) else None
 
-    def get_transitive_dependencies(
-        self, hocon_path: str, visited: Optional[Set[str]] = None
-    ) -> AgentNetworkDependencies:
-        """Recursively collect dependencies from a network and its sub-networks."""
-        if visited is None:
-            visited = set()
+    def get_transitive_dependencies(self, hocon_path: str) -> AgentNetworkDependencies:
+        """Recursively collect dependencies from a network and its sub-networks.
+
+        The walk runs with the working directory set to the tree being analyzed. Networks
+        pull shared prompt fragments in with `include "registries/<name>.hocon"` and then
+        substitute them; pyhocon resolves a relative include against the process CWD, and
+        `analyze_network` swallows the ValueError an unresolved `${substitution}` raises.
+        Analyzing from the caller's directory therefore returned an *empty* dependency set
+        with no error whenever that directory didn't happen to hold the same fragments --
+        the network landed in the target project with none of its coded tools.
+        """
+        # Resolve before the chdir: a caller may hand us a path relative to *their* cwd.
         abs_path = os.path.abspath(hocon_path)
-        if abs_path in visited:
+        source_root = os.path.dirname(self.registries_dir)
+        anchor = contextlib.chdir(source_root) if os.path.isdir(source_root) else contextlib.nullcontext()
+        # Demote pyhocon's chatty include-resolution logging for the duration of the walk.
+        # A pip-installed source tree ships no `config/` directory (the package includes only
+        # neuro_san_studio*/registries*/coded_tools*/middleware*/skills*), so nearly every
+        # network's `include "config/llm_config.hocon"` would print "Cannot include file"
+        # to stderr once per parse — noise, not signal: the analyzer tolerates unresolved
+        # includes and substitutions by design (see analyze_network), and a genuinely missing
+        # dependency still surfaces as an importer warning. Same scoped-demotion pattern as
+        # AgentNetworkImporter._read_existing_keys, though at ERROR rather than that method's
+        # CRITICAL: pyhocon logs the complaint at WARNING and emits nothing above that, so
+        # ERROR is the lowest level that mutes it — a genuine error-level message from a
+        # future pyhocon would still get through.
+        pyhocon_logger: logging.Logger = logging.getLogger("pyhocon.config_parser")
+        prev_level: int = pyhocon_logger.level
+        try:
+            pyhocon_logger.setLevel(logging.ERROR)
+            with anchor:
+                deps = self._walk(abs_path, set())
+        finally:
+            pyhocon_logger.setLevel(prev_level)
+        # Closing the set under Python-level imports is done once, at the top: `_walk`
+        # merges each sub-network's results upward, so one expansion covers everything
+        # without re-parsing the same files per level.
+        self._expand_local_imports(deps)
+        return deps
+
+    def _walk(self, hocon_path: str, visited: Set[str]) -> AgentNetworkDependencies:
+        """Collect one network's dependencies, recursing into its sub-networks."""
+        if hocon_path in visited:
             return AgentNetworkDependencies()
-        visited.add(abs_path)
+        visited.add(hocon_path)
 
         # context_dir lets us resolve short-form coded-tool refs ("module.Class") relative
         # to the network's group directory. A network at `<registries>/basic/foo.hocon` lives
@@ -183,8 +224,23 @@ class DependencyAnalyzer:
             sub_rel = self.resolve_sub_network(sub_ref)
             if not sub_rel:
                 continue
-            sub_deps = self.get_transitive_dependencies(os.path.join(self.registries_dir, sub_rel), visited)
+            sub_deps = self._walk(os.path.join(self.registries_dir, sub_rel), visited)
             for attr in ("coded_tools", "middleware", "sub_networks", "toolbox_tools", "mcp_tools"):
                 merged = getattr(deps, attr) + [x for x in getattr(sub_deps, attr) if x not in getattr(deps, attr)]
                 setattr(deps, attr, merged)
+
         return deps
+
+    def _expand_local_imports(self, deps: AgentNetworkDependencies) -> None:
+        """Close ``deps.coded_tools`` / ``deps.middleware`` under the imports those files make.
+
+        A HOCON `class` field names one module, but that module's own helper imports are just as
+        required at runtime and no HOCON ever mentions them. Without this, an imported or
+        exported network lands a tree that raises ``ModuleNotFoundError`` on first use. The
+        walker returns one flat list, which is re-split by root prefix so each dependency keeps
+        landing in the bucket ``AgentNetworkImporter`` expects.
+        """
+        walker = LocalImportWalker({"coded_tools": self.coded_tools_dir, "middleware": self.middleware_dir})
+        expanded: List[str] = walker.expand(deps.coded_tools + deps.middleware)
+        deps.coded_tools = [path for path in expanded if path.startswith("coded_tools/")]
+        deps.middleware = [path for path in expanded if path.startswith("middleware/")]

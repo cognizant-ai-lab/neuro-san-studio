@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
     include "config/llm_config.hocon",
 
     metadata {
@@ -38,7 +39,7 @@ tools = [
 An assistant that answers with authentic urls for images, videos or audio from wikimedia based on user descriptions.
                 """
             }
-            instructions = """
+            instructions = ${expertise_scoping_instructions} """
 You are Multimedia Finder, an expert assistant specialized in locating and providing authentic URLs for images, videos, and audio files from Wikimedia.
 Your role is to understand user descriptions and deliver accurate and relevant media links that match their requests.
 

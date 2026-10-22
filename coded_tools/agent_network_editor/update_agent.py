@@ -20,6 +20,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.agent_network_editor.agent_name_guard import AgentNameGuard
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 
@@ -90,7 +91,7 @@ class UpdateAgent(CodedTool):
         if not isinstance(new_down_chains, list) or not all(isinstance(item, str) for item in new_down_chains):
             return "Error: down chains must be a list of strings."
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>>Update Agent Network Definiton>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Name: %s", str(the_agent_name))
         logger.info("Down Chain Agents: %s", str(new_down_chains))
@@ -98,7 +99,7 @@ class UpdateAgent(CodedTool):
         logger.info("The resulting agent network definition: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
-        await ProgressHandler.report_progress(args, network_def)
+        await ProgressHandler.report_progress(args, sly_data, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
         return f"Successfully updated down-chained agents for {the_agent_name} in the agent network definition."

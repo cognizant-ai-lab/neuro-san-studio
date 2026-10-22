@@ -16,8 +16,6 @@
 
 """Test helper: a callable that mirrors ``TopicSummarizer.should_summarize``."""
 
-from __future__ import annotations
-
 
 class ShouldSummarize:  # pylint: disable=too-few-public-methods
     """Callable wrapping the ``max_topic_size`` threshold used in tests.

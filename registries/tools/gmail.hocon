@@ -24,6 +24,8 @@
 
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -58,8 +60,10 @@
             "function": {
                 description = "An assistant that helps the user manage their Gmail inbox, including reading, searching, drafting, and sending emails."
             },
-            "instructions": """
-            You can use the Gmail Tools to interact with the user's Gmail account. Available actions include:
+            "instructions": ${expertise_scoping_instructions} """
+            You can use the Gmail Tools to interact with the user's Gmail account.
+            
+            Available actions include:
 
             - Search for emails by query
             - Retrieve the content of a specific email

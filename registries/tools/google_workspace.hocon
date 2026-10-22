@@ -1,0 +1,177 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Requirements to use this agent network:
+#   - neuro-san >= 0.6.24
+#   - A Google account with access to Gmail, Calendar, Drive, Docs, and Sheets.
+#   - Per-user OAuth tokens for Google's hosted Workspace MCP servers. No server-side
+#     credentials or extra packages are needed: authentication is per conversation.
+#
+# Supported authentication methods:
+#   1. OAuth token exchange in the client application. An OAuth-capable client such as
+#      nsflow connects each MCP server below with the user's Google account and passes
+#      the resulting bearer tokens via the sly_data "http_headers" input, following the
+#      schema in the agent function definition below.
+#   2. MCP_SERVERS_INFO_FILE with static headers. See
+#      ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication.
+#      Note that Google access tokens are short-lived, so the OAuth client flow (which
+#      refreshes tokens automatically) is the practical path.
+#
+# Note: nsflow forces an OAuth connect (blocking chat until it succeeds) for every MCP
+# server URL listed under `sly_data_schema.http_headers.required`. All five services are
+# required here because the agent's instructions span them; if you only care about a
+# subset, remove the unused URLs from this file's `tools`, `properties`, and `required`
+# lists — or set `required` to [] to keep declared tokens injected opportunistically
+# without gating chat.
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent that manages a user's Google Workspace — Gmail, Calendar, Drive, Docs, and Sheets — through Google's hosted MCP servers, using per-user OAuth tokens.",
+        "tags": ["google", "mcp", "tool"],
+        "sample_queries": [
+            "Do I have any unread emails from this week that still need a reply?",
+            "What is on my calendar tomorrow?",
+            "Find the latest quarterly report in my Drive and summarize it.",
+            "Create a spreadsheet that tracks my project deadlines.",
+            "Draft a doc with today's meeting notes and email a link to the team."
+        ]
+    },
+
+    include "registries/expertise_scoping_instructions.hocon",
+    include "config/llm_config.hocon",
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        {
+            "name": "google_workspace_assistant",
+
+            "function": {
+                "description": "Assist caller with their Google Workspace: search, read, draft, and send Gmail; check and manage Calendar events; find and organize Drive files; and create or edit Docs and Sheets.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "An inquiry from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                },
+
+                # The schema for the sly_data this network needs as input. Generic clients
+                # read it to know what private data to pass outside the chat stream; nsflow
+                # reads the URL keys and the `required` list to know which MCP servers the
+                # user must OAuth-connect before chatting, then injects each server's bearer
+                # token on every message.
+                "sly_data_schema": {
+                    "type": "object",
+                    "properties": {
+                        "http_headers": {
+                            "type": "object",
+                            "description": "HTTP headers to be sent with MCP tool requests.",
+                            "properties": {
+                                "https://gmailmcp.googleapis.com/mcp/v1": {
+                                    "type": "object",
+                                    "description": "URL for the Gmail MCP server.",
+                                    "properties": {
+                                        "Authorization": {
+                                            "type": "string",
+                                            "description": "Authorization header for Gmail access, e.g. 'Bearer <token_value>'."
+                                        }
+                                    },
+                                    "required": ["Authorization"]
+                                },
+                                "https://calendarmcp.googleapis.com/mcp/v1": {
+                                    "type": "object",
+                                    "description": "URL for the Google Calendar MCP server.",
+                                    "properties": {
+                                        "Authorization": {
+                                            "type": "string",
+                                            "description": "Authorization header for Google Calendar access, e.g. 'Bearer <token_value>'."
+                                        }
+                                    },
+                                    "required": ["Authorization"]
+                                },
+                                "https://drivemcp.googleapis.com/mcp/v1": {
+                                    "type": "object",
+                                    "description": "URL for the Google Drive MCP server.",
+                                    "properties": {
+                                        "Authorization": {
+                                            "type": "string",
+                                            "description": "Authorization header for Google Drive access, e.g. 'Bearer <token_value>'."
+                                        }
+                                    },
+                                    "required": ["Authorization"]
+                                },
+                                "https://docsmcp.googleapis.com/mcp/v1": {
+                                    "type": "object",
+                                    "description": "URL for the Google Docs MCP server.",
+                                    "properties": {
+                                        "Authorization": {
+                                            "type": "string",
+                                            "description": "Authorization header for Google Docs access, e.g. 'Bearer <token_value>'."
+                                        }
+                                    },
+                                    "required": ["Authorization"]
+                                },
+                                "https://sheetsmcp.googleapis.com/mcp/v1": {
+                                    "type": "object",
+                                    "description": "URL for the Google Sheets MCP server.",
+                                    "properties": {
+                                        "Authorization": {
+                                            "type": "string",
+                                            "description": "Authorization header for Google Sheets access, e.g. 'Bearer <token_value>'."
+                                        }
+                                    },
+                                    "required": ["Authorization"]
+                                }
+                            },
+                            # URLs listed here gate chatting: nsflow forces an OAuth connect and
+                            # redirects to home until each is connected. Set to [] to disable the
+                            # gate (declared tokens are still injected opportunistically when
+                            # passed); omit `required` entirely to gate every URL declared under
+                            # `properties`.
+                            "required": [
+                                "https://gmailmcp.googleapis.com/mcp/v1",
+                                "https://calendarmcp.googleapis.com/mcp/v1",
+                                "https://drivemcp.googleapis.com/mcp/v1",
+                                "https://docsmcp.googleapis.com/mcp/v1",
+                                "https://sheetsmcp.googleapis.com/mcp/v1"
+                            ]
+                        }
+                    },
+                    "required": ["http_headers"]
+                }
+            },
+
+            "instructions": """
+Use your Google Workspace tools — Gmail, Calendar, Drive, Docs, and Sheets — to respond to the inquiry.
+Combine services when a request spans them, e.g. attach or link a Drive file in an email, or turn meeting
+notes from a Doc into Calendar events. Confirm with the user before sending email or modifying or deleting
+their content; reading and searching need no confirmation.
+""" ${expertise_scoping_instructions},
+            "tools": [
+                "https://gmailmcp.googleapis.com/mcp/v1",
+                "https://calendarmcp.googleapis.com/mcp/v1",
+                "https://drivemcp.googleapis.com/mcp/v1",
+                "https://docsmcp.googleapis.com/mcp/v1",
+                "https://sheetsmcp.googleapis.com/mcp/v1"
+            ]
+        },
+    ]
+}

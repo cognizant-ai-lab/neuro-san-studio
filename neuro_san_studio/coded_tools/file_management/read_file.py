@@ -25,7 +25,8 @@ from typing import Any
 from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+from neuro_san_studio.coded_tools.file_management.path_access import PathAccess
+from neuro_san_studio.coded_tools.file_management.sly_data_history import SlyDataHistory
 
 MAX_CHARS: int = 20_000
 MAX_FILE_BYTES: int = 10 * 1024 * 1024  # 10 MB hard cap on files read into memory
@@ -55,7 +56,7 @@ class ReadFile(CodedTool):
         read_error       – the file could not be read (permission error, I/O failure, etc.).
     """
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any] | None) -> dict[str, Any]:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -87,7 +88,12 @@ class ReadFile(CodedTool):
                 but whose values are meant to be kept out of the chat stream.
 
                 Keys expected for this implementation are:
-                    None
+                    None. May be None.
+
+                Side effect: on success, the resolved path is appended to the
+                "read_file_history" list in sly_data (deduped, insertion-ordered),
+                guarded by a "read_file_history_lock" entry. Best-effort
+                bookkeeping — skipped when sly_data is None.
 
         :return:
             A dictionary with the following keys:
@@ -128,8 +134,8 @@ class ReadFile(CodedTool):
         the filesystem is touched so out-of-scope paths never surface path_not_found
         (which would leak filesystem layout).
         """
-        file_path: Path = await self._async_resolve_path(args)
-        await self._async_validate_and_check_access(args, file_path)
+        file_path: Path = await PathAccess.async_resolve_path(args)
+        await PathAccess.async_validate_and_check_access(args, file_path)
         await self._async_check_path_exists(file_path)
         await self._async_check_file_size(file_path)
         start_line, end_line = self._validate_line_range(args)
@@ -164,7 +170,7 @@ class ReadFile(CodedTool):
         )
         return content, actual_start, actual_end, total_lines
 
-    async def _async_cache_read(self, sly_data: dict[str, Any], file_path: Path) -> None:
+    async def _async_cache_read(self, sly_data: dict[str, Any] | None, file_path: Path) -> None:
         """Append the resolved file path to the session-scoped read history in sly_data.
 
         Only the resolved path is recorded (deduped, insertion-ordered). Contents are
@@ -178,14 +184,8 @@ class ReadFile(CodedTool):
             cache the full file and re-slice — neither buys much over reading from disk.
           - Limited reuse: most agent file reads are one-shot; the content already lives
             in the chat context after the first read.
-
-        Lock-guarded so concurrent reads don't race on the dedupe/append.
         """
-        async with await SlyDataLock.get_lock(sly_data, "read_file_history_lock"):
-            history: list[str] = sly_data.setdefault(READ_FILE_HISTORY_KEY, [])
-            resolved_str: str = str(file_path)
-            if resolved_str not in history:
-                history.append(resolved_str)
+        await SlyDataHistory.async_record(sly_data, "read_file_history_lock", READ_FILE_HISTORY_KEY, file_path)
 
     # ------------------------------------------------------------------
     # Async wrappers for pre-read checks
@@ -194,14 +194,6 @@ class ReadFile(CodedTool):
     # event loop is never blocked by Path resolution, stat(), or symlink-
     # following syscalls. The sync helpers stay independently testable.
     # ------------------------------------------------------------------
-
-    async def _async_resolve_path(self, args: dict[str, Any]) -> Path:
-        """Async wrapper around _resolve_path."""
-        return await asyncio.to_thread(self._resolve_path, args)
-
-    async def _async_validate_and_check_access(self, args: dict[str, Any], file_path: Path) -> None:
-        """Async wrapper around _validate_and_check_access."""
-        await asyncio.to_thread(self._validate_and_check_access, args, file_path)
 
     async def _async_check_path_exists(self, file_path: Path) -> None:
         """Async wrapper around _check_path_exists."""
@@ -214,25 +206,6 @@ class ReadFile(CodedTool):
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
-
-    def _resolve_path(self, args: dict[str, Any]) -> Path:
-        """Parse and resolve the 'file_path' argument without touching the filesystem.
-
-        Returns the absolute Path. Only raises invalid_input — never path_not_found or
-        is_a_directory, so callers can run access checks before existence checks and
-        avoid leaking filesystem layout via error type.
-        """
-        value: Any = args.get("file_path", "")
-        if not isinstance(value, str):
-            raise ValueError(f"invalid_input: 'file_path' must be a string, got {value!r}.")
-        path_str: str = value.strip()
-        if not path_str:
-            raise ValueError("invalid_input: No 'file_path' provided.")
-
-        try:
-            return Path(path_str).expanduser().resolve(strict=False)
-        except (ValueError, OSError) as exc:
-            raise ValueError(f"invalid_input: Cannot resolve 'file_path' '{path_str}': {exc}") from exc
 
     def _check_path_exists(self, file_path: Path) -> None:
         """Verify the resolved path exists and is a regular file (not a directory)."""
@@ -251,58 +224,6 @@ class ReadFile(CodedTool):
             raise ValueError(
                 f"file_too_large: '{file_path}' is {size} bytes; exceeds the {MAX_FILE_BYTES}-byte limit."
             )
-
-    def _validate_allowed_paths(self, args: dict[str, Any]) -> list[str]:
-        """Validate and return the 'allowed_paths' list. Raises invalid_input when missing or empty."""
-        paths: list[str] = self._validate_path_list(args.get("allowed_paths"), "allowed_paths")
-        if not paths:
-            raise ValueError("invalid_input: 'allowed_paths' is required and must be a non-empty list of paths.")
-        return paths
-
-    def _validate_and_check_access(self, args: dict[str, Any], file_path: Path) -> None:
-        """Validate the four allow/block rule lists from args and enforce them against file_path."""
-        self._check_path_allowed(
-            file_path,
-            self._validate_allowed_paths(args),
-            self._validate_extension_list(args.get("allowed_file_extensions"), "allowed_file_extensions"),
-            self._validate_path_list(args.get("blocked_paths"), "blocked_paths"),
-            self._validate_extension_list(args.get("blocked_file_extensions"), "blocked_file_extensions"),
-        )
-
-    def _validate_path_list(self, value: Any, param_name: str) -> list[str]:
-        """Coerce and validate a path list parameter. Accepts None, list[str], or a single str."""
-        if value is None:
-            return []
-        if isinstance(value, str):
-            return [value]
-        if not isinstance(value, list):
-            raise ValueError(f"invalid_input: '{param_name}' must be a list of strings, got {value!r}.")
-        for item in value:
-            if not isinstance(item, str):
-                raise ValueError(
-                    f"invalid_input: '{param_name}' must be a list of strings, "
-                    f"but contains non-string element {item!r}."
-                )
-        return value
-
-    def _validate_extension_list(self, value: Any, param_name: str) -> list[str] | None:
-        """Coerce and validate an extension list parameter. Accepts None, list[str], or a single str.
-
-        None means the parameter was omitted (sentinel for "no filtering"); an empty list means deny all.
-        """
-        if value is None:
-            return None
-        if isinstance(value, str):
-            return [value]
-        if not isinstance(value, list):
-            raise ValueError(f"invalid_input: '{param_name}' must be a list of strings, got {value!r}.")
-        for item in value:
-            if not isinstance(item, str):
-                raise ValueError(
-                    f"invalid_input: '{param_name}' must be a list of strings, "
-                    f"but contains non-string element {item!r}."
-                )
-        return value
 
     def _validate_line_range(self, args: dict[str, Any]) -> tuple[int, int | None]:
         """Return (start_line, end_line). end_line is None when not specified."""
@@ -346,86 +267,3 @@ class ReadFile(CodedTool):
             actual_end = min(total_lines, end_line if end_line is not None else total_lines)
         content: str = "".join(lines[actual_start - 1 : actual_end])[:max_chars]
         return content, actual_start, actual_end, total_lines
-
-    # ------------------------------------------------------------------
-    # Access-control helpers
-    # ------------------------------------------------------------------
-
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
-    def _check_path_allowed(
-        self,
-        file_path: Path,
-        allowed_paths: list[str],
-        allowed_file_extensions: list[str] | None,
-        blocked_paths: list[str],
-        blocked_file_extensions: list[str] | None,
-    ) -> None:
-        """Raise ValueError(path_not_allowed) when the file fails the allow/block rules.
-
-        Evaluation order:
-          1. allowed_paths:      non-empty whitelist (caller guarantees this via validation).
-          2. allowed_file_extensions: None = omitted (skip check); [] = deny all; non-empty = whitelist.
-          3. blocked_paths:      [] or omitted = skip; non-empty = deny matching paths/dirs.
-          4. blocked_file_extensions: [] or omitted = skip; non-empty = deny matching extensions.
-        """
-        # pathlib returns suffix="" for dotfiles (".gitignore") and extensionless files ("Dockerfile").
-        # Fall back to the filename, ensuring a leading dot so it normalizes to the same shape
-        # as a real extension and can be matched against allow/block lists.
-        suffix: str = file_path.suffix.lower()
-        if not suffix:
-            name: str = file_path.name.lower()
-            suffix = name if name.startswith(".") else f".{name}"
-
-        # 1. allowed_paths
-        if not self._path_matches_any(file_path, allowed_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is not within any of the allowed_paths entries.")
-
-        # 2. allowed_file_extensions
-        if allowed_file_extensions is not None:
-            if not allowed_file_extensions:
-                raise ValueError(
-                    f"path_not_allowed: Extension '{suffix}' is not allowed (allowed_file_extensions is empty)."
-                )
-            normalized_allowed_exts: list[str] = self._normalize_extensions(allowed_file_extensions)
-            if suffix not in normalized_allowed_exts:
-                raise ValueError(
-                    f"path_not_allowed: Extension '{suffix}' is not in "
-                    f"allowed_file_extensions {allowed_file_extensions}."
-                )
-
-        # 3. blocked_paths
-        if blocked_paths and self._path_matches_any(file_path, blocked_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is blocked by blocked_paths.")
-
-        # 4. blocked_file_extensions
-        if blocked_file_extensions:
-            normalized_blocked_exts: list[str] = self._normalize_extensions(blocked_file_extensions)
-            if suffix in normalized_blocked_exts:
-                raise ValueError(
-                    f"path_not_allowed: Extension '{suffix}' is in blocked_file_extensions {blocked_file_extensions}."
-                )
-
-    def _normalize_extensions(self, extensions: list[str]) -> list[str]:
-        """Return extensions normalized to lowercase with a leading dot."""
-        return [e.lower() if e.startswith(".") else f".{e.lower()}" for e in extensions]
-
-    def _path_matches_any(self, file_path: Path, path_list: list[str]) -> bool:
-        """Return True if file_path equals or is a descendant of any entry in path_list.
-
-        Each entry is run through expanduser() and resolve(strict=False) for symmetry
-        with _resolve_path, so allow/block entries like '~/project' work as expected.
-        """
-        for entry in path_list:
-            try:
-                candidate: Path = Path(entry).expanduser().resolve(strict=False)
-            except (RuntimeError, ValueError, OSError):
-                continue
-            if file_path == candidate:
-                return True
-            try:
-                file_path.relative_to(candidate)
-                return True
-            except ValueError:
-                pass
-        return False

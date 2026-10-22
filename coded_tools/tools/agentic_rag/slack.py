@@ -14,19 +14,19 @@
 #
 # END COPYRIGHT
 
-"""Tool module for reading messages from a slack channel"""
+"""Tool module for reading messages from a Slack channel."""
 
 import json
+import os
 from typing import Any
 from typing import Dict
-from typing import Literal
 
-from langchain_community.tools.slack.get_channel import SlackGetChannel
-from langchain_community.tools.slack.get_message import SlackGetMessage
 from neuro_san.interfaces.coded_tool import CodedTool
-from pydantic import PydanticUserError
 
-EMPTY: Literal[""] = ""
+try:
+    from slack_sdk.web.async_client import AsyncWebClient
+except ImportError:  # pragma: no cover - exercised in environments without the optional dependency
+    AsyncWebClient = None
 
 
 class Slack(CodedTool):
@@ -54,7 +54,6 @@ class Slack(CodedTool):
                 once.
         """
 
-    # pylint: disable=too-many-return-statements
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
         """
         Get messages on the provided slack channel.
@@ -83,34 +82,39 @@ class Slack(CodedTool):
         if not channel_name:
             return "Error: No slack channel name provided."
 
-        # SlackGetChannel requires no inputs and returns a str in the
-        # following format:
-        # '[{"id": "CE", "name": "gen", "created": 15, "num_members": 3}, ...]'
-        # SlackGetMessage requires channel_id as an input and returns a str in
-        # a following format:
-        # '[{"user": "WU0JH", "text": "Yes", "ts": "1744677036.155459"}, ...]'
-        try:
-            # Get a str of channel ids and names
-            channel_id_name_str: str = await SlackGetChannel().ainvoke(input=EMPTY)
-            # Convert the JSON str to a list
-            channel_id_name_list: list = json.loads(channel_id_name_str)
-            # Make a lookup table with channel names as keys and ids as values
-            channel_id_name_dict: dict = {channel["name"]: channel["id"] for channel in channel_id_name_list}
+        slack_token = os.getenv("SLACK_BOT_TOKEN") or os.getenv("SLACK_USER_TOKEN")
+        if AsyncWebClient is None or not slack_token:
+            return self._mock_response(channel_name)
 
-            # Get channel id and return the messages if possible.
-            channel_id: str = channel_id_name_dict.get(channel_name)
-            if channel_id:
-                return await SlackGetMessage().ainvoke(channel_id)
+        client = AsyncWebClient(token=slack_token)
+        channel_id = None
+        cursor = None
+        while channel_id is None:
+            channel_response = await client.conversations_list(
+                types="public_channel,private_channel", limit=200, cursor=cursor
+            )
+            channel_id_name_dict = {channel["name"]: channel["id"] for channel in channel_response["channels"]}
+            channel_id = channel_id_name_dict.get(channel_name)
+            cursor = channel_response.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
+
+        if not channel_id:
             return f"The {channel_name} channel not found."
 
-        except json.JSONDecodeError as err:
-            return f"Error: Could not parse slack channel list: {err}"
+        message_response = await client.conversations_history(channel=channel_id)
+        messages = [
+            {key: message[key] for key in ("user", "text", "ts")}
+            for message in message_response["messages"]
+            if all(key in message for key in ("user", "text", "ts"))
+        ]
+        return json.dumps(messages)
 
-        # If slack-sdk is not installed, PydanticUserError is triggered
-        # Return a mock message depending on the channel_name
-        except PydanticUserError:
-            if channel_name == "higher_education":
-                return """Opportunity Areas:
+    @staticmethod
+    def _mock_response(channel_name: str) -> str:
+        """Return demo data when Slack is unavailable or not configured."""
+        if channel_name == "higher_education":
+            return """Opportunity Areas:
 
 Adaptive learning and AI-powered personalization
 
@@ -124,8 +128,8 @@ Accessibility innovations for inclusive learning
 
 Ideal Partners: EdTech startups, AI developers, instructional design firms"""
 
-            if channel_name == "retail":
-                return """Opportunity Areas:
+        if channel_name == "retail":
+            return """Opportunity Areas:
 
 AI-driven demand forecasting and inventory optimization
 
@@ -140,7 +144,7 @@ Retail media and monetization of customer engagement
 Ideal Partners: SaaS providers, AI/ML startups, logistics tech firms,
 CX platforms"""
 
-            return """Opportunity Areas:
+        return """Opportunity Areas:
 
 Process automation and workflow optimization
 

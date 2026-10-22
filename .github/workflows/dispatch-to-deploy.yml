@@ -54,6 +54,7 @@ jobs:
           esac
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
           echo "target_env=$TARGET_ENV" >> "$GITHUB_OUTPUT"
+          echo "neuro_san_studio_version=$REF" >> "$GITHUB_OUTPUT"
           echo "Will dispatch ref=$REF and target_environment=$TARGET_ENV"
 
       - name: Create installation token (for neuro-san-deploy)
@@ -76,8 +77,8 @@ jobs:
               "ref":"${{ steps.r.outputs.ref }}",
               "sha":"${{ github.sha }}",
               "image_tag":"",
+              "neuro_san_studio_version":"${{ steps.r.outputs.neuro_san_studio_version }}",
               "source_repo":"${{ github.repository }}",
               "sender":"${{ github.actor }}",
               "target_environment":"${{ steps.r.outputs.target_env }}"
             }
-

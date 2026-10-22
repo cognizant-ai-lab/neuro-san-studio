@@ -87,9 +87,14 @@ class TestNeuroSanRunner:
     def test_set_environment_variables_skips_empty_toolbox(
         self, monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]
     ) -> None:
-        """set_environment_variables should not export AGENT_TOOLBOX_INFO_FILE when the arg is empty."""
+        """An empty toolbox arg is an explicit opt-out and must not export the env vars.
+
+        Resolution now falls back to the packaged HOCONs, so "" only reaches the runner when the
+        user deliberately exported an empty AGENT_TOOLBOX_INFO_FILE.
+        """
         monkeypatch.setattr(os, "environ", os.environ.copy())
         monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
+        monkeypatch.delenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", raising=False)
         runner = self._make_runner()
         runner.root_dir = str(tmp_path)
         runner.project_env = ProjectEnvironment(runner.root_dir)
@@ -97,9 +102,11 @@ class TestNeuroSanRunner:
             "agent_manifest_file": str(tmp_path / "manifest.hocon"),
             "agent_tool_path": str(tmp_path / "coded_tools"),
             "agent_toolbox_info_file": "",
+            "agent_network_designer_toolbox_info_file": "",
             "mcp_servers_info_file": str(tmp_path / "mcp_info.hocon"),
             "server_connection": "http",
             "manifest_update_period_seconds": 5,
+            "manifest_concurrency_context": "spawn",
             "log_level": "info",
             "server_only": True,
             "client_only": False,
@@ -110,14 +117,16 @@ class TestNeuroSanRunner:
         }
         runner.set_environment_variables()
         assert "AGENT_TOOLBOX_INFO_FILE" not in os.environ
+        assert "AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE" not in os.environ
         assert "using built-in default toolbox" in capsys.readouterr().out
 
     def test_set_environment_variables_exports_toolbox_when_present(
         self, monkeypatch: MonkeyPatch, tmp_path: Path
     ) -> None:
-        """set_environment_variables should export AGENT_TOOLBOX_INFO_FILE when the arg is set."""
+        """set_environment_variables should export both toolbox vars when the args are set."""
         monkeypatch.setattr(os, "environ", os.environ.copy())
         monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
+        monkeypatch.delenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", raising=False)
         runner = self._make_runner()
         runner.root_dir = str(tmp_path)
         runner.project_env = ProjectEnvironment(runner.root_dir)
@@ -125,9 +134,11 @@ class TestNeuroSanRunner:
             "agent_manifest_file": str(tmp_path / "manifest.hocon"),
             "agent_tool_path": str(tmp_path / "coded_tools"),
             "agent_toolbox_info_file": "/explicit/path/toolbox.hocon",
+            "agent_network_designer_toolbox_info_file": "/explicit/path/designer.hocon",
             "mcp_servers_info_file": str(tmp_path / "mcp_info.hocon"),
             "server_connection": "http",
             "manifest_update_period_seconds": 5,
+            "manifest_concurrency_context": "spawn",
             "log_level": "info",
             "server_only": True,
             "client_only": False,
@@ -138,6 +149,7 @@ class TestNeuroSanRunner:
         }
         runner.set_environment_variables()
         assert os.environ["AGENT_TOOLBOX_INFO_FILE"] == "/explicit/path/toolbox.hocon"
+        assert os.environ["AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE"] == "/explicit/path/designer.hocon"
 
     def test_passes_prompt_to_input(self, monkeypatch: MonkeyPatch) -> None:
         """Test that the supplied prompt string is forwarded to timedinput()."""
@@ -150,3 +162,24 @@ class TestNeuroSanRunner:
         monkeypatch.setattr(run_module, "timedinput", _capturing_input)
         self._make_runner()._validate_yes_no_input("Kill processes? ")
         assert seen_prompts == ["Kill processes? "]
+
+
+class TestRunnerArgsInitialization:
+    """The real __init__ must always populate self.args, applying cli_overrides last."""
+
+    def test_mode_flags_default_false_without_overrides(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """client_only/server_only are always present (default False) so the runner reads them safely.
+
+        Regression: cli_overrides omits unset booleans, so these must live in the base args dict.
+        """
+        monkeypatch.chdir(tmp_path)
+        runner = NeuroSanRunner()
+        assert runner.args["client_only"] is False
+        assert runner.args["server_only"] is False
+
+    def test_cli_override_flips_mode_flag(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """A cli_overrides entry wins over the base default."""
+        monkeypatch.chdir(tmp_path)
+        runner = NeuroSanRunner(cli_overrides={"server_only": True, "server_host": "example"})
+        assert runner.args["server_only"] is True
+        assert runner.args["server_host"] == "example"

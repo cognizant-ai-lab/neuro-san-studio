@@ -1,0 +1,965 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+"""Integration tests for AgentNetworkImporter against a synthetic source dir."""
+
+import os
+import zipfile
+from pathlib import Path
+
+import pytest
+from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
+
+from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
+from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+from neuro_san_studio.importer.bulk_import_result import BulkImportResult
+from neuro_san_studio.importer.import_result import ImportResult
+
+
+class TestImportNetwork:
+    """Integration tests for AgentNetworkImporter."""
+
+    @staticmethod
+    def _read_manifest_keys(manifest_path: Path) -> set:
+        """
+        Read a manifest.hocon (with possible includes) into a set of declared keys.
+
+        :param manifest_path: Path of the manifest.hocon to restore.
+        :return: The set of network keys the manifest declares, quotes stripped.
+        """
+        prev_cwd = os.getcwd()
+        try:
+            os.chdir(manifest_path.parent.parent)
+            raw = RawManifestRestorer().restore(file_reference=str(manifest_path))
+        finally:
+            os.chdir(prev_cwd)
+        return {key.strip('"') for key in raw if isinstance(key, str)}
+
+    @staticmethod
+    def _build_fake_source(source_dir: Path) -> None:
+        """Lay out a minimal source repo: one network plus one coded tool plus one middleware file."""
+        registries = source_dir / "registries"
+        (registries / "basic").mkdir(parents=True)
+        (registries / "basic" / "music_nerd.hocon").write_text('{ "tools": [] }\n')
+        # Shared registry includes that the importer always copies.
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text(f"# {shared}\n")
+
+        coded_tools = source_dir / "coded_tools" / "music_nerd"
+        coded_tools.mkdir(parents=True)
+        (coded_tools / "__init__.py").write_text("")
+        (coded_tools / "lookup.py").write_text("def lookup():\n    pass\n")
+
+        middleware = source_dir / "middleware" / "music_nerd"
+        middleware.mkdir(parents=True)
+        (middleware / "__init__.py").write_text("")
+        (middleware / "logger.py").write_text("class Logger:\n    pass\n")
+
+    def test_import_copies_hocon_coded_tools_and_middleware(self, tmp_path: Path) -> None:
+        """A successful import should land the network HOCON, its coded tool, and its middleware."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._build_fake_source(source_dir)
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(
+            coded_tools=["coded_tools/music_nerd/lookup.py"],
+            middleware=["middleware/music_nerd/logger.py"],
+        )
+
+        result = importer.import_network("basic/music_nerd.hocon", deps)
+
+        assert (target_dir / "registries" / "basic" / "music_nerd.hocon").is_file()
+        assert (target_dir / "coded_tools" / "music_nerd" / "lookup.py").is_file()
+        assert (target_dir / "middleware" / "music_nerd" / "logger.py").is_file()
+        # Parent __init__.py files are copied so the package stays importable.
+        assert (target_dir / "coded_tools" / "music_nerd" / "__init__.py").is_file()
+        assert (target_dir / "middleware" / "music_nerd" / "__init__.py").is_file()
+        # Shared registry includes ride along.
+        assert (target_dir / "registries" / "aaosa.hocon").is_file()
+        assert not result.errors
+
+    def test_sub_networks_are_registered_in_manifest_entries(self, tmp_path: Path) -> None:
+        """import_network must record both the top-level network AND every sub-network for manifest registration.
+
+        Regression case: an import of agent_network_designer (which has sub-networks) must
+        end up registering the sub-networks in the receiver's manifest, not just the top-level.
+        """
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        registries = source_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "agent_network_designer.hocon").write_text('{ "tools": [] }\n')
+        (registries / "advanced_calculator.hocon").write_text('{ "tools": [] }\n')
+        (registries / "agentforce_adapter.hocon").write_text('{ "tools": [] }\n')
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text("")
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(
+            sub_networks=["/advanced_calculator", "/agentforce_adapter"],
+        )
+        result = importer.import_network("agent_network_designer.hocon", deps)
+
+        assert "agent_network_designer.hocon" in result.manifest_entries
+        assert "advanced_calculator.hocon" in result.manifest_entries
+        assert "agentforce_adapter.hocon" in result.manifest_entries
+        # Shared includes ride along on disk but must NOT be registered as networks: they are
+        # substitution fragments, and neuro-san's validator crashes on a manifest entry whose
+        # file holds a bare string instead of agent specs.
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            assert shared not in result.manifest_entries
+
+    def test_import_skips_existing_files(self, tmp_path: Path) -> None:
+        """Pre-existing target files must not be overwritten and should be reported as skipped."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._build_fake_source(source_dir)
+
+        existing = target_dir / "registries" / "basic" / "music_nerd.hocon"
+        existing.parent.mkdir(parents=True)
+        existing.write_text("DO NOT OVERWRITE\n")
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        result = importer.import_network("basic/music_nerd.hocon", AgentNetworkDependencies())
+
+        assert existing.read_text() == "DO NOT OVERWRITE\n"
+        assert "basic/music_nerd.hocon" in result.skipped_files
+
+    def test_update_manifest_merges_into_existing_json(self, tmp_path: Path) -> None:
+        """update_manifest should add new entries while leaving existing ones intact."""
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        manifest_path = registries / "manifest.hocon"
+        manifest_path.write_text('{\n    "basic/coffee_finder.hocon": true\n}\n')
+
+        importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
+        importer.update_manifest(["basic/music_nerd.hocon", "agent_network_designer.hocon"])
+
+        merged = self._read_manifest_keys(manifest_path)
+        assert merged == {
+            "agent_network_designer.hocon",
+            "basic/coffee_finder.hocon",
+            "basic/music_nerd.hocon",
+        }
+
+    def test_update_manifest_creates_when_missing(self, tmp_path: Path) -> None:
+        """update_manifest should write a fresh manifest when none exists yet."""
+        target_dir = tmp_path / "target"
+        importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
+        importer.update_manifest(["basic/music_nerd.hocon"])
+
+        manifest_path = target_dir / "registries" / "manifest.hocon"
+        assert self._read_manifest_keys(manifest_path) == {"basic/music_nerd.hocon"}
+
+    def test_update_manifest_preserves_include_directive(self, tmp_path: Path) -> None:
+        """The scaffolded `include "registries/generated/manifest.hocon"` line must survive imports.
+
+        This is the regression case for the "import nukes my init scaffold" bug: an `ns init`
+        manifest contains both a comment, an include directive, and a music_nerd entry, and a
+        subsequent `ns import` must preserve all of that while adding new entries.
+        """
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        # Pre-create the included manifest so RawManifestRestorer doesn't choke on it.
+        (registries / "generated").mkdir()
+        (registries / "generated" / "manifest.hocon").write_text("{}\n")
+        manifest_path = registries / "manifest.hocon"
+        manifest_path.write_text(
+            "{\n"
+            "    # Networks created by `agent_network_designer` are written under registries/generated/.\n"
+            "    # The include keeps them visible to the server without editing this file by hand.\n"
+            '    include "registries/generated/manifest.hocon",\n'
+            "\n"
+            '    "music_nerd.hocon": true\n'
+            "}\n"
+        )
+
+        importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
+        importer.update_manifest(["agent_network_designer.hocon", "advanced_calculator.hocon", "music_nerd.hocon"])
+
+        text = manifest_path.read_text()
+        # Verbatim preservation of the include + comments.
+        assert 'include "registries/generated/manifest.hocon"' in text
+        assert "# Networks created by `agent_network_designer`" in text
+        # music_nerd.hocon was already declared — never duplicated, never re-emitted.
+        assert text.count('"music_nerd.hocon"') == 1
+        # Both new entries got registered.
+        keys = self._read_manifest_keys(manifest_path)
+        assert "agent_network_designer.hocon" in keys
+        assert "advanced_calculator.hocon" in keys
+        assert "music_nerd.hocon" in keys
+
+    def test_update_manifest_skips_entries_already_declared_via_include(self, tmp_path: Path) -> None:
+        """An entry that's reachable through an `include` must not be re-added at the top level."""
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        (registries / "generated").mkdir(parents=True)
+        # The included manifest declares one entry — the top-level merge must see it via the include.
+        (registries / "generated" / "manifest.hocon").write_text('{\n    "generated/foo.hocon": true\n}\n')
+        manifest_path = registries / "manifest.hocon"
+        manifest_path.write_text('{\n    include "registries/generated/manifest.hocon"\n}\n')
+
+        importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
+        importer.update_manifest(["generated/foo.hocon", "new_network.hocon"])
+
+        text = manifest_path.read_text()
+        # generated/foo.hocon must NOT be duplicated at the top — it's reachable via the include.
+        assert text.count('"generated/foo.hocon"') == 0
+        assert '"new_network.hocon": true' in text
+
+
+class TestImportFromPath:
+    """Tests for AgentNetworkImporter.import_from_path (single .hocon file)."""
+
+    def test_import_lands_at_registries_root(self, tmp_path: Path) -> None:
+        """A single .hocon file imports at <target>/registries/<basename>."""
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        source_file = tmp_path / "elsewhere" / "my_network.hocon"
+        source_file.parent.mkdir()
+        source_file.write_text('{ "tools": [] }\n')
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source_file))
+
+        landed = target_dir / "registries" / "my_network.hocon"
+        assert landed.is_file()
+        assert landed.read_text() == '{ "tools": [] }\n'
+        assert result.copied_files == ["my_network.hocon"]
+        assert result.hocon_path == "my_network.hocon"
+        assert not result.errors
+
+    def test_import_skips_when_target_exists(self, tmp_path: Path) -> None:
+        """Existing target files are not overwritten and surface in skipped_files."""
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        existing = registries / "my_network.hocon"
+        existing.write_text("DO NOT OVERWRITE\n")
+        source_file = tmp_path / "my_network.hocon"
+        source_file.write_text('{ "new": true }\n')
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source_file))
+
+        assert existing.read_text() == "DO NOT OVERWRITE\n"
+        assert result.skipped_files == ["my_network.hocon"]
+        assert not result.copied_files
+
+    def test_missing_source_raises(self, tmp_path: Path) -> None:
+        """A missing source path raises FileNotFoundError, not a silent skip."""
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(FileNotFoundError):
+            importer.import_from_path(str(tmp_path / "missing.hocon"))
+
+    def test_unsupported_suffix_raises(self, tmp_path: Path) -> None:
+        """A non-.hocon source raises ValueError before any copy."""
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        source_file = tmp_path / "bundle.tar"
+        source_file.write_text("not a hocon")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="Unsupported file type"):
+            importer.import_from_path(str(source_file))
+
+
+class TestImportFromZip:
+    """Tests for AgentNetworkImporter.import_from_path with .zip bundles."""
+
+    @staticmethod
+    def _make_zip(zip_path: Path, entries: dict, *, symlink: tuple | None = None) -> None:
+        """Build a zip from a {arcname: content_bytes} dict; optionally inject a symlink entry."""
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for arcname, content in entries.items():
+                zf.writestr(arcname, content)
+            if symlink is not None:
+                arcname, target = symlink
+                info = zipfile.ZipInfo(arcname)
+                # 0o120000 = symlink mode bits in the high half of external_attr
+                info.external_attr = (0o120777 & 0xFFFF) << 16
+                zf.writestr(info, target)
+
+    def test_zip_preserves_paths_and_lands_under_top_level_dirs(self, tmp_path: Path) -> None:
+        """A well-formed zip extracts verbatim under registries/, coded_tools/, middleware/, skills/."""
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/industry/airline_policy.hocon": b'{ "tools": [] }\n',
+                "coded_tools/airline_policy/__init__.py": b"",
+                "coded_tools/airline_policy/lookup.py": b"def lookup(): pass\n",
+                "middleware/airline_policy/logger.py": b"class L: pass\n",
+                "skills/airline_policy/skill.py": b"class S: pass\n",
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        # Grouped registry paths stay grouped — the archive layout is the contract.
+        assert (target_dir / "registries" / "industry" / "airline_policy.hocon").is_file()
+        assert (target_dir / "coded_tools" / "airline_policy" / "lookup.py").is_file()
+        assert (target_dir / "middleware" / "airline_policy" / "logger.py").is_file()
+        assert (target_dir / "skills" / "airline_policy" / "skill.py").is_file()
+        assert "registries/industry/airline_policy.hocon" in result.copied_files
+        assert not result.errors
+
+    def test_zip_does_not_register_shared_includes_in_manifest_entries(self, tmp_path: Path) -> None:
+        """Shared registry fragments (aaosa.hocon, etc.) are substitution files, not networks.
+
+        Regression case: a zip that ships aaosa.hocon alongside a real network must register
+        only the network. Registering aaosa.hocon as an agent network would crash neuro-san at
+        startup because the validator iterates the file expecting agent specs and finds a string.
+        """
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/generated/indie_bookshop_ops.hocon": b'{ "tools": [] }\n',
+                "registries/aaosa.hocon": b'{ "aaosa_instructions": "..." }\n',
+                "registries/aaosa_basic.hocon": b'{ "aaosa_call": {} }\n',
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        assert "generated/indie_bookshop_ops.hocon" in result.manifest_entries
+        assert "aaosa.hocon" not in result.manifest_entries
+        assert "aaosa_basic.hocon" not in result.manifest_entries
+        # Files still land on disk — they're needed for the include directives to resolve.
+        assert (target_dir / "registries" / "aaosa.hocon").is_file()
+        assert (target_dir / "registries" / "aaosa_basic.hocon").is_file()
+
+    def test_single_hocon_shared_include_does_not_register_in_manifest(self, tmp_path: Path) -> None:
+        """`ns import aaosa.hocon` should land the file but not pollute the manifest."""
+        source = tmp_path / "aaosa.hocon"
+        source.write_text('{ "aaosa_instructions": "..." }\n')
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source))
+
+        assert (target_dir / "registries" / "aaosa.hocon").is_file()
+        assert "aaosa.hocon" not in result.manifest_entries
+
+    def test_zip_slip_is_rejected_before_any_write(self, tmp_path: Path) -> None:
+        """An entry with `..` path components must be rejected without leaving partial output."""
+        zip_path = tmp_path / "evil.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/safe.hocon": b'{ "tools": [] }\n',
+                "../../../../etc/pwn.txt": b"pwned\n",
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="zip-slip"):
+            importer.import_from_path(str(zip_path))
+        # All-or-nothing: even the safe entry must not have been written.
+        assert not (target_dir / "registries" / "safe.hocon").exists()
+
+    def test_zip_rejects_entry_outside_whitelist(self, tmp_path: Path) -> None:
+        """A path that isn't under registries/coded_tools/middleware/skills is rejected."""
+        zip_path = tmp_path / "stray.zip"
+        self._make_zip(zip_path, {"docs/README.md": b"# stray\n"})
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="not in whitelist"):
+            importer.import_from_path(str(zip_path))
+
+    def test_zip_rejects_symlink_entries(self, tmp_path: Path) -> None:
+        """A zip entry whose mode bits indicate a symlink must be refused."""
+        zip_path = tmp_path / "linky.zip"
+        self._make_zip(
+            zip_path,
+            {"registries/safe.hocon": b'{ "tools": [] }\n'},
+            symlink=("registries/evil_link", "/etc/passwd"),
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="symlink"):
+            importer.import_from_path(str(zip_path))
+
+    def test_zip_skips_macos_metadata_and_pycache(self, tmp_path: Path) -> None:
+        """__MACOSX/, .DS_Store, and __pycache__ entries must not pollute the receiver's tree."""
+        zip_path = tmp_path / "noisy.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/basic/foo.hocon": b'{ "tools": [] }\n',
+                "registries/.DS_Store": b"\x00mac",
+                "__MACOSX/registries/._foo.hocon": b"\x00apple",
+                "coded_tools/foo/__init__.py": b"",
+                "coded_tools/foo/bar.py": b"def bar(): pass\n",
+                "coded_tools/foo/__pycache__/bar.cpython-314.pyc": b"\x00bytecode",
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        assert (target_dir / "registries" / "basic" / "foo.hocon").is_file()
+        assert (target_dir / "coded_tools" / "foo" / "bar.py").is_file()
+        # Metadata must not leak into the tree.
+        assert not (target_dir / "registries" / ".DS_Store").exists()
+        assert not (target_dir / "__MACOSX").exists()
+        assert not (target_dir / "coded_tools" / "foo" / "__pycache__").exists()
+        # And it shouldn't be reported as "copied" either — the count must reflect reality.
+        assert all(".DS_Store" not in p and "__pycache__" not in p for p in result.copied_files)
+
+    def test_zip_skips_existing_files(self, tmp_path: Path) -> None:
+        """Pre-existing target files are not overwritten and surface in skipped_files."""
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(zip_path, {"registries/foo.hocon": b'{ "new": true }\n'})
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "foo.hocon").write_text("DO NOT OVERWRITE\n")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        assert (registries / "foo.hocon").read_text() == "DO NOT OVERWRITE\n"
+        assert "registries/foo.hocon" in result.skipped_files
+        assert "registries/foo.hocon" not in result.copied_files
+
+
+class TestMcpInfoMerge:
+    """MCP info merging on import — both discovery-driven (import_network) and zip (import_from_path)."""
+
+    def test_discovery_import_pulls_mcp_blocks_from_source(self, tmp_path: Path) -> None:
+        """import_network with mcp_tools deps copies only those URL blocks from the source mcp_info."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        (source_dir / "registries" / "basic").mkdir(parents=True)
+        (source_dir / "registries" / "basic" / "mcp_user.hocon").write_text('{ "tools": [] }\n')
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (source_dir / "registries" / shared).write_text("")
+        (source_dir / "mcp").mkdir()
+        (source_dir / "mcp" / "mcp_info.hocon").write_text(
+            '{\n    "https://mcp.deepwiki.com/mcp": {\n        "tools": ["read_wiki_structure"]\n    }\n}\n'
+        )
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(mcp_tools=["https://mcp.deepwiki.com/mcp"])
+        result = importer.import_network("basic/mcp_user.hocon", deps)
+
+        merged = (target_dir / "mcp" / "mcp_info.hocon").read_text()
+        assert "https://mcp.deepwiki.com/mcp" in merged
+        assert "https://mcp.deepwiki.com/mcp" in result.mcp_added
+
+    def test_zip_import_merges_mcp_info_additively(self, tmp_path: Path) -> None:
+        """A zip-bundled mcp_info.hocon is merged into the receiver — never replacing existing URLs."""
+        zip_path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("registries/foo.hocon", '{ "tools": [] }\n')
+            zf.writestr(
+                "mcp/mcp_info.hocon",
+                '{\n    "https://new.example.com/mcp": { "tools": ["t"] }\n}\n',
+            )
+        target_dir = tmp_path / "target"
+        (target_dir / "mcp").mkdir(parents=True)
+        # Receiver already has one URL configured with an env-var header — must survive verbatim.
+        existing = (
+            "{\n"
+            '    "https://existing.example.com/mcp": {\n'
+            '        "http_headers": { "Authorization": "Bearer "${MY_TOKEN} }\n'
+            "    }\n"
+            "}\n"
+        )
+        (target_dir / "mcp" / "mcp_info.hocon").write_text(existing)
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        merged = (target_dir / "mcp" / "mcp_info.hocon").read_text()
+        assert "https://existing.example.com/mcp" in merged
+        assert "${MY_TOKEN}" in merged  # env-var ref preserved verbatim
+        assert "https://new.example.com/mcp" in merged
+        assert "https://new.example.com/mcp" in result.mcp_added
+
+    def test_zip_import_skips_already_present_mcp_url(self, tmp_path: Path) -> None:
+        """A bundled mcp_info entry whose URL is already configured is skipped (no overwrite, ever)."""
+        zip_path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("registries/foo.hocon", '{ "tools": [] }\n')
+            zf.writestr(
+                "mcp/mcp_info.hocon",
+                '{\n    "https://shared.example.com/mcp": { "tools": ["replacement"] }\n}\n',
+            )
+        target_dir = tmp_path / "target"
+        (target_dir / "mcp").mkdir(parents=True)
+        original = '{\n    "https://shared.example.com/mcp": { "tools": ["original"] }\n}\n'
+        (target_dir / "mcp" / "mcp_info.hocon").write_text(original)
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        # Force=True must NOT override the additive contract for mcp_info — the receiver's
+        # existing URL config wins, even on force.
+        result = importer.import_from_path(str(zip_path), force=True)
+
+        merged = (target_dir / "mcp" / "mcp_info.hocon").read_text()
+        assert '"original"' in merged
+        assert '"replacement"' not in merged
+        assert "https://shared.example.com/mcp" in result.mcp_skipped
+
+
+class TestForceOverwrite:
+    """Tests for the --force flag, which makes import_network and import_from_path overwrite existing files."""
+
+    @staticmethod
+    def _make_zip(zip_path: Path, entries: dict) -> None:
+        """Build a zip from a {arcname: content_bytes} dict."""
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for arcname, content in entries.items():
+                zf.writestr(arcname, content)
+
+    def test_force_overwrites_existing_single_hocon(self, tmp_path: Path) -> None:
+        """import_from_path with force=True replaces existing single-hocon files."""
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "my_network.hocon").write_text("OLD\n")
+        source_file = tmp_path / "my_network.hocon"
+        source_file.write_text("NEW\n")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source_file), force=True)
+
+        assert (registries / "my_network.hocon").read_text() == "NEW\n"
+        assert "my_network.hocon" in result.copied_files
+        assert not result.skipped_files
+
+    def test_force_overwrites_existing_zip_entries(self, tmp_path: Path) -> None:
+        """import_from_path on a zip with force=True overwrites pre-existing target files."""
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(zip_path, {"registries/foo.hocon": b"NEW\n"})
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "foo.hocon").write_text("OLD\n")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path), force=True)
+
+        assert (registries / "foo.hocon").read_text() == "NEW\n"
+        assert "registries/foo.hocon" in result.copied_files
+        assert "registries/foo.hocon" not in result.skipped_files
+
+    def test_force_overwrites_in_discovery_driven_import(self, tmp_path: Path) -> None:
+        """import_network with force=True replaces an existing HOCON in the registry-driven flow."""
+        source_dir = tmp_path / "source"
+        registries = source_dir / "registries" / "basic"
+        registries.mkdir(parents=True)
+        (registries / "music_nerd.hocon").write_text("NEW\n")
+        # SHARED_INCLUDES are always copied; create empty stand-ins so import_network doesn't warn.
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (source_dir / "registries" / shared).write_text("")
+
+        target_dir = tmp_path / "target"
+        target_basic = target_dir / "registries" / "basic"
+        target_basic.mkdir(parents=True)
+        (target_basic / "music_nerd.hocon").write_text("OLD\n")
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        result = importer.import_network("basic/music_nerd.hocon", AgentNetworkDependencies(), force=True)
+
+        assert (target_basic / "music_nerd.hocon").read_text() == "NEW\n"
+        assert "basic/music_nerd.hocon" in result.copied_files
+        assert "basic/music_nerd.hocon" not in result.skipped_files
+
+
+class TestImportNetworks:
+    """Tests for the bulk `import_networks` seam shared by `ns init` and `ns import`."""
+
+    @staticmethod
+    def _build_source(source_dir: Path) -> None:
+        """Two real networks, one with a coded tool reached through an include + substitution."""
+        registries = source_dir / "registries"
+        (registries / "basic").mkdir(parents=True)
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text('{ "shared_instructions": "be helpful" }\n')
+        (registries / "basic" / "music_nerd.hocon").write_text(
+            """{
+    include "registries/aaosa.hocon",
+    "tools": [
+        { "name": "nerd", "instructions": ${shared_instructions}, "class": "lookup.Lookup" }
+    ]
+}
+"""
+        )
+        (registries / "basic" / "plain.hocon").write_text('{ "tools": [] }\n')
+
+        coded_tools = source_dir / "coded_tools" / "basic"
+        coded_tools.mkdir(parents=True)
+        (source_dir / "coded_tools" / "__init__.py").write_text("")
+        (coded_tools / "__init__.py").write_text("")
+        (coded_tools / "lookup.py").write_text("class Lookup:\n    pass\n")
+        (source_dir / "middleware").mkdir(parents=True)
+
+    def _importer(self, tmp_path: Path) -> AgentNetworkImporter:
+        """Build an importer over a freshly-laid-out source and an empty target."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._build_source(source_dir)
+        return AgentNetworkImporter(str(source_dir), str(target_dir))
+
+    def test_package_init_reexports_land_in_the_target(self, tmp_path: Path) -> None:
+        """A helper re-exported only by a package __init__.py must be copied.
+
+        Importing pkg.entry at runtime executes pkg/__init__.py first, so a tree copied
+        without helper.py raises ModuleNotFoundError before the tool even loads — the exact
+        failure class the dependency walker exists to prevent. coded_tools/tools/now_agents/
+        __init__.py is the in-repo instance of this shape.
+
+        :param tmp_path: pytest-provided temporary directory for the source and target trees.
+        """
+        source_dir: Path = tmp_path / "source"
+        target_dir: Path = tmp_path / "target"
+        target_dir.mkdir()
+        registries: Path = source_dir / "registries"
+        registries.mkdir(parents=True)
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text('{ "shared_instructions": "be helpful" }\n')
+        (registries / "net.hocon").write_text('{ "tools": [ { "name": "tool", "class": "pkg.entry.Entry" } ] }\n')
+        pkg: Path = source_dir / "coded_tools" / "pkg"
+        pkg.mkdir(parents=True)
+        (source_dir / "coded_tools" / "__init__.py").write_text("")
+        # The re-export is the only reference to helper: no HOCON names it, and entry.py
+        # does not import it.
+        (pkg / "__init__.py").write_text("from .helper import Helper\n")
+        (pkg / "entry.py").write_text("class Entry:\n    pass\n")
+        (pkg / "helper.py").write_text("class Helper:\n    pass\n")
+        (source_dir / "middleware").mkdir(parents=True)
+        importer: AgentNetworkImporter = AgentNetworkImporter(str(source_dir), str(target_dir))
+
+        bulk: BulkImportResult = importer.import_networks(["net.hocon"])
+
+        assert not bulk.all_errors
+        assert (target_dir / "coded_tools" / "pkg" / "helper.py").is_file()
+        # The init itself still arrives through the parent-init chain, not as a closure entry.
+        assert (target_dir / "coded_tools" / "pkg" / "__init__.py").is_file()
+
+    def test_import_networks_does_not_touch_the_manifest(self, tmp_path: Path) -> None:
+        """The bulk seam must leave the target manifest byte-identical.
+
+        This is what makes the seam safe for `ns init`, whose manifest is scaffolded from a
+        template declaring support networks as `{"serve": true, "public": false}`. Writing
+        entries here would flatten those to a bare `true` and unlist the designer's
+        sub-networks. `ns import` calls `update_manifest` itself, afterwards.
+        """
+        importer = self._importer(tmp_path)
+        manifest = tmp_path / "target" / "registries" / "manifest.hocon"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        original = '{\n    "basic/music_nerd.hocon": { "serve": true, "public": false }\n}\n'
+        manifest.write_text(original)
+
+        importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon"])
+
+        assert manifest.read_text() == original
+
+    def test_aggregates_copied_and_skipped_across_networks(self, tmp_path: Path) -> None:
+        """Counts must span the whole batch, and a re-run must report everything as skipped."""
+        importer = self._importer(tmp_path)
+        paths = ["basic/music_nerd.hocon", "basic/plain.hocon"]
+
+        first = importer.import_networks(paths)
+        assert len(first.results) == 2
+        assert first.copied > 0
+        assert not first.all_errors
+        # Every network re-offers the shared includes, so the second one in the batch finds
+        # them already landed by the first. That is the existing per-network contract; the
+        # bulk seam just sums it.
+        assert first.skipped == len(AgentNetworkImporter.SHARED_INCLUDES)
+
+        # Re-running copies nothing. The exact skip count is not asserted: `_copy_parent_inits`
+        # records the __init__.py files it copies but not the ones it finds already present,
+        # so the two runs' totals are deliberately not mirror images.
+        second = importer.import_networks(paths)
+        assert second.copied == 0
+        assert second.skipped > 0
+        assert not second.all_errors
+
+    def test_dependencies_are_resolved_regardless_of_cwd(self, tmp_path: Path, monkeypatch) -> None:
+        """The coded tool behind an include + substitution must land even from an alien cwd.
+
+        Regression guard for `ns import`, which analyzed source HOCONs while sitting in the
+        user's project directory and silently imported networks with no coded tools.
+        """
+        importer = self._importer(tmp_path)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        importer.import_networks(["basic/music_nerd.hocon"])
+
+        assert (tmp_path / "target" / "coded_tools" / "basic" / "lookup.py").is_file()
+
+    def test_missing_network_warns_and_the_batch_continues(self, tmp_path: Path) -> None:
+        """A network absent from the source must not stop the ones that are present."""
+        importer = self._importer(tmp_path)
+
+        bulk = importer.import_networks(["basic/nope.hocon", "basic/plain.hocon"])
+
+        assert any("nope.hocon" in warning for warning in bulk.warnings)
+        assert (tmp_path / "target" / "registries" / "basic" / "plain.hocon").is_file()
+
+    def test_raising_import_is_recorded_and_the_batch_continues(self, tmp_path: Path) -> None:
+        """An unexpected OSError mid-batch lands in `errors`; later networks still import."""
+        importer = self._importer(tmp_path)
+        real_import = importer.import_network
+
+        def _explode_on_first(hocon_path: str, dependencies, force: bool = False):
+            if hocon_path == "basic/music_nerd.hocon":
+                raise OSError("disk on fire")
+            return real_import(hocon_path, dependencies, force=force)
+
+        importer.import_network = _explode_on_first
+
+        bulk = importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon"])
+
+        assert bulk.errors == ["Failed to import basic/music_nerd.hocon: disk on fire"]
+        assert bulk.all_errors == bulk.errors
+        assert [result.hocon_path for result in bulk.results] == ["basic/plain.hocon"]
+
+    def test_on_network_fires_once_per_path_in_order(self, tmp_path: Path) -> None:
+        """The progress hook is the only output seam, so it must be exact."""
+        importer = self._importer(tmp_path)
+        seen: list = []
+
+        importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon"], on_network=seen.append)
+
+        assert seen == ["basic/music_nerd.hocon", "basic/plain.hocon"]
+
+    def test_manifest_entries_are_flat_deduped_and_exclude_shared_includes(self, tmp_path: Path) -> None:
+        """Every imported HOCON is offered for registration exactly once; fragments never are."""
+        importer = self._importer(tmp_path)
+
+        bulk = importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon", "basic/plain.hocon"])
+
+        assert bulk.manifest_entries == ["basic/music_nerd.hocon", "basic/plain.hocon"]
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            assert shared not in bulk.manifest_entries
+
+    def test_force_threads_through_to_each_network(self, tmp_path: Path) -> None:
+        """Without --force an existing file is preserved; with it, the source wins."""
+        importer = self._importer(tmp_path)
+        landed = tmp_path / "target" / "registries" / "basic" / "plain.hocon"
+        landed.parent.mkdir(parents=True, exist_ok=True)
+        landed.write_text("# my edits\n")
+
+        importer.import_networks(["basic/plain.hocon"])
+        assert landed.read_text() == "# my edits\n"
+
+        importer.import_networks(["basic/plain.hocon"], force=True)
+        assert landed.read_text() == '{ "tools": [] }\n'
+
+
+class TestPackageRootsAreRegularPackages:
+    """Every path that lands files under coded_tools/ or middleware/ must leave a real package.
+
+    A directory without __init__.py is only a namespace *portion*, and Python's finder prefers
+    any regular package of the same name later on sys.path -- for a pip-installed project, the
+    studio's own bundled coded_tools. The project's tools would be silently shadowed.
+    `_copy_parent_inits` covers this whenever the source has an __init__.py to copy; these are
+    the cases where it doesn't.
+    """
+
+    @staticmethod
+    def _source_without_root_init(source_dir: Path) -> None:
+        """A source tree whose coded_tools/ root is itself a namespace package."""
+        registries = source_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "demo.hocon").write_text('{ "tools": [] }\n')
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text(f"# {shared}\n")
+        tool_dir = source_dir / "coded_tools" / "demo"
+        tool_dir.mkdir(parents=True)
+        (tool_dir / "__init__.py").write_text("")
+        (tool_dir / "tool.py").write_text("class Tool:\n    pass\n")
+        (source_dir / "middleware").mkdir(parents=True)
+        # Deliberately no source_dir/coded_tools/__init__.py.
+
+    def test_zip_without_root_init_still_lands_a_regular_package(self, tmp_path: Path) -> None:
+        """A bundle carrying coded_tools/foo/tool.py but no coded_tools/__init__.py.
+
+        The zip path extracts entries verbatim and never runs the parent-__init__ walk, so
+        nothing used to supply the root file. `ns export` normally bundles it, but its
+        directory-dependency branch does not, and a hand-rolled bundle need not either.
+        """
+        zip_path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("registries/demo.hocon", '{ "tools": [] }\n')
+            zf.writestr("coded_tools/demo/__init__.py", "")
+            zf.writestr("coded_tools/demo/tool.py", "class Tool:\n    pass\n")
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+
+        result = importer.import_from_path(str(zip_path))
+
+        assert (target_dir / "coded_tools" / "demo" / "tool.py").is_file()
+        assert (target_dir / "coded_tools" / "__init__.py").is_file()
+        assert "coded_tools/__init__.py" in result.copied_files
+
+    def test_discovery_import_from_a_namespace_package_source(self, tmp_path: Path) -> None:
+        """When the source root has no __init__.py there is nothing to copy, so create one."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._source_without_root_init(source_dir)
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+
+        importer.import_network("demo.hocon", AgentNetworkDependencies(coded_tools=["coded_tools/demo/tool.py"]))
+
+        assert (target_dir / "coded_tools" / "demo" / "tool.py").is_file()
+        assert (target_dir / "coded_tools" / "__init__.py").is_file()
+
+    def test_no_directory_means_no_file(self, tmp_path: Path) -> None:
+        """A network with no coded tools must not conjure the package directories into existence.
+
+        The guarantee is "if we put files there, make it importable" -- not "every project gets
+        a coded_tools/". Scaffolding empty packages nobody asked for would be its own bug.
+        """
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._source_without_root_init(source_dir)
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+
+        importer.import_network("demo.hocon", AgentNetworkDependencies())
+
+        assert not (target_dir / "coded_tools").exists()
+        assert not (target_dir / "middleware").exists()
+
+    def test_root_init_healed_when_all_files_skip(self, tmp_path: Path) -> None:
+        """A re-import whose coded-tool files all already exist must still heal the root __init__.py.
+
+        Everything under coded_tools/ skips here (only the registry hocon copies), so the
+        heal must be triggered by the skips alone: they prove the import wanted to place
+        content under the root, making it part of the import's footprint — e.g. a user
+        hand-copied the tool files but not the package inits, then re-ran the import to
+        repair the project.
+
+        :param tmp_path: pytest-provided temporary directory for the source and target trees.
+        """
+        source_dir: Path = tmp_path / "source"
+        target_dir: Path = tmp_path / "target"
+        target_dir.mkdir()
+        self._source_without_root_init(source_dir)
+        # Pre-place every coded-tool file the import would deliver, but no root __init__.py.
+        # The registry hocon is deliberately NOT pre-placed; it still copies normally.
+        pre_placed: Path = target_dir / "coded_tools" / "demo"
+        pre_placed.mkdir(parents=True)
+        (pre_placed / "__init__.py").write_text("")
+        (pre_placed / "tool.py").write_text("class Tool:\n    pass\n")
+        importer: AgentNetworkImporter = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps: AgentNetworkDependencies = AgentNetworkDependencies(coded_tools=["coded_tools/demo/tool.py"])
+
+        result: ImportResult = importer.import_network("demo.hocon", deps)
+
+        assert "coded_tools/demo/tool.py" in result.skipped_files
+        assert (target_dir / "coded_tools" / "__init__.py").is_file()
+
+    def test_dot_prefixed_zip_entries_land_normalized_and_heal_the_root(self, tmp_path: Path) -> None:
+        """Zip entries spelled "./coded_tools/..." must extract to clean paths with a healed root.
+
+        Validation normalizes entry names only for its whitelist check; extraction and the
+        recorded displays must use the same normalized form, or the files land under odd
+        paths and the root-__init__ gate cannot see that coded_tools/ was touched.
+
+        :param tmp_path: pytest-provided temporary directory for the bundle and target tree.
+        """
+        zip_path: Path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("./registries/demo.hocon", '{ "tools": [] }\n')
+            zf.writestr("./coded_tools/demo/tool.py", "class Tool:\n    pass\n")
+        target_dir: Path = tmp_path / "target"
+        target_dir.mkdir()
+        importer: AgentNetworkImporter = AgentNetworkImporter(str(target_dir), str(target_dir))
+
+        result: ImportResult = importer.import_from_path(str(zip_path))
+
+        assert (target_dir / "coded_tools" / "demo" / "tool.py").is_file()
+        assert (target_dir / "coded_tools" / "__init__.py").is_file()
+        # Displays are the normalized paths, so batch bookkeeping can match on them.
+        assert "coded_tools/demo/tool.py" in result.copied_files
+
+    def test_untouched_root_is_left_alone(self, tmp_path: Path) -> None:
+        """A self-contained .hocon import must not mutate a coded_tools/ it never wrote to.
+
+        The target's init-less coded_tools/ may be an intentional PEP 420 namespace package
+        (e.g. merged across sys.path entries). Creating an __init__.py there as a side effect
+        of importing an unrelated network silently converts it to a regular package —
+        the contract is "if we put files there, make it importable", and this import put
+        nothing there.
+
+        :param tmp_path: pytest-provided temporary directory for the target project.
+        """
+        target_dir: Path = tmp_path / "target"
+        target_dir.mkdir()
+        # An intentional namespace-package root, present before the import, no __init__.py.
+        (target_dir / "coded_tools").mkdir()
+        solo: Path = tmp_path / "solo.hocon"
+        solo.write_text('{ "tools": [] }\n')
+        importer: AgentNetworkImporter = AgentNetworkImporter(str(target_dir), str(target_dir))
+
+        result: ImportResult = importer.import_from_path(str(solo))
+
+        assert not (target_dir / "coded_tools" / "__init__.py").exists()
+        assert "coded_tools/__init__.py" not in result.copied_files
+
+    def test_existing_root_init_is_never_clobbered(self, tmp_path: Path) -> None:
+        """A project's own __init__.py survives a re-import byte-for-byte."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._source_without_root_init(source_dir)
+        (target_dir / "coded_tools").mkdir()
+        root_init = target_dir / "coded_tools" / "__init__.py"
+        root_init.write_text('"""My package."""\n')
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(coded_tools=["coded_tools/demo/tool.py"])
+
+        importer.import_network("demo.hocon", deps)
+        importer.import_network("demo.hocon", deps, force=True)
+
+        assert root_init.read_text() == '"""My package."""\n'

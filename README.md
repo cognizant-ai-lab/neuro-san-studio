@@ -1,26 +1,5 @@
-# Neuro SAN Studio
-
-**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
-[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
-tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
-researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
-agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
-
-<!-- pyml disable-next-line no-inline-html -->
-<p align="center">
-  <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san-studio">
-  <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN Studio" /></a>
-</p>
-
----
-
-<!-- pyml disable-next-line no-inline-html -->
-<p align="center">
-  Neuro SAN is the open-source library powering the Cognizant Neuro® AI Multi-Agent Accelerator, allowing domain experts,
-  researchers and developers to immediately start prototyping and building agent networks across any industry vertical.
-</p>
-
----
+<!-- pyml disable-next-line first-line-heading -->
+<!-- Badges -->
 <!-- pyml disable-next-line no-inline-html -->
 <p align="center">
   <!-- GitHub Stats -->
@@ -33,6 +12,15 @@ agents without code, this studio handles the orchestration complexity so you can
   <img src="https://img.shields.io/github/last-commit/cognizant-ai-lab/neuro-san-studio" alt="Last Commit">
   <img src="https://img.shields.io/github/issues/cognizant-ai-lab/neuro-san-studio" alt="Issues">
   <img src="https://img.shields.io/github/issues-pr/cognizant-ai-lab/neuro-san-studio" alt="Pull Requests">
+  <a href="https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/LICENSE.txt"><img alt="License"
+  src="https://img.shields.io/github/license/cognizant-ai-lab/neuro-san-studio"></a>
+  <a href="https://pepy.tech/projects/neuro-san-studio"><img alt="PyPI Downloads"
+  src="https://static.pepy.tech/badge/neuro-san-studio" /></a>
+  <a href="https://pypi.org/project/neuro-san-studio/">
+  <img alt="neuro-san-studio@PyPI" src="https://img.shields.io/pypi/v/neuro-san-studio.svg?style=flat-square"></a>
+  <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san-studio">
+  <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN Studio" /></a>
+
 </p>
 
 <!-- pyml disable-next-line no-inline-html -->
@@ -42,12 +30,45 @@ agents without code, this studio handles the orchestration complexity so you can
   <a href="https://github.com/cognizant-ai-lab/neuro-san"><img alt="GitHub Repo"
   src="https://img.shields.io/badge/GitHub-Repo-green.svg" /></a>
   <img src="https://img.shields.io/github/commit-activity/m/cognizant-ai-lab/neuro-san" alt="commit activity">
+  <a href="https://github.com/cognizant-ai-lab/neuro-san/blob/main/LICENSE.txt"><img alt="License"
+  src="https://img.shields.io/github/license/cognizant-ai-lab/neuro-san"></a>
   <a href="https://pepy.tech/projects/neuro-san"><img alt="PyPI Downloads"
   src="https://static.pepy.tech/badge/neuro-san" /></a>
   <a href="https://pypi.org/project/neuro-san/">
   <img alt="neuro-san@PyPI" src="https://img.shields.io/pypi/v/neuro-san.svg?style=flat-square"></a>
   <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san">
   <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN" /></a>
+</p>
+
+# Neuro SAN Studio
+
+**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
+[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
+tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
+researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
+agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
+
+<!-- pyml disable-next-line no-inline-html -->
+<h3 align="center">
+  🚀 Try Neuro SAN now, no install required:
+  <a href="https://neuro-san.evolution.ml/">https://neuro-san.evolution.ml/</a>
+</h3>
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  <a href="https://neuro-san.evolution.ml/"><img alt="Launch Neuro SAN"
+  src="https://img.shields.io/badge/Launch_Neuro_SAN-2ea44f?style=for-the-badge" /></a>
+</p>
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  This is a Bring Your Own Key (BYOK) instance, so you will need an API key from OpenAI, Anthropic or Gemini.
+</p>
+
+---
+
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  Neuro SAN is the open-source library powering the Cognizant Neuro® AI Multi-Agent Accelerator, allowing domain experts,
+  researchers and developers to immediately start prototyping and building agent networks across any industry vertical.
 </p>
 
 ## What is Neuro SAN?
@@ -174,106 +195,169 @@ And many more: check out [docs/examples.md](docs/examples.md).
 
 ---
 
-## Getting Started
+## Install
 
-To dive into Neuro SAN and start building your own multi-agent networks, this repository contains a collection of demos
-for the [neuro-san library](https://github.com/cognizant-ai-lab/neuro-san).
+These instructions are for Linux and macOS systems. Please adjust the commands accordingly for Windows.
 
-You'll find comprehensive documentation, example agent networks, and tutorials to guide you through your first steps.
+### Install `uv`
 
----
+[`uv`](https://docs.astral.sh/uv/) is a fast Python package and project manager built by Astral.
 
-### Install from PyPI
+Official installation docs:
+👉 [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
 
-If you just want to build agent networks on top of Neuro SAN Studio, you don't need to clone this
-repository — install from PyPI and scaffold a project in any directory. Requires Python 3.10+.
+### Create a new Python project
 
-The quickstart flow is:
-
-1. Install the package
-2. Scaffold a starter project (`ns init`)
-3. Set your API key
-4. Start the server (`ns run`)
-5. Open the UI
-
-The `ns` console script is registered as a shortcut for `neuro-san-studio` — both work interchangeably.
-
-#### 1. Install
+Create a folder for your project:
 
 ```bash
-pip install neuro-san-studio
+mkdir my_project
+cd my_project
 ```
 
-The OpenAI, Anthropic, and Google Gemini provider libraries (`langchain-openai`, `langchain-anthropic`,
-`langchain-google-genai`) ship with the base install. No extras to add.
+Create a virtual environment, initialize a git repo and install `neuro-san-studio`
 
-#### 2. Scaffold a starter project
+```bash
+uv init
+uv venv
+source .venv/bin/activate
+uv add neuro-san-studio
+```
+
+### Initialize neuro-san-studio
+
+Run `ns init` to initialize a Neuro SAN Studio project. `ns` stands for Neuro SAN. You can also use the long command
+`neuro-san-studio` instead. It will:
+* let you choose an LLM provider
+* create a `config` folder with your choice of LLM models and plugins configuration
+* create an `mcp` folder with a list of MCP tools
+* create a `registries` folder with a simple agent network and the
+[Agent Network Designer](#agent-network-designer), so you can start designing your own networks right away
+* create `coded_tools` and `middleware` folders with the Python code those agent networks need
+
+To learn more about the `ns` command run `ns --help`.
 
 ```bash
 ns init
 ```
 
-`init` prompts for the LLM provider(s) you want enabled and writes a minimal project into the current
-directory:
-
-* `config/llm_config.hocon` — provider/model wiring (defaults to OpenAI `gpt-5.2`)
-* `config/plugins.hocon` — observability and logging plugin wiring (the rich-formatted log bridge is enabled by default)
-* `registries/manifest.hocon` — registry of active agent networks
-* `registries/music_nerd.hocon` — sample agent network
-* `registries/aaosa.hocon` — AAOSA substitution variables (instructions, call, command)
-* `registries/aaosa_basic.hocon` — simplified AAOSA substitution variables
-* `mcp/mcp_info.hocon` — MCP server config
-
-Skip the prompt with `--providers`:
-
 ```bash
-ns init --providers openai,anthropic,google
+Which LLM providers do you want to enable?
+
+#  Provider       Default model
+1  OpenAI         gpt-5.2 (default)
+2  Anthropic      claude-sonnet
+3  Google Gemini  gemini-3-flash
+
+Enter numbers separated by commas (default: 1):
 ```
 
-Providers are written in the order you select them. The first becomes the primary model and the rest
-become ordered fallbacks; OpenAI is used only as the default when no selection is made.
+**Note:** To access all Neuro SAN Studio capabilities, clone this repository and follow the setup instructions in the
+[docs/dev_guide.md](docs/dev_guide.md).
 
-#### 3. Set your API key
+### Set your LLM API key(s)
 
-Set your provider key, e.g. `OPENAI_API_KEY` (or create a `.env` file in the current directory).
+1. Set your provider key, e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or `GOOGLE_API_KEY`
+(or create a `.env` file in the current directory).
 See [docs/api_key.md](docs/api_key.md) for details and other providers.
 
-#### 4. Run the server
+   ```bash
+   export OPENAI_API_KEY="XXX"
+   ```
+
+2. Check your LLM API keys are correctly configured:
+
+    ```bash
+    ns check-llm-keys
+    ```
+
+3. Check your `config/llm_config.hocon` is working:
+
+    ```bash
+    ns check-config
+    ```
+
+    If the configuration is valid you will get a `hello` response from the configured LLMs.
+
+### Import agent networks
+
+`ns init` already installs the Agent Network Designer, so you can start building right away.
+Use `ns import` to add any of the other agent network examples that ship with `neuro-san-studio`.
+
+Run it with no arguments to pick from an interactive list:
+
+```bash
+ns import
+```
+
+Or name a group or a single network directly:
+
+```bash
+ns import basic         # every network in the "basic" group
+ns import hello_world   # a single network
+```
+
+Each imported network brings its dependencies with it -- coded tools, middleware, sub-networks -- and is registered in
+`registries/manifest.hocon`. A running server picks it up within a few seconds.
+
+See [`docs/cli/import.md`](docs/cli/import.md) for the full set of options.
+
+### Start the developer UI
+
+You can start a `neuro-san` server and the `nsflow` UI with the `ns run` command:
 
 ```bash
 ns run
 ```
 
-The Neuro SAN server listens on `localhost:8080`; the nsflow UI is served at
-[http://localhost:4173/](http://localhost:4173/). Logs land under `logs/` (`server.log`, `nsflow.log`,
-`thinking_dir/`).
+The Neuro SAN server listens on `localhost:8080`.
 
-#### Import more agent networks
+The nsflow UI is served at
+[http://localhost:4173/](http://localhost:4173/).
 
-Beyond the `music_nerd` sample scaffolded by `ns init`, you can import more agent networks from the 80+
-included in neuro-san-studio:
+Logs land under `logs/` (`server.log`, `nsflow.log`, `thinking_dir/`).
+
+Screenshot:
+
+![NSFlow UI Snapshot](https://raw.githubusercontent.com/cognizant-ai-lab/nsflow/main/docs/snapshot01.png)
+
+### Agent Network Designer
+
+Use the Agent Network Designer to create your own agent network.
+
+1. From the `nsflow` UI, click the `NEW` button at the top, center of the screen.
+![AND Button](docs/images/agent_network_designer_new_button.png)
+2. In the new window that opens, type your prompts in the text box in the bottom right
+corner of the screen. Then Agent Network Designer:
+   * Creates the agents
+   * Links them together
+   * Writes instructions for each agent
+   * Generates a few sample queries you can ask this agent network
+   * Saves the agent network in the `registries/generated` folder
+3. Once the Agent Network Designer is done and comes back with an answer in the chat window,
+you can continue the design by asking it to make changes
+4. Once you're happy with the design, test it! Click the blue `Launch` button at the top
+center of the screen. It opens a new window from which you can chat with the agent network.
+5. If you want to make modifications, go back to the editor window and ask for changes.
+6. You can also edit any agent network by clicking the pen icon next to its name in the main window.
+
+### Import a project from a file / Export to a file
+
+You can import a project from a .hocon file or from a zip file using the `ns import <PATH>`.
 
 ```bash
-ns import                              # interactive
-ns import basic industry               # by group(s)
-ns import agent_network_designer       # specific network
-ns import path/to/network.hocon        # from a local file
+ns import ~/Downloads/my_project.hocon
 ```
 
-See [`docs/cli/import.md`](docs/cli/import.md) for details.
-
-To share a network across projects, bundle it from the current project and drop
-the resulting file into another:
+Similarly, you can export an agent network and all its dependencies using the `ns export` command:
 
 ```bash
-ns export music_nerd                  # → music_nerd.hocon (no deps)
-ns export agent_network_designer      # → agent_network_designer.zip (with deps)
-ns import -f music_nerd.hocon         # install in another project
+ns export my_project.hocon
 ```
 
 See [`docs/cli/export.md`](docs/cli/export.md) for details.
 
-#### Command reference
+### Command reference
 
 <!-- pyml disable line-length -->
 
@@ -286,122 +370,11 @@ See [`docs/cli/export.md`](docs/cli/export.md) for details.
 | `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker.                                 |
 | `ns check-llm-keys` | Validate LLM API keys / env vars.                                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                                                                                              |
 | `ns check-config`   | Validate the LLM configurations in a HOCON file.                 | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                                                                                          |
+| `ns validate`       | Validate the structure of an agent network HOCON file.           | Positional: HOCON path. `--verbose`, `--manifest`, `--external-agents`, `--registry-dir`. References to other networks (`/name`) are checked against the networks served by the manifest.                                    |
 
 <!-- pyml enable line-length -->
 
 Use `ns <command> --help` for the full flag list of any subcommand.
-
----
-
-### Installation
-
-Clone the repo:
-
-```bash
-git clone https://github.com/cognizant-ai-lab/neuro-san-studio
-```
-
-Go to dir:
-
-```bash
-cd neuro-san-studio
-```
-
-Ensure you have a supported version of python (e.g. 3.12 or 3.13):
-
-```bash
-python --version
-```
-
-Create a dedicated Python virtual environment:
-
-```bash
-python -m venv venv
-```
-
-Source it:
-
-* For Windows:
-
-  ```cmd
-  .\venv\Scripts\activate.bat && set PYTHONPATH=%CD%
-  ```
-
-* For Mac:
-
-  ```bash
-  source venv/bin/activate && export PYTHONPATH=`pwd`
-  ```
-
-Install the requirements:
-
-```bash
-pip install -r requirements.txt
-```
-
-**IMPORTANT**: By default, the server relies on OpenAI's `gpt-5.2` model. Set the OpenAI API key and add it to your shell
-configuration so it's available in future sessions.
-
-You can get your OpenAI API key from <https://platform.openai.com/signup>. After signing up, create a new API key in the
-API keys section in your profile.
-
-**NOTE**: Replace `XXX` with your actual OpenAI API key.  
-**NOTE**: This is OS dependent.
-
-* For macOS and Linux:
-
-  ```bash
-  export OPENAI_API_KEY="XXX" && echo 'export OPENAI_API_KEY="XXX"' >> ~/.zshrc
-  ```
-
-<!-- pyml disable commands-show-output -->
-* For Windows:
-    * On Command Prompt:
-
-    ```cmd
-    set OPENAI_API_KEY=XXX
-    ```
-
-    * On PowerShell:
-
-    ```powershell
-    $env:OPENAI_API_KEY="XXX"
-    ```
-
-<!-- pyml enable commands-show-output -->
-
-Other providers such as Anthropic, AzureOpenAI, Ollama and more are supported too but will require proper setup.
-Look at the `.env.example` file to set up environment variables for specific use-cases.
-
-For testing the API keys, please refer to this [documentation](./docs/api_key.md)
-
----
-
-### Run
-
-Neuro SAN Studio provides a user-friendly environment to interact with agent networks.
-
-1. Start the server and client with a single command, from the project root directory:
-
-    ```bash
-    python -m neuro_san_studio run
-    ```
-
-2. Navigate to [http://localhost:4173/](http://localhost:4173/) to access the UI.
-3. (Optional) Check the logs:
-   * For the server logs: `logs/server.log`
-   * For the client logs: `logs/nsflow.log`
-   * For the agents logs: `logs/thinking_dir/*`
-
-Use the `--help` option to see the various config options for the `run` command:
-
-```bash
-python -m neuro_san_studio run --help
-```
-
-Screenshot:
-
-![NSFlow UI Snapshot](https://raw.githubusercontent.com/cognizant-ai-lab/nsflow/main/docs/snapshot01.png)
 
 ---
 
@@ -426,7 +399,7 @@ For examples of agent networks, check out [docs/examples.md](docs/examples.md).
 
 ## Developer Guide
 
-For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
+For local development setup and contribution instructions, see the [docs/dev_guide.md](docs/dev_guide.md).
 
 ---
 
@@ -447,6 +420,13 @@ run Neuro SAN agents continuously or on triggers through a separate service, wit
 * [Annual Report Reader](https://github.com/shrushtiimehta/neuro-san-annual-report-reader):
 analyzes a LinkedIn profile and delivers a personalized summary of Cognizant's 2024 Annual Report,
 surfacing content most relevant to the user's industry and seniority level.
+* [Tochiro File Organizer](https://github.com/ofrancon/tochiro):
+a macOS file organization assistant with a dedicated UI to analyze a folder,
+create a plan for moving the files, ask for approval and execute the moves.
+* [Legacy Business-Rule Extractor](https://github.com/Sivakumarraj/neuro-san-legacy-analyzer):
+a 6-agent network that extracts business rules from legacy COBOL, Java, and PL/SQL code,
+pairing deterministic CodedTool parsers with LLM agents to produce a modernization-ready
+specification document.
 
 ### Utilities
 
@@ -463,6 +443,8 @@ a Slack integration that lets you interact with Neuro SAN directly from your wor
 * YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
 * X: [@cognizantailab](https://x.com/cognizantailab)
 * LinkedIn: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
+* Amazon Marketplace: [Cognizant Neuro SAN](https://aws.amazon.com/marketplace/pp/prodview-z246c4x7j3xb6)
+* Azure Marketplace: [Cognizant Neuro SAN](https://marketplace.microsoft.com/en-us/product/virtual-machine/cognizant.cognizant_neurosanai-application)
 
 ---
 

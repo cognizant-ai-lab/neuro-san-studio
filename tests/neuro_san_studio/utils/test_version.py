@@ -35,6 +35,12 @@ class TestResolveVersion:
 
         monkeypatch.setattr(version_module, "library_version", boom)
 
+    def test_env_var_override_takes_precedence(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """If NEURO_SAN_STUDIO_VERSION is set in environment and not 'unknown', it takes precedence."""
+        monkeypatch.setenv("NEURO_SAN_STUDIO_VERSION", "2.3.4")
+        monkeypatch.setattr(version_module, "library_version", lambda _name: "1.2.3")
+        assert resolve_version() == ("2.3.4", version_module.SOURCE_ENV)
+
     def test_installed_distribution_reports_installed_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Distribution metadata gives the version tagged as 'installed'."""
         monkeypatch.setattr(version_module, "library_version", lambda _name: "1.2.3")

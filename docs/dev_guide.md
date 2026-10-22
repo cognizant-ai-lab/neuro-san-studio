@@ -12,6 +12,9 @@ or suggests running `make install` (if it doesn't)
 - `make lint` - Runs code formatting and linting tools (ruff, pylint) on the source code
 - `make lint-tests` - Runs code formatting and linting tools on the test code
 - `make test` - Runs lint and lint-tests, then executes the tests with pytest and generates coverage reports
+- `make test-smoke` - Runs the packaged-install smoke tests: builds a wheel from the checkout, installs it in a
+clean virtual environment, and exercises the packaged `ns` CLI. These tests are slow, so `make test` skips them;
+they also run in CI on pull requests to `main`
 
 These Makefile commands provide a convenient alternative to the manual steps described in the Installation section for
 macOS users. Windows users should follow the manual installation instructions instead.

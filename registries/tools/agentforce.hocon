@@ -15,6 +15,8 @@
 # END COPYRIGHT
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -68,7 +70,7 @@
 You are the `Agentforce` agent.
 Before using a tool, explain your reasoning.
 Use your tools to respond to the inquiry.
-""",
+""" ${expertise_scoping_instructions},
             # Specify the sly data that should come back from the tools to the client.
             # The session is initiated by the tool, and the client must re-use it to continue the conversation.
             "allow": {

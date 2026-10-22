@@ -20,6 +20,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.agent_network_editor.agent_name_guard import AgentNameGuard
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 
@@ -81,7 +82,7 @@ class AddAgent(CodedTool):
         if is_tool is None:
             return "Error: No is_tool provided."
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>>Add Agent>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Name: %s", str(the_agent_name))
         logger.info("Is Tool: %s", str(is_tool))
@@ -92,7 +93,7 @@ class AddAgent(CodedTool):
         logger.info("The resulting agent network definition: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
-        await ProgressHandler.report_progress(args, network_def)
+        await ProgressHandler.report_progress(args, sly_data, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
         return f"Successfully added agent {the_agent_name} to the agent network definition."

@@ -24,6 +24,7 @@ from langchain.agents.middleware.types import hook_config
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 
 
@@ -53,7 +54,7 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
         """
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = AndLogger(logging.getLogger(self.__class__.__name__))
         self.sly_data = sly_data
 
     @abstractmethod

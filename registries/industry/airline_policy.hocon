@@ -15,6 +15,7 @@
 # END COPYRIGHT
 {
     include "registries/aaosa_basic.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "Sophisticated multi-agent system designed to manage and respond to customer inquiries by referring to airline policies with structured delegation. Mimics a real-world airline helpdesk with specialized teams handling specific domains such as baggage, flights, and international travel. Uses document intelligence tools to extract policy information from PDFs and provides official URLs for additional resources.",
@@ -74,9 +75,8 @@ A customer question about airline policies, procedures, baggage rules, flight ch
                     "required": ["query"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are the top-level policy inquiry agent and the sole point of interaction. DO NOT mention other tools or agents.
-Only answer questions within your scope — airline policies, procedures, and helpdesk inquiries — and politely decline any unrelated questions.
 Always personalize your responses — tailor every answer to the user's fare class, loyalty status, and any other relevant travel details they have provided.
 Provide relevant URLs to help users follow up on their query.
 

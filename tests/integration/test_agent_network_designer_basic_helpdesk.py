@@ -79,7 +79,7 @@ import pytest
 from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 from neuro_san.interfaces.agent_session import AgentSession
-from neuro_san.message_processing.basic_message_processor import BasicMessageProcessor
+from neuro_san.message.processors.basic_message_processor import BasicMessageProcessor
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 
 

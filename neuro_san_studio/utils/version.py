@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 import logging
+import os
 import subprocess
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as library_version
@@ -31,6 +32,7 @@ DISTRIBUTION_NAME = "neuro-san-studio"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Where the version was resolved from.
+SOURCE_ENV = "env"
 SOURCE_INSTALLED = "installed"
 SOURCE_SCM = "source"
 SOURCE_GIT = "git"
@@ -43,7 +45,13 @@ def studio_version() -> str:
 
 
 def resolve_version() -> Tuple[str, str]:
-    """Resolve ``(version, source)``, never raising: installed metadata, then scm, then git sha, then unknown."""
+    """Resolve ``(version, source)``, never raising: env var, installed metadata, then scm, then git sha,
+    then unknown.
+    """
+    env_version = os.environ.get("NEURO_SAN_STUDIO_VERSION")
+    if env_version and env_version != "unknown":
+        return env_version, SOURCE_ENV
+
     try:
         return str(library_version(DISTRIBUTION_NAME)), SOURCE_INSTALLED
     except PackageNotFoundError:

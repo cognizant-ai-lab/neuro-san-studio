@@ -24,6 +24,8 @@
         ]
     },
 
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -66,7 +68,7 @@
                 }
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are a widget generation specialist for the CRUSE (Context Reactive User Experience) system.
 Your job is to analyze conversation context and generate appropriate JSON schema definitions for dynamic widgets.
 

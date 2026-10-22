@@ -22,11 +22,14 @@
       - [Gemini with ADC](#gemini-with-adc)
         - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
         - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
+        - [Simpler ADC Alternative: Built-in gemini Class](#simpler-adc-alternative-built-in-gemini-class)
     - [Ollama](#ollama)
       - [Ollama Prerequisites](#ollama-prerequisites)
       - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
+      - [Using llmman](#using-llmman)
       - [Example agent network](#example-agent-network)
+    - [Mistral](#mistral)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -535,7 +538,8 @@ API keys is not desirable or permitted.
     gcloud auth application-default login
     ```
 
-3. Install the required package (already included in `requirements.txt`):
+3. Install the required package. This is a separate, optional dependency — it is **not**
+   included in `requirements.txt` by default, since only this `ChatVertexAI`-based path needs it:
 
     ```bash
     pip install langchain-google-vertexai
@@ -551,8 +555,8 @@ API keys is not desirable or permitted.
 ##### Gemini with ADC Configuration
 
 Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
-Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
-`ChatVertexAI` directly in your `llm_config`:
+Neuro-SAN's default Gemini model definitions — you can use the `class` key to instantiate
+`ChatVertexAI` directly in your `llm_config` (see also the simpler alternative below):
 
 ```hocon
 llm_config: {
@@ -583,6 +587,38 @@ No API key is required — authentication is handled transparently by Google's A
 For more information on Vertex AI authentication and available models, see the
 [Vertex AI documentation](https://cloud.google.com/vertex-ai/docs/authentication) and the
 [LangChain ChatVertexAI reference](https://python.langchain.com/docs/integrations/chat/google_vertex_ai_palm/).
+
+##### Simpler ADC Alternative: Built-in gemini Class
+
+`ChatVertexAI` (above) is also flagged by LangChain itself as deprecated in favor of
+`langchain-google-genai`, which neuro-san's built-in `class: "gemini"` already uses under the
+hood. That class can be routed into Vertex AI/ADC mode purely through environment variables,
+with no explicit `project`/`location` keys in the config and no extra dependency to install.
+
+Note that these variables apply to the whole server process: once set, every Gemini client in
+the process routes to Vertex AI, including fallback models in other configs and the
+`gemini_image_generation` tool. A BYOK `google_api_key` from `sly_data` is silently ignored
+and the request is billed to the server's GCP project instead.
+
+```hocon
+llm_config: {
+    class: "gemini"
+    model_name: "gemini-3.5-flash"
+    temperature: 1.0   # recommended for Gemini 3.0+; 0.7 (the default) can cause loops and degraded reasoning
+}
+```
+
+```bash
+GOOGLE_GENAI_USE_VERTEXAI="true"
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GOOGLE_CLOUD_LOCATION="global"   # a specific region may 404 on newer models; global is the safe default
+```
+
+See [`config/vertex_adc_llm_config.hocon`](../config/vertex_adc_llm_config.hocon) for a
+ready-to-use version of this config, and run
+`ns check-config --hocon-path config/vertex_adc_llm_config.hocon` to verify it can actually
+connect before deploying it. Use `GOOGLE_CLOUD_LOCATION=global`; newer Gemini models may not be
+available in all regional endpoints.
 
 ### Ollama
 
@@ -698,12 +734,68 @@ You can also set the environment variable `OLLAMA_HOST`, but `base_url` takes pr
 For more information on logic of parsing the `base_url`
 see [Ollama python SDK](https://github.com/ollama/ollama-python/blob/main/ollama/_client.py#L1274)
 
+#### Using llmman
+
+[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama, OpenAI and Anthropic APIs
+on port `17434`. Since `langchain-openai` is installed by default, the simplest setup is to use the `openai` class.
+
+1. Install and start llmman, then pull a model:
+
+    ```bash
+    curl -fsSL https://llmmanorg.github.io/install.sh | sh
+    llmman serve
+    llmman pull gemma4
+    ```
+
+2. Point the `openai` class at llmman via `openai_api_base`:
+
+    ```hocon
+        "llm_config": {
+            "class": "openai",
+            "model_name": "gemma4",
+            "openai_api_base": "http://localhost:17434/v1",
+            "openai_api_key": "llmman"
+        }
+    ```
+
+    llmman does not require an API key by default, but the OpenAI client does, so any non-empty value works.
+    Alternatively, set `OPENAI_API_BASE=http://localhost:17434/v1` in the environment and omit `openai_api_base`.
+
+llmman model names (e.g. `gemma4`, `hf.co/unsloth/Qwen3.5-0.8B-GGUF`) are not in the
+[default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
+so `"class": "openai"` must be set explicitly.
+
 #### Example agent network
 
 See the [./examples/music_nerd_pro_local.md](examples/basic/music_nerd_pro_local.md) for a complete working example.
 
 For more information about how to use Ollama with LangChain,
 see [this page](https://python.langchain.com/docs/integrations/chat/ollama/)
+
+### Mistral
+
+Mistral is not one of the built-in providers in the
+[default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
+so it is configured using the `class` key with the full LangChain chat model path (see
+[Using the `class` Key](#using-the-class-key)).
+
+First, install the LangChain Mistral AI integration:
+
+```shell
+pip install langchain-mistralai==1.1.2
+```
+
+Then set the `MISTRAL_API_KEY` environment variable to your Mistral API key and specify the model
+in the `llm_config` section of an agent network hocon file:
+
+```hocon
+    "llm_config": {
+        "class": "langchain_mistralai.chat_models.ChatMistralAI",
+        "model_name": "mistral-medium-latest",
+    }
+```
+
+Here you can get a Mistral API [key](https://admin.mistral.ai/).
 
 ### Configuring Default Models with Environment Variables
 
@@ -1191,25 +1283,21 @@ To use tools from toolbox in your agent network, simply call them with field `to
    - langchain tools
        - Each tool or toolkit must have a `class` key.
        - The specified class must be available in the server's `PYTHONPATH`.
-       - Additional dependencies (outside of `langchain_community`) must be installed separately.
+       - Integration-specific dependencies must be installed separately.
 
         Example:
 
         ```hocon
             "tavily_search": {
                 # Fully qualified class path of the tool to be instantiated.
-                "class": "langchain_community.tools.tavily_search.TavilySearchResults",
+                "class": "langchain_tavily.TavilySearch",
 
                 # (Optional) URL for reference documentation about this tool.
                 "base_tool_info_url": "https://python.langchain.com/docs/integrations/tools/tavily_search/",
 
                 # Arguments for the tool's constructor.
                 "args": {
-                    "api_wrapper": {
-                        # If the argument should be instantiated as a class, specify it using the "class" key.
-                        # This tells the system to create an instance of the provided class instead of passing it as-is.
-                        "class": "langchain_community.utilities.tavily_search.TavilySearchAPIWrapper"
-                    },
+                    "max_results": 5,
                 }
             }
         ```
@@ -1223,25 +1311,18 @@ To use tools from toolbox in your agent network, simply call them with field `to
         Example:
 
         ```json
-            "rag_retriever": {
-                "class": "rag.Rag",
-                "description": "Retrieve information on the given urls",
+            "slack_tool": {
+                "class": "slack.Slack",
+                "description": "Retrieve messages from the given slack channel",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "urls": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "List of url to retrieve info from"
-                        },
-                        "query": {
+                        "channel_name": {
                             "type": "string",
-                            "description": "Query for retrieval"
+                            "description": "slack channel to get messages from"
                         }
                     },
-                    "required": ["urls", "query"]
+                    "required": ["channel_name"]
                 },
             }
         ```
@@ -1362,7 +1443,58 @@ following methods.
     directly in the agent network HOCON configuration.
    - For example, see [mcp_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon)
 
+3. OAuth bearer-token flow (client-driven)
+
+    Rather than passing a token in sly data directly or setting it up as an environment variable in
+    `MCP_SERVERS_INFO_FILE`, an agent network can **declare** which MCP server URLs need
+    `http_headers` and let a client that supports OAuth — such as
+    [nsflow](https://github.com/cognizant-ai-lab/nsflow) — obtain the token and inject it into
+    sly_data for you. The client runs the OAuth 2.1 authorization-code flow with PKCE (and Dynamic
+    Client Registration where the server supports it), keeps the token on the backend, and at chat
+    time injects `sly_data["http_headers"]["<MCP_URL>"] = {"Authorization": "Bearer <token>"}`.
+    Tokens are never shown to the LLM or stored in the network.
+
+    Declare the expected shape under the agent `function` using `sly_data_schema`:
+
+    ```json
+    "sly_data_schema": {
+        "type": "object",
+        "properties": {
+            "http_headers": {
+                "type": "object",
+                "properties": {
+                    "https://api.you.com/mcp": {
+                        "type": "object",
+                        "properties": {
+                            "Authorization": { "type": "string" }
+                        },
+                        "required": ["Authorization"]
+                    }
+                },
+                "required": ["https://api.you.com/mcp"]
+            }
+        },
+        "required": ["http_headers"]
+    }
+    ```
+
+   - **Injection is opportunistic.** Every URL declared under `http_headers.properties` receives an
+    injected token whenever the user has connected it; user-supplied `http_headers` still take precedence.
+   - **The connect gate is driven by `http_headers.required`** — the client forces the user to connect
+    (blocking chat until they do) only for the URLs listed there.
+       - Omit `required` → every declared URL is treated as required (gate on all).
+       - `"required": []` → nothing is gated, but tokens are still injected opportunistically; use this
+        when the server also accepts an API key (via `MCP_SERVERS_INFO_FILE`) or needs no auth.
+       - List specific URLs → only those URLs are gated.
+   - For a complete example see [you_search.hocon](../registries/tools/you_search.hocon); for the client
+    side (Connectors tab, token storage, redirect URI, troubleshooting) see nsflow's
+    [MCP OAuth Connectors guide](https://github.com/cognizant-ai-lab/nsflow/blob/main/docs/MCP_OAUTH.md).
+
 ### Examples
+
+For a configured example in this repo — an agent network wired to the You.com MCP server, with the
+OAuth bearer-token `sly_data_schema` setup described above and comments walking through the auth
+options — see [you_search.hocon](../registries/tools/you_search.hocon).
 
 For simple examples of MCP servers in various languages (e.g. Python, Java) and connecting them to neuro-san,
 please visit this repo: [neuro-san-mcp-examples](https://github.com/kaushik-cognizant/neuro-san-mcp-examples)
@@ -1823,7 +1955,7 @@ make test
 or
 
 ```bash
-python -m pytest tests/ -v --cov=coded_tools --cov=neuro_san_studio -m "not integration"
+python -m pytest tests/ -v --cov=coded_tools --cov=neuro_san_studio -m "not integration and not smoke"
 ```
 
 ### Integration Test
@@ -1876,40 +2008,40 @@ with ongoing additions of test cases to improve coverage.
 
 Please select the execution option that best aligns with the level of validation you want to perform.
 
-`--timer-top-n 100` flag is optional. It shows the top 100 slowest test cases.
+`--durations=100` flag is optional. It shows the 100 slowest test phases (setup, call, teardown).
 
 - Run all integration test cases:
 
     Example:
 
     ```bash
-    pytest -s -m "integration" --timer-top-n 100
+    pytest -s -m "integration" --durations=100
     ```
 
 - Run by a group or groups of those test cases:
 
     ```bash
-    pytest -s -m "<name of folder>" --timer-top-n 100
+    pytest -s -m "<name of folder>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic" --timer-top-n 100
-    pytest -s -m "integration_industry" --timer-top-n 100
+    pytest -s -m "integration_basic" --durations=100
+    pytest -s -m "integration_industry" --durations=100
     ```
 
 - Run by the network agent hocon name of those test cases:
 
     ```bash
-    pytest -s -m "<name of network_agent hocon>" --timer-top-n 100
+    pytest -s -m "<name of network_agent hocon>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic_coffee_finder_advanced" --timer-top-n 100
-    pytest -s -m "integration_industry_airline_policy" --timer-top-n 100
+    pytest -s -m "integration_basic_coffee_finder_advanced" --durations=100
+    pytest -s -m "integration_industry_airline_policy" --durations=100
     ```
 
 - Run a single test case:

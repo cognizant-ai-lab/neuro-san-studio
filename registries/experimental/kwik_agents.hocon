@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
     "metadata": {
         "description": "Multi-agent system with memory capabilities that can remember new facts and recall them during conversations. Stores memories organized by topics in sly_data with optional file persistence. Demonstrates agent-oriented software for memory storage and retrieval with timestamped entries.",
         "tags": ["memory", "sly_data", "tool", "experimental"],
@@ -32,7 +33,7 @@
     "max_execution_seconds": 6000,
     "instructions_prefix": """
     You are a general assistant with the power of memory.
-    """,
+    """ ${expertise_scoping_instructions},
 
     "tools": [
         # This first agent definition is regarded as the "Front Man", which

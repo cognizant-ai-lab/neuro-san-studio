@@ -31,12 +31,13 @@ Here are a few examples ordered by level of complexity.
     - [Anthropic Web Search](#anthropic-web-search)
     - [OpenAI Code Interpreter](#openai-code-interpreter)
     - [OpenAI Image Generation](#openai-image-generation)
-    - [OpenAI Video Generation](#openai-video-generation)
     - [OpenAI Web Search](#openai-web-search)
     - [Google Maps](#google-maps)
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
+    - [Internet Info Gatherer](#internet-info-gatherer)
     - [Gmail Assistant](#gmail-assistant)
+    - [Google Workspace Assistant](#google-workspace-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
     - [Agentforce](#agentforce)
     - [Agentspace](#agentspace)
@@ -54,6 +55,7 @@ Here are a few examples ordered by level of complexity.
   - [🏢 Industry-Specific Examples](#-industry-specific-examples)
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
+    - [Intranet Agents With Memory Routing](#intranet-agents-with-memory-routing)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
     - [Airline Policy Web Search Assistant](#airline-policy-web-search-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
@@ -260,16 +262,6 @@ for generated images.
 
 **Tags:** `tool`, `image`, `OpenAI`
 
-### OpenAI Video Generation
-
-[OpenAI Video Generation](examples/tools/openai_video_generation.md) is a multi-agent system that allows users to
-create, remix, and describe videos through natural language commands. It consists of a Video Generator agent that
-coordinates with two tools: an OpenAI video generation tool (using Sora models) that creates videos from text prompts
-with configurable durations and resolutions, and a Video Describer tool that analyzes video content by extracting
-frames and generating detailed descriptions using vision-capable language models.
-
-**Tags:** `tool`, `video`, `OpenAI`
-
 ### OpenAI Web Search
 
 [OpenAI Web Search](examples/tools/openai_web_search.md) is a task-oriented agentic system designed to help users search
@@ -307,12 +299,31 @@ deliver the best matching media files for user descriptions.
 
 **Tags:** `tool`, `API`, `multi-media`
 
+### Internet Info Gatherer
+
+[Internet Info Gatherer](examples/tools/internet_info_gatherer.md) is a single-agent system that answers questions
+from the live web in two steps: it searches through the you.com MCP server's free tier to find sources, then reads
+the promising pages with the `web_fetch` toolbox tool so its answers come from actual page content, with cited URLs.
+It needs no API keys or OAuth — the free search tier and the local fetch tool work out of the box.
+
+**Tags:** `tool`, `MCP`, `toolbox`, `web`
+
 ### Gmail Assistant
 
 [Gmail Assistant](examples/tools/gmail.md) is a conversational agent that helps users manage their Gmail inbox using natural
 language. It can search, read, draft, and send emails by delegating tasks to specialized tools in the Gmail Toolkit.
 
 **Tags:** `tool`, `Gmail`, `API`
+
+### Google Workspace Assistant
+
+[Google Workspace Assistant](examples/tools/google_workspace.md) is a single-agent system that manages a user's Gmail,
+Calendar, Drive, Docs, and Sheets through Google's hosted Workspace MCP servers, so one request can span services —
+find a report in Drive and email a link to it, or turn a Doc's meeting notes into Calendar events. Authentication is
+per user and per conversation: an OAuth-capable client such as nsflow connects each server with the user's Google
+account and passes the bearer tokens through `sly_data`, with no server-side credentials at all.
+
+**Tags:** `tool`, `Google Workspace`, `MCP`, `OAuth`
 
 ### Agent Network HTML Creator
 
@@ -442,6 +453,18 @@ intranet of a major corporation. It allows you to interact and get information f
 Finance, Legal, HR, etc. Some of the down-chain agents call coded tools.
 
 **Tags:** `tool`, `API`, `AAOSA`
+
+### Intranet Agents With Memory Routing
+
+[Intranet Agents With Memory Routing](examples/industry/intranet_agents_with_memory_routing.md) is the
+Intranet Agents With Tools network whose top-level agent also learns how to route. On the first inquiry of a
+kind it discovers the fulfilling leaf agents via AAOSA, then caches that route, along with the parameters those
+agents require, in persistent memory under a generalized topic. Caching the parameters lets it collect them up
+front on repeat inquiries and call the leaf agents directly, avoiding follow-up round-trips.
+Disabled by default: it uses the Mem0 cloud backend, so it requires `pip install "mem0ai>=2.0.2,<3.0"` and the
+`MEM0_API_KEY` environment variable.
+
+**Tags:** `tool`, `API`, `AAOSA`, `memory`, `routing`
 
 ### Airline Policy 360 Assistant
 

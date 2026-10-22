@@ -39,6 +39,7 @@ if sys.platform == "win32":
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop  # noqa: E402
 
 from neuro_san_studio.plugins.plugin_loader import PluginLoader  # noqa: E402
+from neuro_san_studio.utils.version import studio_version  # noqa: E402
 
 
 class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
@@ -61,8 +62,19 @@ class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
         for plugin in self.plugins:
             self._logger.info("Loaded plugin: %s", plugin)
 
+        # Expose the studio version via AGENT_VERSION_LIBS env var so the health endpoint reports it
+        version = studio_version()
+        existing_libs = os.environ.get("AGENT_VERSION_LIBS", "")
+        libs_list = []
+        for lib in existing_libs.split(" "):
+            lib = lib.strip()
+            if lib and not lib.startswith("neuro-san-studio"):
+                libs_list.append(lib)
+        libs_list.append(f"neuro-san-studio:{version}")
+        os.environ["AGENT_VERSION_LIBS"] = " ".join(libs_list)
+
     def run(self):
-        """Initialize Phoenix and Langfuse and run the server main loop."""
+        """Initialize plugins and run the server main loop."""
         for plugin in self.plugins:
             self._logger.info("Initializing plugin: %s", plugin)
             plugin.initialize()

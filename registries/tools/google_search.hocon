@@ -32,6 +32,8 @@
 # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -70,7 +72,7 @@
 
             "instructions": """
 Use your tool to respond to the inquiry.
-""",
+""" ${expertise_scoping_instructions},
             "tools": ["google_search"]
         },
         {

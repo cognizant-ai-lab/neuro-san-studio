@@ -16,6 +16,7 @@
 
 {
    include "registries/aaosa.hocon",
+   include "registries/expertise_scoping_instructions.hocon",
 
    "metadata": {
       "description": "Multi-agent system that helps consumers with their decisions across various domains, ranging from purchases, to travel planning, to hobby selection. This agent network makes calls to other agent networks from B2C businesses that might not be fully aligned. Calls external agent networks including retail (Macy's, CarMax), travel providers (Booking, Expedia, Airbnb), and job search (LinkedIn). Uses web search with DuckDuckGo (limited daily quota).",
@@ -36,11 +37,7 @@
    "max_execution_seconds": 900,
    "instructions_prefix": """
 You are an assistant helping with a portion of the process for helping a user research various decisions.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
-""",
-
+""" ${expertise_scoping_instructions},
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
