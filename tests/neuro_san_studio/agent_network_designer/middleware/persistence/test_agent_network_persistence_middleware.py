@@ -50,6 +50,7 @@ from neuro_san.internals.reservations.reservation_util import ReservationUtil
 from pyhocon import ConfigFactory
 
 from neuro_san_studio.agent_network_designer.common.globals import ProcessGlobals
+from neuro_san_studio.agent_network_designer.common.mcp_servers_load import McpServersLoad
 from neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware import (
     AgentNetworkDefinitionMiddleware,
 )
@@ -80,7 +81,6 @@ from neuro_san_studio.agent_network_designer.middleware.persistence.reservations
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
 from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
 from neuro_san_studio.agent_network_designer.tools.get_toolbox import GetToolbox
-from neuro_san_studio.agent_network_designer.tools.mcp_servers_load import McpServersLoad
 
 # Generated HOCON files include registries/aaosa.hocon and config/llm_config.hocon relative to the
 # CWD, so parsing one back requires the repo root (five directories above this test module).

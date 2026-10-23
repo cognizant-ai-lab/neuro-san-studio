@@ -44,6 +44,9 @@ from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from neuro_san_studio.agent_network_designer.common.and_logger import AndLogger
+from neuro_san_studio.agent_network_designer.common.connectivity_dictionary_converter import (
+    ConnectivityDictionaryConverter,
+)
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_DEFINITION
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_METADATA
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_NAME
@@ -59,9 +62,6 @@ from neuro_san_studio.agent_network_designer.middleware.persistence.agent_networ
 )
 from neuro_san_studio.agent_network_designer.middleware.persistence.common_instruction_stripper import (
     CommonInstructionStripper,
-)
-from neuro_san_studio.agent_network_designer.tools.connectivity_dictionary_converter import (
-    ConnectivityDictionaryConverter,
 )
 
 SUPPORTED_CONFIG_EXTENSIONS: tuple[str, ...] = (".hocon", ".json")

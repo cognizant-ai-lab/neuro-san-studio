@@ -22,13 +22,13 @@ from typing import Any
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 
 from neuro_san_studio.agent_network_designer.common.and_logger import AndLogger
+from neuro_san_studio.agent_network_designer.common.connectivity_dictionary_converter import (
+    ConnectivityDictionaryConverter,
+)
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_DEFINITION
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_NAME
 from neuro_san_studio.agent_network_designer.common.constants import PROGRESS_HANDLER
 from neuro_san_studio.agent_network_designer.common.constants import PROGRESS_HANDLER_LOCK
-from neuro_san_studio.agent_network_designer.tools.connectivity_dictionary_converter import (
-    ConnectivityDictionaryConverter,
-)
 from neuro_san_studio.utils.sly_data_lock import SlyDataLock
 
 

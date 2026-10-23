@@ -38,13 +38,13 @@ pytest.importorskip("neuro_san_studio.agent_network_designer.tools.get_mcp_tool"
 # and the tests reach the class's protected policy helpers by design.
 # pylint: disable=wrong-import-position,protected-access
 from neuro_san_studio.agent_network_designer.common.globals import ProcessGlobals  # noqa: E402
+from neuro_san_studio.agent_network_designer.common.mcp_servers_load import McpServersLoad  # noqa: E402
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import BUNDLED_MCP_INFO_FILE  # noqa: E402
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import (
     DEFAULT_MCP_TOOLS_FETCH_TIMEOUT_SECONDS,  # noqa: E402
 )
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import DEFAULT_MCP_TOOLS_TTL_SECONDS  # noqa: E402
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool  # noqa: E402
-from neuro_san_studio.agent_network_designer.tools.mcp_servers_load import McpServersLoad  # noqa: E402
 
 MCP_SERVERS: list[str] = ["https://one.example/mcp", "https://two.example/mcp"]
 

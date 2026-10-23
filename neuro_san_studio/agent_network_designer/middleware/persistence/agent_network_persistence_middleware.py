@@ -31,10 +31,15 @@ from neuro_san.interfaces.reservationist import Reservationist
 from neuro_san.internals.validation.network.unreachable_nodes_network_validator import UnreachableNodesNetworkValidator
 
 from neuro_san_studio.agent_network_designer.common.and_logger import AndLogger
+from neuro_san_studio.agent_network_designer.common.connectivity_dictionary_converter import (
+    ConnectivityDictionaryConverter,
+)
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_DEFINITION
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_HOCON_TEXT
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_METADATA
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_NAME
+from neuro_san_studio.agent_network_designer.common.mcp_header_hygiene import McpHeaderHygiene
+from neuro_san_studio.agent_network_designer.common.mcp_servers_load import McpServersLoad
 from neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware import SKIP_DESIGNER
 from neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware import (
     AgentNetworkDefinitionMiddleware,
@@ -63,13 +68,8 @@ from neuro_san_studio.agent_network_designer.middleware.validation.agent_network
 from neuro_san_studio.agent_network_designer.middleware.validation.agent_network_structure_validation_middleware import (  # noqa: E501
     AgentNetworkStructureValidationMiddleware,
 )
-from neuro_san_studio.agent_network_designer.tools.connectivity_dictionary_converter import (
-    ConnectivityDictionaryConverter,
-)
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
 from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
-from neuro_san_studio.agent_network_designer.tools.mcp_header_hygiene import McpHeaderHygiene
-from neuro_san_studio.agent_network_designer.tools.mcp_servers_load import McpServersLoad
 from neuro_san_studio.agent_network_designer.tools.set_sample_queries import AGENT_NETWORK_QUERIES
 
 # To use reservations, turn this environment variable to true

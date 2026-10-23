@@ -145,7 +145,7 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     # clear_all_for_testing() below.
     REGISTRY: list[tuple[str, str, str]] = [
         (
-            "neuro_san_studio.agent_network_designer.tools.connectivity_dictionary_converter",
+            "neuro_san_studio.agent_network_designer.common.connectivity_dictionary_converter",
             "ConnectivityDictionaryConverter",
             "clear_shared_toolbox_factory_for_testing",
         ),

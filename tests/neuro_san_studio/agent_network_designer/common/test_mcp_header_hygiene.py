@@ -25,12 +25,12 @@ from unittest import TestCase
 
 import pytest
 
-pytest.importorskip("neuro_san_studio.agent_network_designer.tools.mcp_header_hygiene")
+pytest.importorskip("neuro_san_studio.agent_network_designer.common.mcp_header_hygiene")
 
 # The import must stay below importorskip so environments whose dependencies
 # predate this module's needs skip cleanly.
 # pylint: disable=wrong-import-position
-from neuro_san_studio.agent_network_designer.tools.mcp_header_hygiene import McpHeaderHygiene  # noqa: E402
+from neuro_san_studio.agent_network_designer.common.mcp_header_hygiene import McpHeaderHygiene  # noqa: E402
 
 # A server the conversation supplies auth headers for.
 CLIENT_URL: str = "https://oauth.example/mcp"

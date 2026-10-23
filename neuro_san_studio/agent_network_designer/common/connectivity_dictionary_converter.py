@@ -26,8 +26,8 @@ from neuro_san.internals.run_context.factory.master_toolbox_factory import Maste
 from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
+from neuro_san_studio.agent_network_designer.common.designer_network_inspector import DesignerNetworkInspector
 from neuro_san_studio.agent_network_designer.common.shared_process_cache import SharedProcessCache
-from neuro_san_studio.agent_network_designer.tools.designer_network_inspector import DesignerNetworkInspector
 
 # Type definition for sanity
 Connectivity = list[dict[str, Any]]
