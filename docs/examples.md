@@ -59,6 +59,7 @@ Here are a few examples ordered by level of complexity.
     - [Intranet Agents With Memory Routing](#intranet-agents-with-memory-routing)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
     - [Airline Policy Web Search Assistant](#airline-policy-web-search-assistant)
+    - [Automotive Model-Based Development Workflow](#automotive-model-based-development-workflow)
     - [Telco Network Orchestration](#telco-network-orchestration)
     - [Telco Network Support](#telco-network-support)
     - [Real Estate Agent](#real-estate-agent)
@@ -494,6 +495,14 @@ and can be fully vibe coded. It covers baggage, fares, seating, loyalty programs
 assistance — all grounded strictly in live content retrieved from the airline's own site.
 
 **Tags:** `AAOSA`, `customer-service`, `airline`, `policy-management`, `web-scraping`, `RAG`, `tool`
+
+### Automotive Model-Based Development Workflow
+
+[Automotive Model-Based Development Workflow](examples/industry/simulink_mbd_verifier.md) demonstrates how Neuro SAN
+can orchestrate requirement analysis, Simulink planning and implementation, model verification, and an evidence-based
+engineering report through MATLAB MCP.
+
+**Tags:** `automotive`, `model-based-design`, `Simulink`, `MCP`, `multi-agent`
 
 ### Telco Network Orchestration
 
