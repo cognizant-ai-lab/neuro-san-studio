@@ -158,18 +158,17 @@ Which would you like to tackle first?
    - Conducts thorough searches on LinkedIn for job listings and company details.
    - Identifies networking opportunities including industry groups and events.
    - Compiles and organizes relevant data for job seekers.
-   - Uses: `/tools/ddgs_search` - DuckDuckGo search API
+   - Uses: `/tools/internet_info_gatherer` - Internet Info Gatherer agent network
 
 ---
 
 ## External Dependencies
 
-**DuckDuckGo Search API** (`/tools/ddgs_search`)
+**[Internet Info Gatherer](../tools/internet_info_gatherer.md)** (`/tools/internet_info_gatherer`)
 
 - **Tool Name**: linkedin_searcher
 - **Used By**: `profile_builder`, `application_specialist`, and as a standalone search tool
 - **Purpose**: Searches linkedin.com to return URLs for job listings, company information, and networking opportunities
-- **Quota Limitation**: Subject to DuckDuckGo's daily search quota limits
 - **Impact if Unavailable**: The network will be unable to search for job opportunities, company information, or networking connections on LinkedIn, significantly limiting its ability to provide job search assistance and profile optimization recommendations
 
 ---

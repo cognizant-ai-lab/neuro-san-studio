@@ -114,7 +114,7 @@ Which option interests you most, or would you like to see more vehicles?
    - Guides customers through the purchasing process with no-pressure approach.
    - Delegates to:
      - `inventory_specialist` - Manages vehicle inventory and availability information
-       - Uses: `carmax_search` - Web search tool for inventory via DuckDuckGo
+       - Uses: `carmax_search` - Web search tool for inventory via the Internet Info Gatherer
      - `test_drive_coordinator` - Schedules and organizes test drives with vehicle preparation
 
 2. **service_advisor**
@@ -137,12 +137,11 @@ Which option interests you most, or would you like to see more vehicles?
 
 ## External Dependencies
 
-**DuckDuckGo Search API** (`/tools/ddgs_search`)
+**[Internet Info Gatherer](../tools/internet_info_gatherer.md)** (`/tools/internet_info_gatherer`)
 
 - **Tool Name**: carmax_search
 - **Used By**: `inventory_specialist`
 - **Purpose**: Searches carmax.com to return URLs for available vehicles in CarMax inventory
-- **Quota Limitation**: Subject to DuckDuckGo's daily search quota limits
 - **Impact if Unavailable**: The network will be unable to search for vehicle inventory, significantly limiting the ability to provide vehicle recommendations and availability information to customers
 
 ---

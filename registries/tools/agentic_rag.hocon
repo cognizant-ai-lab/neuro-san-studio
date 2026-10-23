@@ -58,15 +58,7 @@
 
             "instructions": """Use your tool to respond to the inquiry.
 """ ${expertise_scoping_instructions},
-            "tools": ["website_search", "rag_retriever", "slack_tool"]
-        },
-        # LangChain search tool using Bing; no need to define "function" since "args_schema" is pre-defined.
-        {
-            "name": "website_search",
-            "toolbox": "ddgs_search"
-            "args": {
-                "num_results": 3
-            }
+            "tools": ["/tools/internet_info_gatherer", "rag_retriever", "slack_tool"]
         },
         # RAG tool that loads the RFP PDF into an in-memory vectorstore and answers queries.
         # This is the shared toolbox "pdf_rag" tool (PdfRag), so the PDF is fetched through the

@@ -114,11 +114,11 @@ Would you like to proceed with one of these bookings, or would you like me to sh
    - Creates flexible itineraries with mix-and-match travel components.
    - Delegates to:
      - `destination_specialist` - Provides detailed destination information and recommendations
-       - Uses: `BookingSearch` - Web search tool via DuckDuckGo
+       - Uses: `BookingSearch` - Web search tool via the Internet Info Gatherer
      - `accommodation_specialist` - Assists with selecting suitable accommodations from listings
-       - Uses: `BookingSearch` - Web search tool via DuckDuckGo
+       - Uses: `BookingSearch` - Web search tool via the Internet Info Gatherer
      - `activity_coordinator` - Suggests activities, tours, and local experiences
-       - Uses: `BookingSearch` - Web search tool via DuckDuckGo
+       - Uses: `BookingSearch` - Web search tool via the Internet Info Gatherer
 
 2. **pricing_specialist**
    - Provides real-time pricing information for accommodations and packages.
@@ -140,12 +140,11 @@ Would you like to proceed with one of these bookings, or would you like me to sh
 
 ## External Dependencies
 
-**DuckDuckGo Search API** (`/tools/ddgs_search`)
+**[Internet Info Gatherer](../tools/internet_info_gatherer.md)** (`/tools/internet_info_gatherer`)
 
 - **Tool Name**: BookingSearch
 - **Used By**: `destination_specialist`, `accommodation_specialist`, `activity_coordinator`
 - **Purpose**: Simulates web searches on booking.com to return URLs and options for accommodations, destinations, and activities
-- **Quota Limitation**: Subject to DuckDuckGo's daily search quota limits
 - **Impact if Unavailable**: The network will be unable to search for accommodations, destinations, or activities, significantly limiting its ability to provide travel recommendations and options
 
 ---
