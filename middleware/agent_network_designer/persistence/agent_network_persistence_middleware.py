@@ -19,6 +19,7 @@ from datetime import timezone
 from logging import getLogger
 from os import environ
 from typing import Any
+from typing import override
 
 from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware import AgentState
@@ -41,6 +42,7 @@ from coded_tools.agent_network_editor.mcp_header_hygiene import McpHeaderHygiene
 from coded_tools.agent_network_editor.mcp_servers_load import McpServersLoad
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
 from middleware.agent_network_designer.agent_network_definition_middleware import SKIP_DESIGNER
+from middleware.agent_network_designer.agent_network_definition_middleware import AgentNetworkDefinitionMiddleware
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
@@ -85,6 +87,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     network could not be deployed, the turn ends with an error message for the client, the
     HOCON text and the metadata block are still published, and agent_reservations is cleared
     (issue #1425, see aafter_agent and _deploy_error_response).
+
+    A turn that only loads a network (skip_designer with agent_network_hocon_file or agent_reservations and no
+    agent_network_definition, see AgentNetworkDefinitionMiddleware.is_load_only_request) is neither validated nor
+    saved: the loaded network goes back to the client as it is.
 
     Note: Validation is intentionally duplicated here even though individual subnetworks
     already perform their own validation. This is a safeguard for cases where the agent
@@ -134,6 +140,27 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             self.max_validation_attempts = DEFAULT_MAX_VALIDATION_ATTEMPTS
         # Counts validation rounds that failed in this session, used to cap retries.
         self._validation_attempts: int = 0
+        # Whether this request only loads a network, decided by the first abefore_agent call; None until then.
+        self._load_only: bool | None = None
+
+    @override
+    async def abefore_agent(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+        """
+        Record whether this request only loads a network, before anything changes sly_data.
+
+        Before-agent hooks run at the start of each run of the agent, before any before-model hook. That matters
+        because AgentNetworkDefinitionMiddleware caches the loaded definition in sly_data in its before-model
+        hook, and after that a load looks the same as a definition the client sent to be saved. neuro-san may run
+        the agent again on this instance after an error, when the definition is already cached, so the first
+        answer is kept.
+
+        :param state: Current agent state
+        :param runtime: Runtime context
+        :return: None, as the state is not changed
+        """
+        if self._load_only is None:
+            self._load_only = AgentNetworkDefinitionMiddleware.is_load_only_request(self.sly_data)
+        return None
 
     # Reenter the agent loop at the model node if validation fails.
     # If no agent network definition is present, return None to let the agent respond freely.
@@ -156,6 +183,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         still published, since they describe the design rather than the deploy, and
         agent_reservations is cleared, a handle the request carried included, see
         _deploy_error_response (issue #1425).
+        A turn that only loads a network skips validation and the save; the loaded definition is returned in the
+        export shape. Such a turn returns no HOCON text, even when the load fails.
 
         This validation acts as a final safety net: even if the agent bypassed calling
         the necessary tools or subnetworks (and thus their built-in validators never ran),
@@ -168,6 +197,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
+        if self._load_only:
+            # A load-only turn writes no HOCON text, so it returns none, even when the load fails. Any text the
+            # request carried does not describe a network this turn loaded.
+            self.sly_data.pop(AGENT_NETWORK_HOCON_TEXT, None)
         # Only validate and persist if there is an agent_network_definition with a valid name; otherwise let
         # the agent respond to the user freely. This allows the agent to ask clarifying questions or report
         # issues without being forced to produce a network definition — for example, when
@@ -175,6 +208,11 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # already reported the error (jumping to end), so no network definition will be present.
         # A valid name is also required for file path and reservation name construction.
         if network_def and agent_network_name and isinstance(agent_network_name, str):
+            if self._load_only:
+                # A load-only turn hands the loaded network back as it is: no validation, no save and no deploy.
+                await self._export_network_definition()
+                return None
+
             structure_errors, instructions_errors = await self._validate_network(network_def)
             if structure_errors or instructions_errors:
                 self.logger.warning("Validation errors: %s", structure_errors + instructions_errors)
@@ -223,21 +261,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 network_def, agent_network_name, sample_queries
             )
 
-            agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
-
-            # Pre-warm the shared ToolboxFactory off the event loop before the
-            # sync export below converts to connectivity style. In the normal
-            # designer flow ProgressHandler has already done this while
-            # reporting progress, but a skip_designer run never reports
-            # progress, so on a cold process the from_dict() fallback inside
-            # the export would otherwise pay the one-time toolbox file read
-            # and HOCON parse on the event loop.
-            if agent_progress_style == "connectivity":
-                await ConnectivityDictionaryConverter.get_shared_toolbox_factory()
             # The export runs on a deploy error too: the definition handed back describes the network
             # the client asked for and is what it needs to retry the save; it does not depend on the
             # deploy. Only agent_reservations is withheld, see _assemble_and_persist.
-            self._determine_exported_network_definition(self.sly_data, agent_progress_style)
+            await self._export_network_definition()
 
             self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
 
@@ -250,8 +277,6 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         """Return a jump-to-model response with the given error content."""
         # Set the skip designer value to False to prevent infinite loop since jumping to model actually jump to the
         # before model method in AgentNetworkDefinitionMiddleware, which jumps back to here if skip designer is True.
-        # This is also an indicator for client that there are issues with input agent_network_definition and that the
-        # designer has made changes to the definition.
         if self.sly_data.get(SKIP_DESIGNER) is True:
             self.sly_data[SKIP_DESIGNER] = False
         return {
@@ -401,11 +426,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         temporary-network deploy included, so it flows upstream and the client can send it
         again. A client value that is not a dict is ignored with a warning.
 
-        A client that says nothing about the block (key absent or null) predates the contract;
-        nsflow's manual save, as of nsflow 0.7.1, is the known case. Erasing the block on its behalf
-        would be the very loss this fixes, so the persistor is asked once for the block of the
-        network about to be overwritten and that block is the base instead. A client that sends
-        the key, even as an empty object, owns the block and nothing is read.
+        When the request says nothing about the block (key absent or null), the block of the
+        network about to be overwritten is the base: the persistor is asked for it once, so the
+        save does not erase it. A client that sends the key, even as an empty object, owns the
+        block and nothing is read.
 
         :param persistor: The persistor this save goes through; the fallback reads the network
                 it is about to overwrite (the reservations persistor has none and answers None)
@@ -416,9 +440,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         candidate: Any = self.sly_data.get(AGENT_NETWORK_METADATA)
         source: str = f"sly_data['{AGENT_NETWORK_METADATA}']"
         if candidate is None:
-            # Compatibility fallback for clients that predate the key: the only read of the
-            # network being saved (manifest and cached config reads are unrelated), and only
-            # when the client said nothing.
+            # No block in the request: keep the saved network's block. This is the only read of
+            # the network being saved (manifest and cached config reads are unrelated).
             candidate = await persistor.async_restore_metadata(agent_network_name)
             source = f"existing network {agent_network_name}"
         block: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(candidate, source).merge_sample_queries(
@@ -537,6 +560,24 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
         self.sly_data[AGENT_NETWORK_METADATA] = metadata
         return deploy_error
+
+    async def _export_network_definition(self) -> None:
+        """
+        Put the definition in sly_data into the shape AGENT_NETWORK_DESIGNER_PROGRESS_STYLE asks for, as the
+        client receives it.
+        """
+        agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
+
+        # Pre-warm the shared ToolboxFactory off the event loop before the
+        # sync export below converts to connectivity style. In the normal
+        # designer flow ProgressHandler has already done this while
+        # reporting progress, but a skip_designer run never reports
+        # progress, so on a cold process the from_dict() fallback inside
+        # the export would otherwise pay the one-time toolbox file read
+        # and HOCON parse on the event loop.
+        if agent_progress_style == "connectivity":
+            await ConnectivityDictionaryConverter.get_shared_toolbox_factory()
+        self._determine_exported_network_definition(self.sly_data, agent_progress_style)
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any], agent_progress_style: str):
         """

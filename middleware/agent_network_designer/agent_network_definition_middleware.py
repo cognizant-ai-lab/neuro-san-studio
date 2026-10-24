@@ -49,7 +49,6 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
-from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 from middleware.agent_network_designer.agent_network_config_path_resolver import CONFIG_FILE_UNAVAILABLE_MESSAGE
 from middleware.agent_network_designer.agent_network_config_path_resolver import AgentNetworkConfigPathResolver
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
@@ -113,6 +112,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         self.network_def: dict[str, Any] | list[dict[str, Any]] | None = None
         # Initialize an error message to store issues encountered during loading from HOCON file or S3 reservation.
         self.error_message: str = ""
+        # Whether this request only loads a network, decided on the first model call (see abefore_model).
+        self._load_only: bool | None = None
 
     @override
     @hook_config(can_jump_to=["end"])
@@ -127,8 +128,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         designer's common instructions its instructions already hold (see _strip_common_instructions), so the
         persistence middleware and the LLM both get each agent's custom instructions.
 
-        If skip_designer is set, jumps to end right after that, so the persistence middleware can save the
-        user-modified network without LLM involvement.
+        If skip_designer is set, jumps to end right after that, without any LLM involvement. With a definition
+        from the client, the persistence middleware then saves it. Without one, the turn only loads the network
+        named in agent_network_hocon_file or agent_reservations and hands it back (see is_load_only_request).
 
         Note that this is done before model, not before agent, because the definition may change
         between each model call (e.g., when the agent calls a tool that updates the network definition).
@@ -141,8 +143,22 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # failure jumps to end and terminates the loop, but resetting here is a precaution against
         # stale errors persisting if the control flow ever changes.
         self.error_message = ""
+        # Decided once, before the first load: the load caches the definition in sly_data, and neuro-san may
+        # run the agent again on this instance after an error.
+        if self._load_only is None:
+            self._load_only = self.is_load_only_request(self.sly_data)
+        load_only: bool = self._load_only
         self.network_def = await self._resolve_network_def()
         agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
+
+        # A load-only request that loads nothing, such as agent_reservations without a reservation_id, ends here.
+        # It must not reach the model, since nothing the model built would be saved.
+        if load_only and not self.network_def and not self.error_message:
+            self.error_message = (
+                f'Error: nothing was loaded. With "{SKIP_DESIGNER}" and no "{AGENT_NETWORK_DEFINITION}", send '
+                f'"{AGENT_NETWORK_HOCON_FILE}", or "{AGENT_RESERVATIONS}" with a "{RESERVATION_ID}" in its last entry.'
+            )
+            self.logger.error(self.error_message)
 
         # Type check agent network name, but only report an error if no prior load error occurred,
         # since a load failure (e.g. missing HOCON file) may have prevented the name from being set.
@@ -184,16 +200,35 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.network_def = await self._strip_common_instructions(self.network_def)
 
             # This is used for manual editing where users modify the agent network definition and only want to use the
-            # agent network designer to persist the changes, skipping the LLM entirely.
+            # agent network designer to persist the changes, skipping the LLM entirely, and for loading a network
+            # without saving it.
             # Strict boolean check to match the schema (type: boolean); "false" as a string would be truthy otherwise.
             if self.sly_data.get(SKIP_DESIGNER) is True and agent_network_name:
+                reply: str = f"The network {agent_network_name} has been modified by the user."
+                if load_only:
+                    reply = f"The network {agent_network_name} has been loaded."
                 return {
-                    "messages": [
-                        AIMessage(content=f"The network {agent_network_name} has been modified by the user.")
-                    ],
+                    "messages": [AIMessage(content=reply)],
                     "jump_to": "end",
                 }
         return None
+
+    @staticmethod
+    def is_load_only_request(sly_data: dict[str, Any]) -> bool:
+        """
+        Tell whether a request only loads a network: skip_designer is true, there is no agent_network_definition,
+        and agent_network_hocon_file or agent_reservations names a network to load.
+
+        Such a turn returns the loaded network and saves nothing. Call it on the request as the client sent it,
+        before the load caches the definition in sly_data. The persistence middleware calls it too, so both use
+        one rule. An empty definition counts as none, as it does for the load itself.
+
+        :param sly_data: The request's sly_data
+        :return: True when the turn should load the network and save nothing
+        """
+        if sly_data.get(SKIP_DESIGNER) is not True or sly_data.get(AGENT_NETWORK_DEFINITION):
+            return False
+        return bool(sly_data.get(AGENT_NETWORK_HOCON_FILE) or sly_data.get(AGENT_RESERVATIONS))
 
     @override
     async def awrap_model_call(
@@ -259,6 +294,15 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if network_def:
             # This log level is set to debug since this gets called before every model call and can be quite verbose.
             self.logger.debug(">>>>>>>>>>>>>>>>>>>Getting Agent Network Definition from Sly Data>>>>>>>>>>>>>>>>>>>")
+            # A definition in the request wins over a file the request also names, so say the file is not loaded.
+            # A reservation handle is left out, since reservations-mode clients send one back with every save.
+            if not self._load_only and self.sly_data.get(SKIP_DESIGNER) is True and hocon_file:
+                self.logger.warning(
+                    "%s was sent with %s and %s; the definition is saved and the file is not loaded.",
+                    AGENT_NETWORK_DEFINITION,
+                    SKIP_DESIGNER,
+                    AGENT_NETWORK_HOCON_FILE,
+                )
             return network_def
 
         # Next, check to see if the user provides HOCON file via sly data
@@ -471,11 +515,11 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         """
         Get the AAOSA instructions a save appends, read from registries/aaosa.hocon once per process.
 
-        Unlike _get_aaosa_instructions, this keeps nothing in sly_data: it is read on every model call, and sly_data
-        comes from the client, which could put anything under a cache key there. The file is the one every
-        generated network includes (see HoconAgentNetworkAssembler), so its text is what a save adds. The read
-        awaits, so first calls at the same time may all read the file; the first to finish keeps its value and
-        reports any problem, and the others use that value (see _cache_aaosa_instructions).
+        Nothing is kept in sly_data: this runs on every model call, and sly_data comes from the client, which could
+        put anything under a cache key there. The file is the one every generated network includes (see
+        HoconAgentNetworkAssembler), so its text is what a save adds. The read awaits, so first calls at the same
+        time may all read the file; the first to finish keeps its value and reports any problem, and the others use
+        that value (see _cache_aaosa_instructions).
 
         :return: The AAOSA instructions, or "" when the file is missing, unreadable or malformed or defines none.
                 Copies of them are then not stripped, the reason is logged once, and fixing the file takes a
@@ -774,9 +818,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 )
                 return None, {}
             if instructions.strip():
-                # Extract only the unique instructions
-                # (remove aaosa instructions, instructions prefix, and demo mode)
-                agent_def["instructions"] = await self._extract_custom_instructions(instructions.strip())
+                # Kept with its own line breaks and indentation. The copies of the common instructions are stripped
+                # later, the same way for every source (see _strip_common_instructions).
+                agent_def["instructions"] = instructions.strip()
 
             # Initialize description for non-function agents so the description setter
             # can distinguish them from function/toolbox agents (which have no description key).
@@ -800,77 +844,6 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             agent_def["tools"] = tools
 
         return agent_name, agent_def
-
-    async def _extract_custom_instructions(self, instructions: str) -> str:
-        """
-        Extract the custom part of instructions, excluding aaosa instructions, instructions prefix, and demo mode.
-        :param instructions: The full instructions of an agent.
-
-        :return: The part of instructions that is unique to the agent.
-        """
-
-        # Pattern for instruction prefix (matches any agent name)
-        prefix_pattern = (
-            r"You are part of a \w+ of assistants\.\s*Only answer inquiries that are directly within "
-            r"your area of expertise\.\s*Do not try to help for other matters\.\s*"
-            r"Do not mention what you can NOT do\. Only mention what you can do\."
-        )
-
-        demo_mode = (
-            "You are part of a demo system, so when queried, make up a realistic response as if "
-            "you are actually grounded in real data or you are operating a real application API or microservice."
-        )
-
-        aaosa_instructions: str = await self._get_aaosa_instructions()
-
-        # Clean and normalize the input
-        custom_part: str = instructions.strip()
-        custom_part = re.sub(r"\s+", " ", custom_part)  # Normalize whitespace
-
-        # Remove instruction prefix using regex
-        custom_part = re.sub(prefix_pattern, "", custom_part).strip()
-
-        # Remove aaosa text
-        custom_part = custom_part.replace(aaosa_instructions.strip(), "").strip()
-
-        # Remove demo mode text
-        custom_part = custom_part.replace(demo_mode.strip(), "").strip()
-
-        # Clean up any extra whitespace
-        custom_part = " ".join(custom_part.split())
-
-        return custom_part
-
-    async def _get_aaosa_instructions(self) -> str:
-        """
-        Get aaosa instructions potentially from cache in sly_data
-
-        :return: aaosa instructions
-        """
-        aaosa_instructions: str = ""
-
-        # Try to get aaosa_instructions from sly_data cache
-        async with await SlyDataLock.get_lock(self.sly_data, "aaosa_instructions_lock"):
-            aaosa_instructions = self.sly_data.get("aaosa_instructions")
-            if aaosa_instructions is not None:
-                # Return early with cached value
-                return aaosa_instructions
-
-            # Get from file
-            try:
-                use_file = "registries/aaosa.hocon"
-                hocon = AbstractAsyncConfigRestorer(
-                    file_purpose="get_agent_network_definition - custom instructions", must_exist=True
-                )
-                config: dict[str, Any] = await hocon.async_restore(file_reference=use_file)
-                aaosa_instructions = config.get("aaosa_instructions", "")
-            except FileNotFoundError:
-                aaosa_instructions = ""
-
-            # Cache the loaded value in sly_data for subsequent calls
-            self.sly_data["aaosa_instructions"] = aaosa_instructions
-
-        return aaosa_instructions
 
     def _extract_name_from_reservation_id(self, reservation_id: str) -> str:
         """
