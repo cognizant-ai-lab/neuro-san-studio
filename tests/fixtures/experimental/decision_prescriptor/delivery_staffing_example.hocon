@@ -1,0 +1,59 @@
+
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# This file defines everything necessary for a data-driven test.
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
+
+{
+    # Describes what agent to test against.
+    "agent": "experimental/decision_prescriptor",
+
+    # Use direct connections when invoking external agents.
+    "use_direct": true,
+
+    # Number of iterations that have to pass to call this test successful.
+    "success_ratio": "1/1",
+
+    # Interactions are a series of dictionaries with request elements paired with
+    # descriptions of response checks.
+    "interactions": [
+        {
+            # This is what we send as input to streaming_chat()
+            "text": "Run the built-in delivery staffing example and show me the trade-offs.",
+
+            # The response block treats how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # The report tool always writes this default file name, and the front man
+                    # is instructed to give the user the path.
+                    "keywords": ["decision_prescriptor_report.html"],
+
+                    # The gist checks the behavior the instructions insist on: the data is called
+                    # synthetic, and no single strategy is presented as the answer.
+                    "gist": """
+The response says the example data is synthetic, reports how well the model fits each outcome,
+describes a trade-off between margin, delivery risk and time to value, and does not present one
+strategy as the single correct answer.
+"""
+                }
+            }
+        }
+    ]
+}
