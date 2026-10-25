@@ -15,8 +15,8 @@
 # END COPYRIGHT
 
 """
-Tests for HoconAgentNetworkAssembler: sly_data_schema emission, the generated-network execution timeout and
-metadata block rendering.
+Tests for HoconAgentNetworkAssembler: sly_data_schema emission, the generated-network execution timeout,
+metadata block rendering and how agent descriptions and instructions are written.
 """
 
 import asyncio
@@ -35,6 +35,7 @@ from middleware.agent_network_designer.persistence.agent_network_assembler impor
     GENERATED_NETWORK_MAX_EXECUTION_SECONDS,
 )
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import DESCRIPTION_CLOSING_INDENT
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[4]
@@ -60,7 +61,8 @@ class TestHoconAgentNetworkAssembler(TestCase):
     The generated text declares the network's MCP header needs in the front man's sly_data_schema, carries the
     generated-network execution timeout and renders the metadata block it is given. The header stamps date_created
     on a block that has none, so the text a client downloads always carries a creation date; date_modified is the
-    persistence middleware's business (file mode only) and the header never adds it.
+    persistence middleware's business (file mode only) and the header never adds it. Each agent's description and
+    instructions read back as written, whatever the text holds.
     """
 
     @staticmethod
@@ -431,3 +433,84 @@ class TestHoconAgentNetworkAssembler(TestCase):
         self.assertEqual(config["max_execution_seconds"], GENERATED_NETWORK_MAX_EXECUTION_SECONDS)
         self.assertEqual(config["tools"][0]["name"], "front_man")
         self.assertEqual(config["metadata"]["description"], "A demo")
+
+    # Text for each agent's description and instructions: an embedded quote, a line break, three double quotes
+    # alone, around a word and four in a row, substitution syntax, non-ASCII text, backslashes, control characters
+    # and a tab next to three double quotes. A tab without them reads back as spaces, so it is not here.
+    AGENT_TEXTS: list[str] = [
+        'He said "hi"',
+        "line one\nline two",
+        'three """ quotes',
+        'Use """docstrings""" here.',
+        'x """" y',
+        "Price ${PRICE} is $5 ${?OPT}",
+        "caf\u00e9 \U0001f600 sep\u2028arated",
+        "C:\\new\\table \\n",
+        "x\\=y \\#z \\!w",
+        "form\x0cfeed, bell\x07 and escape\x1b codes",
+        'tab\tand """ quotes',
+    ]
+
+    @staticmethod
+    def _agent_text_network(text: str) -> dict[str, Any]:
+        """
+        Build a network whose front man, agent with tools and leaf all hold the same text as their description and
+        instructions.
+
+        :param text: The text for every description and instructions
+        :return: The agent network definition
+        """
+        return {
+            "front_man": {"description": text, "instructions": text, "tools": ["helper"]},
+            "helper": {"description": text, "instructions": text, "tools": ["leaf"]},
+            "leaf": {"description": text, "instructions": text},
+        }
+
+    @staticmethod
+    def _assemble_agent_text_file(text: str, demo_mode: bool) -> str:
+        """
+        Assemble the network from _agent_text_network into HOCON text.
+
+        :param text: The text for every description and instructions
+        :param demo_mode: Whether the assembler adds the demo mode sentence to the leaf
+        :return: The emitted HOCON text
+        """
+        assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode)
+        return asyncio.run(
+            assembler.assemble_agent_network(
+                TestHoconAgentNetworkAssembler._agent_text_network(text), "front_man", "test_net", []
+            )
+        )
+
+    def test_any_text_in_descriptions_and_instructions_reads_back_as_written(self) -> None:
+        """
+        Any text in each agent's description and instructions parses and reads back as written, demo mode on or
+        off, whether it is written between triple quotes or as one double-quoted string.
+        """
+        for demo_mode in (True, False):
+            for text in self.AGENT_TEXTS:
+                with self.subTest(demo_mode=demo_mode, text=text):
+                    config: dict[str, Any] = self._parse(self._assemble_agent_text_file(text, demo_mode))
+
+                    for agent in config.get("tools"):
+                        self.assertEqual(
+                            agent.get("function").get("description"), "\n" + text + "\n" + DESCRIPTION_CLOSING_INDENT
+                        )
+                        self.assertIn("\n" + text + "\n", agent.get("instructions"))
+
+    def test_text_stays_on_its_own_lines_unless_triple_quotes_cannot_hold_it(self) -> None:
+        """
+        A text goes between triple quotes with its line breaks and tabs as they are. A text with three double
+        quotes goes on one line as a double-quoted string, with its quotes, tabs and line breaks escaped.
+        """
+        written: dict[str, str] = {
+            "line one\nline two": '"""\nline one\nline two\n"""',
+            "tab\there": '"""\ntab\there\n"""',
+            'say """hi"""\n\tbye': '"\\nsay \\"\\"\\"hi\\"\\"\\"\\n\\tbye\\n"',
+        }
+        for text, expected in written.items():
+            with self.subTest(text=text):
+                hocon_text: str = self._assemble_agent_text_file(text, False)
+
+                # The agent with tools: its instructions sit between the prefix and the AAOSA instructions.
+                self.assertIn("${instructions_prefix} " + expected + " ${aaosa_instructions}", hocon_text)

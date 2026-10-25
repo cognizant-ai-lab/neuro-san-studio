@@ -79,12 +79,21 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
         :return: The first non-empty manifest path, or "" when no such entry exists.
         """
+        manifest_paths: list[str] = FileSystemAgentNetworkPersistor.get_manifest_paths()
+        return manifest_paths[0] if manifest_paths else ""
+
+    @staticmethod
+    def get_manifest_paths() -> list[str]:
+        """
+        Returns every non-empty entry of the AGENT_MANIFEST_FILE environment variable, in order.
+
+        Parsed exactly as get_first_manifest_path describes; AgentNetworkDefinitionMiddleware uses
+        the full list to derive the registry roots a loaded file must stay inside (issue #1459).
+
+        :return: The non-empty manifest paths, or an empty list when no such entry exists.
+        """
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
-        parts: list[str] = agent_manifest_file.split(os.pathsep)
-        for part in parts:
-            if part:
-                return part
-        return ""
+        return [part for part in agent_manifest_file.split(os.pathsep) if part]
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """

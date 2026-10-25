@@ -295,7 +295,9 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         )
 
     @staticmethod
-    @app.command("validate", help="Validate the structure of an agent network HOCON file.")
+    @app.command(
+        "validate", help="Validate an agent network HOCON file and load its coded tool and middleware classes."
+    )
     def _validate_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         hocon_path: str = typer.Argument(
             ...,
@@ -304,7 +306,10 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         verbose: bool = typer.Option(
             False,
             "--verbose",
-            help="Print the manifest discovery summary, and an agent network summary when validation passes.",
+            help=(
+                "Print the manifest discovery summary, an agent network summary when validation passes, "
+                "and the full error for each class that cannot be loaded."
+            ),
         ),
         external_agents: Optional[str] = typer.Option(
             None,

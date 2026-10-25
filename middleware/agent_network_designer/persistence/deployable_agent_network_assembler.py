@@ -175,18 +175,19 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         self, agent_spec: dict[str, Any], string_replacements_in: dict[str, Any], value_replacements_in: dict[str, Any]
     ) -> dict[str, Any]:
         """
-        Common filters
+        Fill in an agent template with neuro-san's CommonDefs filters.
 
-        We need to use the CommonDefs filters from neuro_san in order to insert the common AAOSA
-        instructions/call/command in the right places.
+        The deployed spec is a plain dictionary with no include of aaosa.hocon and no commondefs section
+        (assemble_agent_network drops it), so the AAOSA instructions and call, the template's commondefs and the
+        agent's own values are all filled in here.
 
-        This is because we are not actually creating a hocon file that can benefit from all the
-        "include" business that hocons afford. We are simply creating a dictionary and all that
-        search/replace that hocon does for us we have to do ourselves.
+        :param agent_spec: A copy of one of the template's agent templates
+        :param string_replacements_in: Placeholder names, without braces, mapped to the strings that replace
+                "{name}"
+        :param value_replacements_in: Values that replace any string value equal to their key, such as the
+                agent's tools list for "tools"
+        :return: The filled-in agent spec
         """
-        # Create a network spec so the ConfigFilters from neuro_san can work on it
-        network_spec: dict[str, Any] = {"tools": [agent_spec]}
-
         # Get commondefs from the template
         empty: dict[str, Any] = {}
         commondefs: dict[str, Any] = self.template.get("commondefs", empty)
@@ -198,6 +199,16 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         }
         string_replacements.update(string_replacements_in)
         string_replacements.update(commondefs.get("replacement_strings", empty))
+
+        # neuro-san's string filter leaves "{name}" as written when its replacement is empty, so remove those
+        # placeholders from the template here, before the agent's own text goes in.
+        empty_keys: list[str] = []
+        for key, value in string_replacements.items():
+            if isinstance(key, str) and isinstance(value, str) and not value:
+                empty_keys.append(key)
+
+        # Create a network spec so the ConfigFilters from neuro_san can work on it
+        network_spec: dict[str, Any] = {"tools": [self._remove_placeholders(agent_spec, empty_keys)]}
 
         # Similarly set up dictionary value replacements
         value_replacements: dict[str, Any] = {
@@ -215,3 +226,39 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         # Retrieve the modified agent spec
         return network_spec["tools"][0]
+
+    @staticmethod
+    def _remove_placeholders(value: Any, keys: list[str]) -> Any:
+        """
+        Remove the "{key}" placeholders of the given keys from every string value in a template value. Dict keys
+        are left as they are.
+
+        :param value: A template value: a string, or a list or dict holding strings at any depth
+        :param keys: The keys whose placeholders to remove
+        :return: A copy of the value without those placeholders; a value of any other type comes back as it is
+        """
+        # A string: delete each placeholder, for example "{demo_mode}" becomes "". This is the only case that
+        # changes anything; the other cases only walk down to the strings.
+        if isinstance(value, str):
+            for key in keys:
+                value = value.replace("{" + key + "}", "")
+            return value
+
+        # A list: handle each item the same way, keeping their order. A new list is built, so the template the
+        # caller passed in is left unchanged.
+        if isinstance(value, list):
+            items: list[Any] = []
+            for item in value:
+                items.append(DeployableAgentNetworkAssembler._remove_placeholders(item, keys))
+            return items
+
+        # A dict, such as an agent template or its "allow" block: handle each value and keep each key as it is,
+        # as neuro-san's filter does. A new dict is built here too.
+        if isinstance(value, dict):
+            entries: dict[Any, Any] = {}
+            for name, item in value.items():
+                entries[name] = DeployableAgentNetworkAssembler._remove_placeholders(item, keys)
+            return entries
+
+        # Anything else, such as a number, a boolean or None, holds no placeholder and is returned as it is.
+        return value

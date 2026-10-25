@@ -64,25 +64,23 @@ HOCON_HEADER_REMAINDER = (
     "%s"
     '   "tools": [\n'
 )
-# The top-agent template indents the front man's lines by this much inside the triple-quoted body.
+# The front man's fixed lines come after the prefix, ahead of its own text, each indented by this much.
 FRONT_MAN_LINES_INDENT: str = " " * 12
+FRONT_MAN_LINES_TEXT: str = FRONT_MAN_LINES_INDENT + DesignerCommonInstructions.FRONT_MAN_LINES.replace(
+    "\n", "\n" + FRONT_MAN_LINES_INDENT
+)
+# The closing quotes of a description are indented by this much in the file.
+DESCRIPTION_CLOSING_INDENT: str = " " * 16
+# The description and instructions slots take quoted text from _render_text.
 TOP_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
-    '                "description": """\n'
-    "%s\n"
-    # The slot after the closing triple quotes takes the optional
-    # sly_data_schema block (see _render_sly_data_schema_block), which
-    # starts with the separating comma when present.
-    '                """%s\n'
+    # The slot after the description takes the optional sly_data_schema block (see
+    # _render_sly_data_schema_block), which starts with the separating comma when present.
+    '                "description": %s%s\n'
     "            },\n"
-    '            "instructions": ${instructions_prefix} """\n'
-    + FRONT_MAN_LINES_INDENT
-    + DesignerCommonInstructions.FRONT_MAN_LINES.replace("\n", "\n" + FRONT_MAN_LINES_INDENT)
-    + "\n"
-    "%s\n"
-    '""" ${aaosa_instructions},\n'
+    '            "instructions": ${instructions_prefix} %s ${aaosa_instructions},\n'
     '            "tools": [%s]\n'
     "        },\n"
 )
@@ -90,13 +88,9 @@ REGULAR_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
-    '                "description": """\n'
-    "%s\n"
-    '                """\n'
+    '                "description": %s\n'
     "            },\n"
-    '            "instructions": ${instructions_prefix} """\n'
-    "%s\n"
-    '""" ${aaosa_instructions},\n'
+    '            "instructions": ${instructions_prefix} %s ${aaosa_instructions},\n'
     '            "tools": [%s]\n'
     "        },\n"
 )
@@ -104,13 +98,9 @@ LEAF_NODE_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
-    '                "description": """\n'
-    "%s\n"
-    '                """\n'
+    '                "description": %s\n'
     "            },\n"
-    '            "instructions": ${instructions_prefix} %s """\n'
-    "%s\n"
-    '""",\n'
+    '            "instructions": ${instructions_prefix} %s %s,\n'
     "        },\n"
 )
 # fmt: off
@@ -261,8 +251,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     def _render_sly_data_schema_block(schema: dict[str, Any] | None) -> str:
         """
         Render the front man's sly_data_schema as a HOCON fragment for the
-        TOP_AGENT_TEMPLATE slot that follows the description's closing
-        triple quotes.
+        TOP_AGENT_TEMPLATE slot that follows the description.
 
         :param schema: The schema dict from build_mcp_sly_data_schema, or None
 
@@ -307,15 +296,49 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         if agent_name == top_agent_name:
             use_description = description or "An assistant that answers inquiries from the user."
-            return TOP_AGENT_TEMPLATE % (agent_name, use_description, sly_data_schema_block, instructions, tools)
+            return TOP_AGENT_TEMPLATE % (
+                agent_name,
+                self._render_text(use_description, DESCRIPTION_CLOSING_INDENT),
+                sly_data_schema_block,
+                self._render_text(FRONT_MAN_LINES_TEXT + "\n" + instructions),
+                tools,
+            )
 
+        description_text: str = self._render_text(description, DESCRIPTION_CLOSING_INDENT)
         if raw_tools:
-            return REGULAR_AGENT_TEMPLATE % (agent_name, description, instructions, tools)
+            return REGULAR_AGENT_TEMPLATE % (agent_name, description_text, self._render_text(instructions), tools)
 
         if instructions:
             demo_prefix = "${demo_mode}" if self.demo_mode else ""
-            return LEAF_NODE_AGENT_TEMPLATE % (agent_name, description, demo_prefix, instructions)
+            return LEAF_NODE_AGENT_TEMPLATE % (
+                agent_name,
+                description_text,
+                demo_prefix,
+                self._render_text(instructions),
+            )
         return TOOLBOX_AGENT_TEMPLATE % (agent_name, agent_name)
+
+    @staticmethod
+    def _render_text(text: str, closing_indent: str = "") -> str:
+        """
+        Quote an agent's description or instructions so that the file can hold any text.
+
+        The text goes on lines of its own between triple quotes, so a multi-line text stays readable. pyhocon reads
+        a tab there back as spaces. Triple quotes cannot hold three double quotes, so a text with them is written
+        as one double-quoted string instead. That string escapes the backslash, the double quote, the line break,
+        the carriage return and the tab, the backslash first, which are escapes pyhocon reads back, and keeps every
+        other character as it is, so the text reads back as written.
+
+        :param text: The description or instructions
+        :param closing_indent: The spaces before the closing quotes, part of the value in both forms
+        :return: The quoted text
+        """
+        value: str = "\n" + text + "\n" + closing_indent
+        if '"""' not in text:
+            return '"""' + value + '"""'
+        escaped: str = value.replace("\\", "\\\\").replace('"', '\\"')
+        escaped = escaped.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+        return '"' + escaped + '"'
 
     def _format_tools(self, tools: list[str]) -> str:
         """

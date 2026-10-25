@@ -43,6 +43,16 @@ class DesignerNetworkInspector(AgentNetworkInspector):
         #           so just return None
         return None
 
+    def get_network_name(self) -> str:
+        """
+        Return an empty name: this inspector is given only the definition, not the network's name.
+
+        The ConnectivityReporter this inspector is made for never asks for it.
+
+        :return: An empty string
+        """
+        return ""
+
     def get_agent_tool_spec(self, name: str) -> dict[str, Any]:
         """
         :param name: The name of the agent tool to get out of the registry

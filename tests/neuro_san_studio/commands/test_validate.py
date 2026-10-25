@@ -17,27 +17,59 @@
 """Tests for the validate command wrapper and its manifest-driven external agent discovery."""
 
 import io
+import json
 import os
+import shutil
 import sys
+import tempfile
+from functools import partial
+from pathlib import Path
+from typing import Any
 from unittest import TestCase
 from unittest.mock import patch
 
+from neuro_san_studio.commands.network_class_checker import NetworkClassChecker
 from neuro_san_studio.commands.validate import ValidateCommand
 from neuro_san_studio.discovery.manifest_read_error import ManifestReadError
 
 _MODULE = "neuro_san_studio.commands.validate"
 
+# A network whose coded tool and front man middleware come from an included file. The include path
+# is written the studio way, relative to the project root.
+INCLUDING_NETWORK: str = """{
+    include "registries/order_tools.hocon",
+    "tools": [
+        {
+            "name": "OrderHelper",
+            "function": {"description": "Answers questions about an order."},
+            "instructions": "Look the order up, then answer.",
+            "tools": ["OrderLookup"],
+            "middleware": ${front_man_middleware}
+        },
+        ${order_lookup_tool}
+    ]
+}
+"""
 
-class TestValidateCommandRun(TestCase):
+
+class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-methods
     """Tests for ValidateCommand.run - a thin wrapper over HoconValidatorCli plus manifest discovery."""
 
-    def setUp(self):
-        """Keep discovery away from the real repo manifest and the developer's environment."""
+    def setUp(self) -> None:
+        """
+        Keep discovery and the class check away from the real repo and the developer's environment.
+        """
         lister_patcher = patch(f"{_MODULE}.ServedNetworkLister")
         self.mock_lister = lister_patcher.start()
         self.addCleanup(lister_patcher.stop)
         self.mock_lister.return_value.list_names.return_value = []
         self.mock_lister.return_value.warnings = []
+
+        checker_patcher = patch(f"{_MODULE}.NetworkClassChecker")
+        self.mock_checker = checker_patcher.start()
+        self.addCleanup(checker_patcher.stop)
+        self.mock_checker.return_value.check.return_value = []
+        self.mock_checker.return_value.get_checked_count.return_value = 0
 
         env_patcher = patch.dict(os.environ)
         env_patcher.start()
@@ -127,17 +159,376 @@ class TestValidateCommandRun(TestCase):
             ValidateCommand("agent.hocon").run()
         self.assertEqual(sys.argv, before)
 
+    def _run_with_class_check(self, command: ValidateCommand) -> tuple[int, str]:
+        """
+        Run the command with a valid structure, so the class check runs.
+
+        :param command: The command to run
+        :return: The exit code and what the command printed
+        """
+        stdout: io.StringIO = io.StringIO()
+        with patch(f"{_MODULE}.HoconValidatorCli") as mock_cli, patch("sys.stdout", stdout):
+            mock_cli.return_value.main.return_value = 0
+            exit_code: int = command.run()
+        return exit_code, stdout.getvalue()
+
+    def _make_project_dir(self) -> str:
+        """
+        Create an empty project folder that is removed when the test ends.
+
+        :return: The folder's path
+        """
+        project_dir: str = tempfile.mkdtemp(prefix="validate_project_")
+        self.addCleanup(shutil.rmtree, project_dir, True)
+        return project_dir
+
+    def _enter_project_dir(self) -> str:
+        """
+        Create an empty project folder, and make it the current directory until the test ends.
+
+        :return: The folder's path
+        """
+        project_dir: str = self._make_project_dir()
+        # Cleanups run last first, so the test leaves the folder before it is removed.
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(project_dir)
+        return project_dir
+
+    def _link(self, link: Path, target: Path) -> None:
+        """
+        Make a symlink to a folder, or skip the test where symlinks cannot be made.
+
+        :param link: The symlink to make
+        :param target: The folder it points at
+        """
+        try:
+            link.symlink_to(target, target_is_directory=True)
+        except (OSError, NotImplementedError) as error:
+            self.skipTest(f"Symlinks cannot be made here: {error}")
+
+    @staticmethod
+    def _record_environment(seen: dict[str, Any]) -> list[str]:
+        """
+        Stand in for the class check, and record how the process was set up for it.
+
+        :param seen: Where to record the start of sys.path, AGENT_TOOL_PATH, PYTHONPATH and AGENT_TOOL_PATH_ONLY
+        :return: No errors
+        """
+        seen["path_first"] = sys.path[0]
+        seen["path_start"] = sys.path[:2]
+        seen["agent_tool_path"] = os.environ.get("AGENT_TOOL_PATH")
+        seen["pythonpath"] = os.environ.get("PYTHONPATH")
+        seen["agent_tool_path_only"] = os.environ.get("AGENT_TOOL_PATH_ONLY")
+        return []
+
+    @staticmethod
+    def _write_text(path: Path, text: str) -> None:
+        """
+        Write a text file, creating its folder first.
+
+        :param path: The file to write
+        :param text: The file's contents
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    @staticmethod
+    def _order_tools_hocon(tool_name: str, tool_class: str, middleware_class: str) -> str:
+        """
+        Build an included file that defines the network's coded tool and the front man's middleware.
+
+        :param tool_name: The coded tool's name
+        :param tool_class: The coded tool's class
+        :param middleware_class: The class of the front man's one middleware entry
+        :return: The file's text. JSON is valid HOCON.
+        """
+        values: dict[str, Any] = {
+            "front_man_middleware": [{"class": middleware_class}],
+            "order_lookup_tool": {
+                "name": tool_name,
+                "function": {"description": "Looks up an order."},
+                "class": tool_class,
+            },
+        }
+        return json.dumps(values, indent=4)
+
+    def test_class_check_failures_return_one_and_are_listed(self) -> None:
+        """
+        Classes that cannot be loaded make the command fail, and each one is listed, numbered.
+        """
+        self.mock_checker.return_value.check.return_value = ["first error", "second error"]
+
+        exit_code, stdout = self._run_with_class_check(ValidateCommand("agent.hocon"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Class check failed with 2 error(s):\n\n  1. first error\n  2. second error\n", stdout)
+
+    def test_class_check_error_lines_go_under_their_number(self) -> None:
+        """
+        A full error from --verbose has several lines, which are printed under its number.
+        """
+        self.mock_checker.return_value.check.return_value = ["first line\nsecond line"]
+
+        exit_code, stdout = self._run_with_class_check(ValidateCommand("agent.hocon"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("  1. first line\n     second line\n", stdout)
+
+    def test_class_checker_gets_the_file_the_manifests_and_verbose(self) -> None:
+        """
+        The checker is given the network file, the manifest files and the verbose setting.
+        """
+        manifest_file: str = os.path.join(os.getcwd(), "registries", "manifest.hocon")
+
+        self._run_with_class_check(ValidateCommand("agent.hocon", verbose=True))
+
+        self.mock_checker.assert_called_once_with("agent.hocon", [manifest_file], verbose=True)
+
+    def test_class_check_pass_prints_how_many_classes_loaded(self) -> None:
+        """
+        When every class loads, the command passes and says how many class references it checked.
+        """
+        self.mock_checker.return_value.get_checked_count.return_value = 3
+
+        exit_code, stdout = self._run_with_class_check(ValidateCommand("agent.hocon"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Class check passed: 3 class reference(s) loaded.", stdout)
+
+    def test_class_check_skip_is_reported_and_passes(self) -> None:
+        """
+        A file outside the folder of every manifest is not checked, and the command says so and passes.
+        """
+        self.mock_checker.return_value.check.return_value = None
+
+        exit_code, stdout = self._run_with_class_check(ValidateCommand("agent.hocon"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Class check skipped: 'agent.hocon' is not inside the folder of any manifest", stdout)
+
+    def test_class_check_is_skipped_outside_the_project_root(self) -> None:
+        """
+        From a folder other than the project root, the check would not use the project's .env, so it is
+        skipped, and the command says so and passes.
+        """
+        project_dir: str = self._make_project_dir()
+
+        exit_code, stdout = self._run_with_class_check(ValidateCommand("agent.hocon", registry_dir=project_dir))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn(f"Class check skipped: the current directory is not the project root '{project_dir}'.", stdout)
+        self.mock_checker.assert_not_called()
+
+    def test_class_check_is_skipped_for_another_projects_manifest(self) -> None:
+        """
+        A manifest given with --manifest or AGENT_MANIFEST_FILE belongs to the project that holds its
+        registries folder, so the check is skipped from any other folder.
+        """
+        manifest_file: str = os.path.join(self._make_project_dir(), "registries", "manifest.hocon")
+
+        flag_exit_code, flag_stdout = self._run_with_class_check(
+            ValidateCommand("agent.hocon", manifest=manifest_file)
+        )
+        os.environ["AGENT_MANIFEST_FILE"] = manifest_file
+        env_exit_code, env_stdout = self._run_with_class_check(ValidateCommand("agent.hocon"))
+
+        self.assertEqual(flag_exit_code, 0)
+        self.assertIn("Class check skipped: the current directory is not the project root", flag_stdout)
+        self.assertEqual(env_exit_code, 0)
+        self.assertIn("Class check skipped: the current directory is not the project root", env_stdout)
+        self.mock_checker.assert_not_called()
+
+    def test_registry_dir_does_not_make_another_folder_the_project_root(self) -> None:
+        """
+        --registry-dir sets where the default manifest is and how the manifest's includes are found. It
+        cannot make the current folder the root of another project, whose .env the check would then miss.
+        """
+        self._enter_project_dir()
+        manifest_file: str = os.path.join(self._make_project_dir(), "registries", "manifest.hocon")
+
+        exit_code, stdout = self._run_with_class_check(
+            ValidateCommand("agent.hocon", registry_dir=".", manifest=manifest_file)
+        )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Class check skipped: the current directory is not the project root", stdout)
+        self.mock_checker.assert_not_called()
+
+    def test_class_check_is_skipped_for_a_manifest_outside_a_registries_folder(self) -> None:
+        """
+        A manifest that is not in a registries folder has no project root, so the check is skipped.
+        """
+        self._enter_project_dir()
+
+        exit_code, stdout = self._run_with_class_check(ValidateCommand("agent.hocon", manifest="scratch.hocon"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Class check skipped: the manifest 'scratch.hocon' is not in a registries folder", stdout)
+        self.mock_checker.assert_not_called()
+
+    def test_project_root_given_through_a_symlink_is_the_current_directory(self) -> None:
+        """
+        A manifest path that reaches the project through a symlink still names the current directory as
+        the project root, so the check runs.
+        """
+        project_dir: str = self._enter_project_dir()
+        alias_dir: Path = Path(self._make_project_dir()) / "project_alias"
+        self._link(alias_dir, Path(project_dir))
+
+        self._run_with_class_check(
+            ValidateCommand("agent.hocon", manifest=str(alias_dir / "registries" / "manifest.hocon"))
+        )
+
+        self.mock_checker.return_value.check.assert_called_once()
+
+    def test_class_check_does_not_run_when_the_structure_is_invalid(self) -> None:
+        """
+        An invalid structure fails the command before any class is loaded.
+        """
+        with patch(f"{_MODULE}.HoconValidatorCli") as mock_cli:
+            mock_cli.return_value.main.return_value = 1
+            exit_code: int = ValidateCommand("agent.hocon").run()
+
+        self.assertEqual(exit_code, 1)
+        self.mock_checker.assert_not_called()
+
+    def test_class_check_runs_with_the_project_set_up_like_the_server(self) -> None:
+        """
+        During the check, the project root is first on sys.path and in PYTHONPATH, and AGENT_TOOL_PATH is
+        the project's coded_tools folder. Afterwards sys.path and the environment are as before.
+        """
+        project_dir: str = self._enter_project_dir()
+        os.environ.pop("AGENT_TOOL_PATH", None)
+        os.environ.pop("PYTHONPATH", None)
+        seen: dict[str, Any] = {}
+        self.mock_checker.return_value.check.side_effect = partial(self._record_environment, seen)
+        path_before: list[str] = list(sys.path)
+
+        self._run_with_class_check(ValidateCommand("agent.hocon", registry_dir=project_dir))
+
+        root: str = str(Path(project_dir).resolve())
+        self.assertEqual(seen.get("path_first"), root)
+        self.assertEqual(seen.get("agent_tool_path"), str(Path(root) / "coded_tools"))
+        self.assertEqual(seen.get("pythonpath"), root)
+        self.assertEqual(sys.path, path_before)
+        self.assertIsNone(os.environ.get("AGENT_TOOL_PATH"))
+        self.assertIsNone(os.environ.get("PYTHONPATH"))
+
+    def test_class_check_puts_pythonpath_entries_on_sys_path_like_the_server(self) -> None:
+        """
+        A PYTHONPATH entry, as .env can set it, follows the project root on sys.path during the check, as
+        it does in the server that ns run starts from the project root. Afterwards PYTHONPATH is as before.
+        """
+        project_dir: str = self._enter_project_dir()
+        source_dir: str = os.path.join(".", "src")
+        os.environ["PYTHONPATH"] = source_dir
+        seen: dict[str, Any] = {}
+        self.mock_checker.return_value.check.side_effect = partial(self._record_environment, seen)
+
+        self._run_with_class_check(ValidateCommand("agent.hocon", registry_dir=project_dir))
+
+        root: str = str(Path(project_dir).resolve())
+        self.assertEqual(seen.get("path_start"), [root, os.path.join(root, "src")])
+        self.assertEqual(os.environ.get("PYTHONPATH"), source_dir)
+
+    def test_class_check_keeps_the_agent_tool_path_the_user_set(self) -> None:
+        """
+        An AGENT_TOOL_PATH the user set is used for the check and left as it was.
+        """
+        os.environ["AGENT_TOOL_PATH"] = "my_tools/"
+        seen: dict[str, Any] = {}
+        self.mock_checker.return_value.check.side_effect = partial(self._record_environment, seen)
+
+        self._run_with_class_check(ValidateCommand("agent.hocon", registry_dir=self._enter_project_dir()))
+
+        self.assertEqual(seen.get("agent_tool_path"), "my_tools/")
+        self.assertEqual(os.environ.get("AGENT_TOOL_PATH"), "my_tools/")
+
+    def test_class_check_keeps_agent_tool_path_only(self) -> None:
+        """
+        AGENT_TOOL_PATH_ONLY stays as the user set it, during the check and after it.
+        """
+        self._enter_project_dir()
+        os.environ["AGENT_TOOL_PATH_ONLY"] = "true"
+        seen: dict[str, Any] = {}
+        self.mock_checker.return_value.check.side_effect = partial(self._record_environment, seen)
+
+        self._run_with_class_check(ValidateCommand("agent.hocon"))
+
+        self.assertEqual(seen.get("agent_tool_path_only"), "true")
+        self.assertEqual(os.environ.get("AGENT_TOOL_PATH_ONLY"), "true")
+
+    def test_sys_path_restored_when_the_class_check_raises(self) -> None:
+        """
+        A class check that raises is reported as exit code 1, and sys.path is put back.
+        """
+        self.mock_checker.return_value.check.side_effect = RuntimeError("boom")
+        path_before: list[str] = list(sys.path)
+
+        with patch("sys.stderr", io.StringIO()):
+            exit_code, _ = self._run_with_class_check(ValidateCommand("agent.hocon"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(sys.path, path_before)
+
+    def test_class_check_reads_includes_from_the_project_root_like_the_server(self) -> None:
+        """
+        Classes named in an included file are checked as the server reads them. The include path is
+        relative to the project root, where ns run starts the server, so another copy of the included
+        file under --registry-dir changes neither the structure check nor the class check.
+        """
+        project_dir: str = self._enter_project_dir()
+        other_dir: str = self._make_project_dir()
+        os.environ.pop("AGENT_TOOL_PATH", None)
+        os.environ.pop("AGENT_TOOL_PATH_ONLY", None)
+        manifest_file: Path = Path(project_dir, "registries", "manifest.hocon")
+        self._write_text(manifest_file, '{"orders.hocon": true}\n')
+        self._write_text(Path(project_dir, "registries", "orders.hocon"), INCLUDING_NETWORK)
+        self._write_text(
+            Path(project_dir, "registries", "order_tools.hocon"),
+            self._order_tools_hocon("OrderLookup", "project_tool.ProjectTool", "project_middleware.ProjectMiddleware"),
+        )
+        # If a check read this copy, the front man's tool would be missing and the class names would differ.
+        self._write_text(
+            Path(other_dir, "registries", "order_tools.hocon"),
+            self._order_tools_hocon("OtherLookup", "other_tool.OtherTool", "other_middleware.OtherMiddleware"),
+        )
+        self.mock_checker.side_effect = NetworkClassChecker
+        stdout: io.StringIO = io.StringIO()
+
+        with patch("sys.stdout", stdout):
+            exit_code: int = ValidateCommand(
+                "registries/orders.hocon", registry_dir=other_dir, manifest=str(manifest_file)
+            ).run()
+
+        output: str = stdout.getvalue()
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Validation passed: No errors found.", output)
+        self.assertIn("Class check failed with 2 error(s):", output)
+        self.assertIn('Could not find class "ProjectTool"', output)
+        self.assertIn("project_middleware", output)
+        self.assertNotIn("OtherTool", output)
+        self.assertNotIn("other_middleware", output)
+
 
 class TestValidateCommandManifestDiscovery(TestCase):
     """Tests for how ValidateCommand seeds --external-agents from the composed manifest(s)."""
 
-    def setUp(self):
-        """Patch the lister and isolate the environment, as in TestValidateCommandRun."""
+    def setUp(self) -> None:
+        """
+        Patch the lister and the class checker and isolate the environment, as in TestValidateCommandRun.
+        """
         lister_patcher = patch(f"{_MODULE}.ServedNetworkLister")
         self.mock_lister = lister_patcher.start()
         self.addCleanup(lister_patcher.stop)
         self.mock_lister.return_value.list_names.return_value = []
         self.mock_lister.return_value.warnings = []
+
+        checker_patcher = patch(f"{_MODULE}.NetworkClassChecker")
+        self.mock_checker = checker_patcher.start()
+        self.addCleanup(checker_patcher.stop)
+        self.mock_checker.return_value.check.return_value = []
+        self.mock_checker.return_value.get_checked_count.return_value = 0
 
         env_patcher = patch.dict(os.environ)
         env_patcher.start()
@@ -250,13 +641,21 @@ class TestValidateCommandRegistryDir(TestCase):
     string, which is a nonexistent path for an os.pathsep list (neuro-san issue #1370).
     """
 
-    def setUp(self):
-        """Patch the lister and isolate the environment, as in TestValidateCommandRun."""
+    def setUp(self) -> None:
+        """
+        Patch the lister and the class checker and isolate the environment, as in TestValidateCommandRun.
+        """
         lister_patcher = patch(f"{_MODULE}.ServedNetworkLister")
         self.mock_lister = lister_patcher.start()
         self.addCleanup(lister_patcher.stop)
         self.mock_lister.return_value.list_names.return_value = []
         self.mock_lister.return_value.warnings = []
+
+        checker_patcher = patch(f"{_MODULE}.NetworkClassChecker")
+        self.mock_checker = checker_patcher.start()
+        self.addCleanup(checker_patcher.stop)
+        self.mock_checker.return_value.check.return_value = []
+        self.mock_checker.return_value.get_checked_count.return_value = 0
 
         env_patcher = patch.dict(os.environ)
         env_patcher.start()
