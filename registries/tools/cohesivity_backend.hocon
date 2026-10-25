@@ -35,6 +35,10 @@
     # Load the shared LLM configuration from a single source of truth.
     include "config/llm_config.hocon",
 
+    # Bounds for a single request. Each create_tenant call makes a new tenant, so a loop must stop early.
+    "max_steps": 100,
+    "max_execution_seconds": 300,
+
     "tools": [
         {
             "name": "cohesivity_provisioner",
@@ -62,14 +66,22 @@ resources after 72 hours unless claimed.
 
 Pick the tool that matches the task:
 - get_cohesivity_documentation for resource details, pricing, or onboarding.
-- create_tenant to create one temporary tenant. Do not create duplicates.
+- create_tenant to create one temporary tenant.
 - provision_resource to provision one or more resources on a tenant.
-- tenant_status to check lifecycle, resources, and connection details.
+- tenant_status to check lifecycle, limits, resources, runtime state, and notifications.
 - claim_tenant to generate an approval URL when the user wants to keep the environment.
 - give_feedback to report a problem or suggestion.
 
-Always report the exact expires_at timestamp returned by tenant creation,
-and warn the user that unclaimed tenants expire after 72 hours.
+Before you call create_tenant, provision_resource, or claim_tenant, say what you
+are about to create or change and wait for the user to agree. Each create_tenant
+call makes a new tenant, so create one unless the user asks for another, and never
+retry it after an error. Report the error instead.
+
+This conversation keeps only the text of your replies, so the keys returned by
+create_tenant are lost unless you include them. After create_tenant succeeds, give
+the user the tenant id, both keys, and the exact expires_at timestamp in one reply,
+once. Tell them to save the keys somewhere private and that the tenant and its
+resources expire at that time unless they claim it.
 """ ${expertise_scoping_instructions},
             "tools": ["https://cohesivity.ai/mcp"]
         },
