@@ -828,9 +828,11 @@ in the `llm_config` section of an agent network hocon file:
 
 Here you can get a Mistral API [key](https://admin.mistral.ai/).
 
-### vLLM 
+### vLLM
 
-vLLM provides an OpenAI-compatible API that Neuro-SAN can use as an LLM provider. Start vLLM separately from the Neuro-SAN server, and make sure its API address is reachable from the machine or container running Neuro-SAN. We can leverage the `openai` class to call the vLLM endpoint.
+vLLM provides an OpenAI-compatible API that Neuro-SAN can use as an LLM provider. Start vLLM separately from the Neuro-SAN
+server, and make sure its API address is reachable from the machine or container running Neuro-SAN. We can leverage the
+`openai` class to call the vLLM endpoint.
 
 #### 1. Start vLLM
 
@@ -848,12 +850,13 @@ vllm serve Qwen/Qwen3.8-27B \
 ```
 
 Neuro-SAN needs `--enable-auto-tool-choice` for the agent network to function.
-Automatic tool selection lets the model choose when to call tools. This also needs a matching parser. The parser must match the model and its expected tool-call format. For example, use qwen3_xml for Qwen and openai for GPT-OSS. 
+Automatic tool selection lets the model choose when to call tools. This also needs a matching parser. The parser must
+match the model and its expected tool-call format. For example, use qwen3_xml for Qwen and openai for GPT-OSS.
 
-For models that support a thinking toggle, `enable_thinking: false` disables thinking by default. Else, the agent network maybe slower to respond. The above launch parameters may vary according to your model, please modify them as required.
+For models that support a thinking toggle, `enable_thinking: false` disables thinking by default. Else, the agent network
+maybe slower to respond. The above launch parameters may vary according to your model, please modify them as required.
 
 Once the model loads, you can check that vLLM is responding with:
-
 
 ```sh
 curl http://127.0.0.1:8000/v1/models
@@ -873,10 +876,10 @@ Set the agent’s llm_config to use the vLLM endpoint. The model_name should mat
 }
 ```
 
-The address 127.0.0.1 works when vLLM and Neuro-SAN run on the same host. If they run in separate containers or on different machines, use an address reachable from the Neuro-SAN server instead.
+The address 127.0.0.1 works when vLLM and Neuro-SAN run on the same host. If they run in separate containers or on different
+machines, use an address reachable from the Neuro-SAN server instead.
 
 Once vLLM is ready, start or restart Neuro-SAN to load the configuration, then test the agent in Neuro-SAN Studio.
-
 
 ### Configuring Default Models with Environment Variables
 
