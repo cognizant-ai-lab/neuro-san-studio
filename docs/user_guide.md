@@ -31,6 +31,7 @@
       - [Using llmman](#using-llmman)
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
+    - [vLLM](#vllm)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -826,6 +827,56 @@ in the `llm_config` section of an agent network hocon file:
 ```
 
 Here you can get a Mistral API [key](https://admin.mistral.ai/).
+
+### vLLM 
+
+vLLM provides an OpenAI-compatible API that Neuro-SAN can use as an LLM provider. Start vLLM separately from the Neuro-SAN server, and make sure its API address is reachable from the machine or container running Neuro-SAN. We can leverage the `openai` class to call the vLLM endpoint.
+
+#### 1. Start vLLM
+
+Please check the vLLM's docs for installing vLLM and install it for your particular environment.
+Once installed, you can serve the model like so:
+
+```bash
+vllm serve Qwen/Qwen3.8-27B \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --language-model-only \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_xml \
+  --default-chat-template-kwargs '{"enable_thinking": false}'
+```
+
+Neuro-SAN needs `--enable-auto-tool-choice` for the agent network to function.
+Automatic tool selection lets the model choose when to call tools. This also needs a matching parser. The parser must match the model and its expected tool-call format. For example, use qwen3_xml for Qwen and openai for GPT-OSS. 
+
+For models that support a thinking toggle, `enable_thinking: false` disables thinking by default. Else, the agent network maybe slower to respond. The above launch parameters may vary according to your model, please modify them as required.
+
+Once the model loads, you can check that vLLM is responding with:
+
+
+```sh
+curl http://127.0.0.1:8000/v1/models
+```
+
+#### Configure Neuro-SAN
+
+Set the agent’s llm_config to use the vLLM endpoint. The model_name should match the model served by vLLM:
+
+```hocon
+"llm_config": {
+    "class": "openai",
+    "model_name": "Qwen/Qwen3.8-27B",
+    "openai_api_base": "http://127.0.0.1:8000/v1",
+    "openai_api_key": "not-needed",
+    "use_responses_api": false
+}
+```
+
+The address 127.0.0.1 works when vLLM and Neuro-SAN run on the same host. If they run in separate containers or on different machines, use an address reachable from the Neuro-SAN server instead.
+
+Once vLLM is ready, start or restart Neuro-SAN to load the configuration, then test the agent in Neuro-SAN Studio.
+
 
 ### Configuring Default Models with Environment Variables
 
