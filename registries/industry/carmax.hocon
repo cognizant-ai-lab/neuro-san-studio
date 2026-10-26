@@ -326,8 +326,8 @@ Your goal is to support responsible lending that aligns with CarMax's customer-f
         "function": {
             "description": """
 First, use your tool to search carmax.com for options.
-Returns the URL to various available cars in the Carmax inventory.
-When calling your search tool, always format your inquiry as follows: 'search url: carmax.com for <inquiry>'
+Returns information and links for various available cars in the Carmax inventory.
+When calling your search tool, ask a plain-language question that names carmax.com, for example: 'Find used SUVs under $25,000 on carmax.com'.
             """,
             "parameters": {
                 "type": "object",
@@ -343,7 +343,9 @@ When calling your search tool, always format your inquiry as follows: 'search ur
         "instructions": """
             Searches carmax.com using search terms that would help respond to the inquiry.
         """,
-        "command": "Call the API to get a list of URLs for available options. always format your inquiry as follows: 'search url: carmax.com for <inquiry>'",
+        "command": "Ask your tool a plain-language question about the available options on carmax.com, and return its answer with the links it cites.",
+        # Optionally allow any BYOK keys to propagate to local downstream agents
+        "allow": ${?allow_llm_config_downstream}
         "tools": ["/tools/internet_info_gatherer"]
         },
     ]

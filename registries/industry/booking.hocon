@@ -489,7 +489,7 @@ Alignment with Booking.com Values:
          "function": {
             "description": """
 First, use your tool to search booking.com for options.
-Returns the URL to various Booking.com accommodation and travel options.
+Returns information and links for various Booking.com accommodation and travel options.
             """,
             "parameters": {
                "type": "object",
@@ -505,7 +505,9 @@ Returns the URL to various Booking.com accommodation and travel options.
          "instructions": """
                Searches booking.com using search terms that would help respond to the inquiry.
          """,
-         "command": "Call the API to get a list of URLs for available options.",
+         "command": "Ask your tool a plain-language question about the available options, and return its answer with the links it cites.",
+         # Optionally allow any BYOK keys to propagate to local downstream agents
+         "allow": ${?allow_llm_config_downstream}
          "tools": ["/tools/internet_info_gatherer"]
       },
    ]

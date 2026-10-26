@@ -158,6 +158,11 @@ Would you like to proceed with one of these packages, or would you like me to sh
 - **Tool Name**: ExpediaSearch
 - **Used By**: `airline_partner_coordinator`, `hotel_partner_coordinator`, `package_deal_coordinator`
 - **Purpose**: Simulates web searches on expedia.com to return URLs and options for flights, accommodations, and vacation packages
+- **Quota Limitation**: Subject to the usage limits of the you.com MCP server's free tier, which the Internet Info
+  Gatherer uses for web search
+- **Requirement**: `tools/internet_info_gatherer` must be served alongside this network. It is enabled by default in
+  [registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon); without it, the search agent has no tool
+  to call
 - **Impact if Unavailable**: The network will be unable to search for flights, hotels, or package options through partner coordinators, significantly limiting the ability to provide competitive pricing and availability information
 
 ---

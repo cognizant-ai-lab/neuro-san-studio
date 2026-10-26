@@ -151,4 +151,9 @@ I recommend **Option 1** for the best downtown location and value, or **Option 2
 - **Tool Name**: AirbnbSearch
 - **Used By**: `pricing_and_discounts_advisor`, `experience_booking_agent`
 - **Purpose**: Simulates web searches on airbnb.com to return URLs and options for accommodations and travel services
+- **Quota Limitation**: Subject to the usage limits of the you.com MCP server's free tier, which the Internet Info
+  Gatherer uses for web search
+- **Requirement**: `tools/internet_info_gatherer` must be served alongside this network. It is enabled by default in
+  [registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon); without it, the search agent has no tool
+  to call
 - **Impact if Unavailable**: The network will be unable to search for accommodations, experiences, or pricing information, severely limiting its ability to provide recommendations

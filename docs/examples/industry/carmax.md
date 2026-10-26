@@ -142,6 +142,11 @@ Which option interests you most, or would you like to see more vehicles?
 - **Tool Name**: carmax_search
 - **Used By**: `inventory_specialist`
 - **Purpose**: Searches carmax.com to return URLs for available vehicles in CarMax inventory
+- **Quota Limitation**: Subject to the usage limits of the you.com MCP server's free tier, which the Internet Info
+  Gatherer uses for web search
+- **Requirement**: `tools/internet_info_gatherer` must be served alongside this network. It is enabled by default in
+  [registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon); without it, the search agent has no tool
+  to call
 - **Impact if Unavailable**: The network will be unable to search for vehicle inventory, significantly limiting the ability to provide vehicle recommendations and availability information to customers
 
 ---

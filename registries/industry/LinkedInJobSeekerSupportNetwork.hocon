@@ -33,6 +33,8 @@
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
+    "max_steps": 2000,
+    "max_execution_seconds": 600,
 
     "instructions_prefix": """
     You are part of a LinkedInJobSeekerSupportNetwork of assistants.
@@ -152,7 +154,9 @@ Here’s how you carry out your role:
             "instructions": """
                 Searches linkedin.com using search terms that would help respond to the inquiry.
             """,
-            "command": "Call the API to get a list of URLs for available options.",
+            "command": "Ask your tool a plain-language question about the available options, and return its answer with the links it cites.",
+            # Optionally allow any BYOK keys to propagate to local downstream agents
+            "allow": ${?allow_llm_config_downstream}
             "tools": ["/tools/internet_info_gatherer"]
         },
         {

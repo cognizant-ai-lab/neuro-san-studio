@@ -27,6 +27,10 @@ pip install slack-sdk
 Set either `SLACK_BOT_TOKEN` or `SLACK_USER_TOKEN` to retrieve Slack messages. Without the package or a configured
 token, the Slack tool returns demo data.
 
+Web search goes through the [Internet Info Gatherer](internet_info_gatherer.md) agent network, so
+`tools/internet_info_gatherer.hocon` must also be served. It is enabled by default in
+[registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon).
+
 ---
 
 ## Description
@@ -41,7 +45,8 @@ fashion.
 - **Conversational Orchestration**: The front agent abstracts complexity, ensuring users experience a seamless and fluid
 interaction.
 - **RAG-based Retrieval**: Supports intelligent document Q&A via vectorstore-backed retrieval pipelines.
-- **Live Source Access**: Enables up-to-date query resolution via the Internet Info Gatherer agent network or Slack message retrieval.
+- **Live Source Access**: Enables up-to-date query resolution via the Internet Info Gatherer agent network or Slack
+message retrieval.
 
 ---
 
@@ -105,6 +110,7 @@ These tools are independently defined and invoked by the frontman agent:
 - **Internet Info Gatherer (`/tools/internet_info_gatherer`)**
     - Searches the web through the you.com MCP server's free tier and reads result pages with `web_fetch`.
     - Returns answers grounded in page content, with cited URLs.
+    - Subject to the usage limits of the you.com free tier.
 
 - **RAG PDF Retriever (`rag_retriever`)**
     - Loads a remote PDF through the SSRF-hardened fetch path, builds an in-memory vectorstore,

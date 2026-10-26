@@ -145,6 +145,11 @@ Would you like to proceed with one of these bookings, or would you like me to sh
 - **Tool Name**: BookingSearch
 - **Used By**: `destination_specialist`, `accommodation_specialist`, `activity_coordinator`
 - **Purpose**: Simulates web searches on booking.com to return URLs and options for accommodations, destinations, and activities
+- **Quota Limitation**: Subject to the usage limits of the you.com MCP server's free tier, which the Internet Info
+  Gatherer uses for web search
+- **Requirement**: `tools/internet_info_gatherer` must be served alongside this network. It is enabled by default in
+  [registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon); without it, the search agent has no tool
+  to call
 - **Impact if Unavailable**: The network will be unable to search for accommodations, destinations, or activities, significantly limiting its ability to provide travel recommendations and options
 
 ---

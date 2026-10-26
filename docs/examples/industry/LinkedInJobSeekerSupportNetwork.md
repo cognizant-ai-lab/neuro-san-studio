@@ -169,6 +169,11 @@ Which would you like to tackle first?
 - **Tool Name**: linkedin_searcher
 - **Used By**: `profile_builder`, `application_specialist`, and as a standalone search tool
 - **Purpose**: Searches linkedin.com to return URLs for job listings, company information, and networking opportunities
+- **Quota Limitation**: Subject to the usage limits of the you.com MCP server's free tier, which the Internet Info
+  Gatherer uses for web search
+- **Requirement**: `tools/internet_info_gatherer` must be served alongside this network. It is enabled by default in
+  [registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon); without it, the search agent has no tool
+  to call
 - **Impact if Unavailable**: The network will be unable to search for job opportunities, company information, or networking connections on LinkedIn, significantly limiting its ability to provide job search assistance and profile optimization recommendations
 
 ---
