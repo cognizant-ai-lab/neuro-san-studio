@@ -16,12 +16,12 @@
 
 from logging import Logger
 
-from leaf_common.logging.conditional_logger import ConditionalLogger
+from leaf_common.logging.env_var_conditional_logger import EnvVarConditionalLogger
 
 
-class AndLogger(ConditionalLogger):
+class AndLogger(EnvVarConditionalLogger):
     """
-    A ConditionalLogger that is always enabled which can redirect INFO logs to DEBUG based on
+    An EnvVarConditionalLogger that is always enabled which can redirect INFO logs to DEBUG based on
     an environment variable setting. The idea is to get rid of most of the INFO chatter
     in production logs, but still allow them through for the default developer setting.
     """
@@ -36,11 +36,16 @@ class AndLogger(ConditionalLogger):
 
         self.use_info: bool = super().should_log()
 
-    def should_log(self) -> bool:
+    def should_log(self, message: str = None, log_level: int = None) -> bool:
         """
+        Say whether to log a message. This logger always logs, and info() picks the level.
+
+        :param message: The message to log
+        :param log_level: The log level of the message
         :return: True if this logger should log
         """
         # We're always going to log. It's a matter of what level.
+        # The base class passes the message and level, but they don't change that answer.
         return True
 
     def info(self, msg, *args, **kwargs):
