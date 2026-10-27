@@ -104,7 +104,7 @@ COPY --from=builder /install /usr/local
 #       The config directory where the LLM configuration lives is mandatory
 #       The Agent Network Designer relies on:
 #       - its own toolbox in ./neuro_san_studio/toolbox
-#       - ./middleware for validation of designed networks
+#       - its own code, including the validation of designed networks, in ./neuro_san_studio
 COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
