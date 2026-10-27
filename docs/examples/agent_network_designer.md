@@ -52,7 +52,7 @@ generates or refines the `instructions` for each agent in the network.
  subnetwork to produce example usage queries for the new agent network.
 
 4. Finally, the
-[agent_network_persistence_middleware.py](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
+[agent_network_persistence_middleware.py](../../neuro_san_studio/agent_network_designer/middleware/persistence/agent_network_persistence_middleware.py)
 middleware converts the `agent_network_definition` into a HOCON file saving it to disk or creates a temporary network,
 depending on the `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS` environment variable.
 
@@ -330,7 +330,7 @@ specifically given the hocon file name in the user prompt
 
 #### Definition (Middleware)
 
-[`AgentNetworkDefinitionMiddleware`](../../middleware/agent_network_designer/agent_network_definition_middleware.py)
+[`AgentNetworkDefinitionMiddleware`](../../neuro_san_studio/agent_network_designer/middleware/agent_network_definition_middleware.py)
 - Runs before the model is called and resolves the `agent_network_definition` from sly data, from the file
 named in `agent_network_hocon_file`, or from the reservation named in `agent_reservations`
 - When the network comes from a file or a reservation, its top-level `metadata` block is returned under
@@ -369,7 +369,7 @@ error message; the server log records the path and the reason
 
 #### Persistence (Middleware)
 
-[`AgentNetworkPersistenceMiddleware`](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
+[`AgentNetworkPersistenceMiddleware`](../../neuro_san_studio/agent_network_designer/middleware/persistence/agent_network_persistence_middleware.py)
 - Runs after the agent finishes (no pending tool calls remain)
 - Does nothing more than return the definition on a turn that only loads a network (see `skip_designer` above):
 no validation, no save, no deploy, and no `agent_network_hocon_text`

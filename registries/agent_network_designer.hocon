@@ -382,14 +382,14 @@ Operational notes:
             "structure_formats": "json",
             "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
                         "progress_reporter": true,
                         "sly_data": true
                     }
                 },
                 {
-                    "class": "middleware.agent_network_designer.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",
                     "allow": {
                         "reservations": true
                     },
