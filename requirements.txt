@@ -1,5 +1,5 @@
 # Neuro SAN
-leaf-common>=1.4.6
+leaf-common>=1.4.11
 neuro-san==0.7.12
 nsflow==0.7.5
 
