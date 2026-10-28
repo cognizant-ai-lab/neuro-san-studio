@@ -473,8 +473,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
                     # Later sources override earlier ones (last one wins)
                     self.skills_dict[parsed_skill["name"]] = parsed_skill
 
-            # pylint: disable=broad-exception-caught
-            except Exception as error:
+            except Exception as error:  # pylint: disable=broad-exception-caught
                 self.logger.warning("Unexpected error loading skill from %s: %s", skill_source, error)
 
         self.logger.info("Loaded %d skills: %s", len(self.skills_dict), list(self.skills_dict.keys()))
