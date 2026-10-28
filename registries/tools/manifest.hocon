@@ -69,6 +69,12 @@
     # list in that mcp_info.hocon entry controls which Firecrawl tools the agent sees.
     "tools/firecrawl_search.hocon": true,
 
+    # Official macroeconomic data via the hosted FXMacroData MCP server. Works with no API key for US data
+    # (USD announcements for the most recent 90 days, USD release calendar, Federal Reserve press releases,
+    # FX market sessions). Set FXMACRODATA_API_KEY and uncomment the header in mcp_info.hocon for the other
+    # 21 currencies. See docs/examples/tools/fxmacrodata.md.
+    "tools/fxmacrodata.hocon": true,
+
     # Requirement to use this agent network:
     # - google-genai
     # - GOOGLE_API_KEY
