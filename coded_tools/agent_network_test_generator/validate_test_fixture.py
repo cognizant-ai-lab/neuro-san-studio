@@ -21,7 +21,7 @@ from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.agent_network_editor.and_logger import AndLogger
+from neuro_san_studio.agent_network_designer.common.and_logger import AndLogger
 
 # The complete set of stock tests recognised by the neuro-san test runner.
 _VALID_STOCK_TESTS: frozenset[str] = frozenset(

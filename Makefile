@@ -87,6 +87,22 @@ test-unit: venv-guard ## Run unit tests with coverage, without lint
 test-smoke: venv-guard ## Run the packaged-install smoke tests (builds a wheel, installs it)
 	python -m pytest tests/ --verbose -m "smoke"
 
+# The Agent Network Designer and the networks it calls.
+DESIGNER_NETWORKS := agent_network_designer agent_network_editor agent_network_instructions_editor \
+	agent_network_query_generator tools/internet_info_gatherer
+
+# ns validate exits 0 on a usage error, so each run must also print the class check's own verdict.
+validate-designer-networks: venv-guard ## Validate the designer networks and load their coded tool and middleware classes
+	@for network in $(DESIGNER_NETWORKS); do \
+		echo "Validating registries/$$network.hocon"; \
+		output=$$(python -m neuro_san_studio validate registries/$$network.hocon 2>&1); status=$$?; \
+		echo "$$output"; \
+		if [ $$status -ne 0 ] || ! echo "$$output" | grep --quiet "Class check passed"; then \
+			echo "Validation failed for registries/$$network.hocon"; \
+			exit 1; \
+		fi; \
+	done
+
 test: lint test-unit ## Run lint, then tests with coverage
 
 test-integration: install
