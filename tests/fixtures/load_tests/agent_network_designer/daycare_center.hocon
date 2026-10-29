@@ -1,0 +1,52 @@
+
+# Copyright © 2023-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Load-test prompt for the agent_network_designer agent.
+# One interaction per file: each prompt is fired as an independent
+# single-turn request. Agent-wide settings (failure_patterns,
+# estimated_tokens_per_request) may be repeated in every file; they are
+# merged across the folder.
+# Schema: https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
+{
+    "agent": "agent_network_designer",
+
+    # Tokens per request, logged in the run config when no probe measured them.
+    "estimated_tokens_per_request": 500000,
+
+    # A response containing any of these is a failure even on HTTP 200.
+    "failure_patterns": [
+        "No fully-specified LLM found",
+        "API key to be set as an environment variable",
+        "Agent stopped due to exception"
+    ],
+
+    "interactions": [
+        {
+            "text": "Create an agent network for a daycare center",
+
+            # Checked by the data-driven AgentEvaluators (not_value ""
+            # means present and non-empty). agent_reservations is the
+            # top-level key holding the reservation_id.
+            "response": {
+                "sly_data": {
+                    "agent_network_name": { "not_value": "" },
+                    "agent_reservations": { "not_value": "" }
+                }
+            }
+        }
+    ]
+}
