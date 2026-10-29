@@ -25,7 +25,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
 from coded_tools.agent_network_consultant.network_scratchpad import NetworkScratchpad
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_NAME
 
 
 class TestNetworkScratchpad(IsolatedAsyncioTestCase):

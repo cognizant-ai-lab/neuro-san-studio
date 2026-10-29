@@ -330,11 +330,11 @@ class TestRunFlow:
         # Every default network lands on disk...
         for network in EXPECTED_DEFAULT_NETWORKS:
             assert (tmp_path / "registries" / network).is_file(), f"{network} was not scaffolded"
-        # ...along with the coded tools and middleware they need.
-        assert (tmp_path / "coded_tools" / "agent_network_editor" / "add_agent.py").is_file()
-        assert (
-            tmp_path / "middleware" / "agent_network_designer" / "agent_network_definition_middleware.py"
-        ).is_file()
+        # ...but not the designer's own code: its networks name classes in the installed package.
+        assert not (tmp_path / "coded_tools" / "agent_network_editor").exists()
+        assert not (tmp_path / "coded_tools" / "agent_network_instructions_editor").exists()
+        assert not (tmp_path / "coded_tools" / "agent_network_query_generator").exists()
+        assert not (tmp_path / "middleware" / "agent_network_designer").exists()
 
     def test_run_skips_existing_files(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Existing target files must be left untouched and logged as [skip]."""

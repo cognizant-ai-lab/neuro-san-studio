@@ -139,7 +139,7 @@ class TestAgentNetworkConsultantRegistry(TestCase):
         instructions_writer = self._tool(configuration, "instructions_writer")
 
         self.assertEqual(
-            "coded_tools.agent_network_instructions_editor.write_all_instructions.WriteAllInstructions",
+            "neuro_san_studio.agent_network_designer.tools.write_all_instructions.WriteAllInstructions",
             write_all_instructions.get("class", ""),
         )
         instructions: str = instructions_writer.get("instructions", "")

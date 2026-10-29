@@ -25,10 +25,10 @@ from typing import override
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.agent_network_editor.and_logger import AndLogger
 from neuro_san_studio.agent_network_consultant.consultant_state import ConsultantState
 from neuro_san_studio.agent_network_consultant.sensitive_data_redactor import SensitiveDataRedactor
 from neuro_san_studio.agent_network_consultant.thinking_trace_collector import ThinkingTraceCollector
+from neuro_san_studio.agent_network_designer.common.and_logger import AndLogger
 from neuro_san_studio.coded_tools.file_management.read_file import MAX_FILE_BYTES
 from neuro_san_studio.coded_tools.file_management.read_file import ReadFile
 

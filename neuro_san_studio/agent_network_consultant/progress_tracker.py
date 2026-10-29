@@ -76,7 +76,7 @@ class ProgressTracker:
                 f"Unsupported progress checkpoint {checkpoint!r}; expected one of {self.VALID_CHECKPOINTS}."
             )
         passing, tested = self._fixture_sets(results)
-        is_complete_suite = total_fixture_count > 0 and len(tested) == total_fixture_count
+        is_complete_suite = 0 < total_fixture_count == len(tested)
         if checkpoint in {"generated", "before", "after"} or is_complete_suite:
             segments = self._reset_cohorts(passing)
         else:

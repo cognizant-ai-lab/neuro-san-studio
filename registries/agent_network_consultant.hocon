@@ -417,7 +417,7 @@ After the call:
         # Reuse the existing instruction fan-out implementation with Consultant-specific writing rules.
         {
             "name": "write_all_instructions",
-            "class": "coded_tools.agent_network_instructions_editor.write_all_instructions.WriteAllInstructions",
+            "class": "neuro_san_studio.agent_network_designer.tools.write_all_instructions.WriteAllInstructions",
             "function": {
                 "description": "Fan out writing of `instructions`/`description` for many agents in parallel. Call this ONCE per request with the full list of target agents.",
                 "parameters": {

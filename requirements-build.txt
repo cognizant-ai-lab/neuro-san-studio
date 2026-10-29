@@ -14,7 +14,7 @@ pytest-xdist>=3.6.1
 
 # Code quality
 ruff==0.11.12
-pylint==3.3.1
+pylint==4.1.3
 
 # Lets `ns --version` resolve the version from a source checkout.
 setuptools-scm==8.1.0

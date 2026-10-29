@@ -24,7 +24,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from neuro_san_studio.agent_network_consultant.consultant_job_files import ConsultantJobFiles
 from neuro_san_studio.agent_network_consultant.consultant_option_validator import ConsultantOptionValidator
 from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
@@ -42,6 +41,7 @@ from neuro_san_studio.agent_network_consultant.network_test_environment import N
 from neuro_san_studio.agent_network_consultant.sensitive_data_redactor import SensitiveDataRedactor
 from neuro_san_studio.agent_network_consultant.stuck_patch_error import StuckPatchError
 from neuro_san_studio.agent_network_consultant.terminal_clarification_answerer import TerminalClarificationAnswerer
+from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_NAME
 
 logger = logging.getLogger(__name__)
 

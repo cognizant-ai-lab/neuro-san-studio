@@ -115,7 +115,6 @@ You can also test individual API keys using the scripts below:
 
     ```bash
     export AZURE_OPENAI_API_KEY="YOUR_API_KEY"
-    export OPENAI_API_VERSION="2025-04-01-preview"
     export AZURE_OPENAI_ENDPOINT="https://YOUR_RESOURCE_NAME.openai.azure.com/"
     export AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o"
 
@@ -123,7 +122,7 @@ You can also test individual API keys using the scripts below:
 
     - Azure OpenAI requires you to first deploy a model and then reference it using the deployment name in API calls.
     Deployment name is NOT the model name itself. It's a label you assign to the model when you deploy it. E.g., you
-    may deploy a "gpt-4" model and label it "my-gpt-4".
+    may deploy a "gpt-4o" model and label it "my-gpt-4o".
 
 - Run the script testing Azure OpenAI API key
 
@@ -133,6 +132,9 @@ You can also test individual API keys using the scripts below:
 
 <!-- pyml disable line-length-->
 - You will receive a message indicating success or failure.
+- The script calls the Responses API through Azure's v1 API, the API neuro-san uses for Azure OpenAI by default.
+  If your region or model does not offer that API, the call fails even with a valid key
+  (see [AzureOpenAI](./user_guide.md#azureopenai)).
 - See [Azure OpenAI Quickstart](https://learn.microsoft.com/en-us/azure/ai-services/openai/chatgpt-quickstart?tabs=keyless%2Ctypescript-keyless%2Cpython-new%2Ccommand-line&pivots=programming-language-python) for more information.
 <!-- pyml enable line-length-->
 
