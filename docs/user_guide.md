@@ -921,7 +921,9 @@ Choose a model from the [OpenRouter model catalog](https://openrouter.ai/models)
 OpenRouter also provides the `openrouter/free` model ID, which routes requests to an available
 free model. The selected model can vary, so response quality, latency, and tool-calling support
 may differ between requests. Since Neuro-SAN agents rely on tool calls, check that the model
-you choose supports them and is currently available in the catalog.
+you choose supports them and is currently available in the catalog. The neuro-san repo has
+explicit support for OpenRouter. An example agent network with openrouter can be found
+[here](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/registries/music_nerd_pro_llm_openrouter.hocon).
 
 For integration details and supported configuration options, see the
 [LangChain OpenRouter documentation](https://docs.langchain.com/oss/python/integrations/chat/openrouter).
