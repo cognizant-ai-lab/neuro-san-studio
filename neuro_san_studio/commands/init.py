@@ -91,6 +91,9 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         self._copy_template("mcp_info.hocon", os.path.join("mcp", "mcp_info.hocon"), package="neuro_san_studio.mcp")
         self._copy_template("plugins.hocon", os.path.join("config", "plugins.hocon"))
         self._write_file(os.path.join("config", "llm_config.hocon"), self._render_llm_config(providers))
+        # An empty middleware/__init__.py: without it, the installed package's middleware/ hides any
+        # middleware the project adds there later.
+        self._write_file(os.path.join("middleware", "__init__.py"), "")
 
         # Last, so the dependency walker sees a project that already has the shared HOCON
         # fragments and llm_config.hocon the networks include.
