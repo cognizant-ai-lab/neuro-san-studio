@@ -32,7 +32,7 @@
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
     - [vLLM](#vllm)
-    - [OpenRouter](#OpenRouter)
+    - [OpenRouter](#openrouter)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -917,6 +917,10 @@ Choose a model from the [OpenRouter model catalog](https://openrouter.ai/models)
     "model_name": "inclusionai/ling-3.1-flash",
 }
 ```
+
+> Neuro-SAN may not have pricing information for every OpenRouter model. If it is unavailable, you may see this
+> message. Model use is unaffected, but cost reporting may be incomplete:
+> `No price info found for model inclusionai/ling-3.1-flash in llm info.`
 
 OpenRouter also provides the `openrouter/free` model ID, which routes requests to an available
 free model. The selected model can vary, so response quality, latency, and tool-calling support
