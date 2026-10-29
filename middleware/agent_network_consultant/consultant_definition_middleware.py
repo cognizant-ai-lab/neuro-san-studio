@@ -26,10 +26,14 @@ from typing import override
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 
 from middleware.agent_network_consultant.consultant_instruction_changes import ConsultantInstructionChanges
-from middleware.agent_network_designer.agent_network_definition_middleware import AGENT_NETWORK_HOCON_FILE
-from middleware.agent_network_designer.agent_network_definition_middleware import AgentNetworkDefinitionMiddleware
 from neuro_san_studio.agent_network_consultant.consultant_state import ConsultantState
 from neuro_san_studio.agent_network_consultant.sensitive_data_redactor import SensitiveDataRedactor
+from neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware import (
+    AGENT_NETWORK_HOCON_FILE,
+)
+from neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware import (
+    AgentNetworkDefinitionMiddleware,
+)
 
 
 class ConsultantDefinitionMiddleware(AgentNetworkDefinitionMiddleware):

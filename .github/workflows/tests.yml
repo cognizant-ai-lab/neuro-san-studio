@@ -27,6 +27,7 @@ jobs:
       lint-command-override: |
         set -e
         VIRTUAL_ENV=system make lint-check
+        VIRTUAL_ENV=system make validate-designer-networks
         curl --silent --location \
           https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.1/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp --strip-components=1
@@ -42,7 +43,7 @@ jobs:
         # - 503 (temporary outage)
         /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200..=299,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
       run-pytest: false
-      test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./neuro_san/coded_tools PYTHONPATH=.:$PYTHONPATH make test-unit'
+      test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./coded_tools PYTHONPATH=.:$PYTHONPATH make test-unit'
       check-readme-pypi: true
     secrets:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

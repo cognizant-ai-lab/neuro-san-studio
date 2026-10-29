@@ -204,13 +204,13 @@ Always respond with "Successfully created/edited the structure of the agent netw
             "structure_formats": "json",
             "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
                         "sly_data": true
                     }
                 },
                 {
-                    "class": "middleware.agent_network_designer.validation.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.validation.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
                     "args": {
                         "sly_data": true
                     }
@@ -220,7 +220,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "create_new_network",
-            "class": "coded_tools.agent_network_editor.create_network.CreateNetwork",
+            "class": "neuro_san_studio.agent_network_designer.tools.create_network.CreateNetwork",
             "function": {
                 "description": "Create a new network",
                 "parameters": {
@@ -250,7 +250,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "add_agent_to_network",
-            "class": "coded_tools.agent_network_editor.add_agent.AddAgent",
+            "class": "neuro_san_studio.agent_network_designer.tools.add_agent.AddAgent",
             "function": {
                 "description": "Adds an agent to an agent network.",
                 "parameters": {
@@ -272,7 +272,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "remove_agent_from_network",
-            "class": "coded_tools.agent_network_editor.remove_agent.RemoveAgent",
+            "class": "neuro_san_studio.agent_network_designer.tools.remove_agent.RemoveAgent",
             "function": {
                 "description": "Removes an agent and all of its edges from the agent network.",
                 "parameters": {
@@ -290,7 +290,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "update_agent_in_network",
-            "class": "coded_tools.agent_network_editor.update_agent.UpdateAgent",
+            "class": "neuro_san_studio.agent_network_designer.tools.update_agent.UpdateAgent",
             "function": {
                 "description": "Updates an existing agent's relationships.",
                 "parameters": {
@@ -313,7 +313,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "get_mcp_tool",
-            "class": "coded_tools.agent_network_editor.get_mcp_tool.GetMcpTool",
+            "class": "neuro_san_studio.agent_network_designer.tools.get_mcp_tool.GetMcpTool",
             "function": {
                 "description": "Retrieve tools specification from specified MCP servers.",
             }
@@ -321,7 +321,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "get_subnetwork",
-            "class": "coded_tools.agent_network_editor.get_subnetwork.GetSubnetwork",
+            "class": "neuro_san_studio.agent_network_designer.tools.get_subnetwork.GetSubnetwork",
             "function": {
                 "description": "Retrieve the definitions of all subnetworks available in the system.",
             }
@@ -329,7 +329,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "get_toolbox",
-            "class": "coded_tools.agent_network_editor.get_toolbox.GetToolbox",
+            "class": "neuro_san_studio.agent_network_designer.tools.get_toolbox.GetToolbox",
             "function": {
                 "description": "Retrieve the toolbox information from the 'toolbox_info.hocon' file and return it as a dictionary.",
             }
