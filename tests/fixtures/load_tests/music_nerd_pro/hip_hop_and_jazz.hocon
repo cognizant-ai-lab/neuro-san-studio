@@ -21,7 +21,6 @@
 # estimated_tokens_per_request) may be repeated in every file; they are
 # merged across the folder.
 # Schema: https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
-# Load-test keys: https://github.com/cognizant-ai-lab/neuro-san/blob/main/tests/load_tests/load_tests.md
 {
     "agent": "basic/music_nerd_pro",
 

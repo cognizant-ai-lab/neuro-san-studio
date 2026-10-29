@@ -40,7 +40,8 @@
 
             # Checked by the data-driven AgentEvaluators (not_value ""
             # means present and non-empty). agent_reservations is the
-            # top-level key holding the reservation_id.
+            # top-level key holding the reservation_id. It is only set when the
+            # server runs with AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true.
             "response": {
                 "sly_data": {
                     "agent_network_name": { "not_value": "" },
