@@ -32,6 +32,7 @@
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
     - [vLLM](#vllm)
+    - [OpenRouter](#openrouter)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -889,6 +890,47 @@ The address `127.0.0.1` works when vLLM and Neuro-SAN run on the same host. If t
 machines, use an address reachable from the Neuro-SAN server instead.
 
 Once vLLM is ready, start or restart Neuro-SAN to load the configuration, then test the agent in Neuro-SAN Studio.
+
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai/) provides access to models from multiple providers through one API. Neuro-SAN uses
+LangChain's OpenRouter integration, which is an optional dependency. Install it in the same Python environment that
+runs the Neuro-SAN server:
+
+```bash
+pip install -U langchain-openrouter
+```
+
+Create an API key in [OpenRouter](https://openrouter.ai/settings/keys), then set it in the server environment or in
+your `.env` file. Do not put the key in HOCON:
+
+```bash
+export OPENROUTER_API_KEY="your-api-key"
+```
+
+Choose a model from the [OpenRouter model catalog](https://openrouter.ai/models). Set `class` to `openrouter` and
+`model_name` to the model's ID, typically in `provider/model` format:
+
+```hocon
+"llm_config": {
+    "class": "openrouter",
+    "model_name": "inclusionai/ling-3.1-flash",
+}
+```
+
+> Neuro-SAN may not have pricing information for every OpenRouter model. If it is unavailable, you may see this
+> message. Model use is unaffected, but cost reporting may be incomplete:
+> `No price info found for model inclusionai/ling-3.1-flash in llm info.`
+
+OpenRouter also provides the `openrouter/free` model ID, which routes requests to an available
+free model. The selected model can vary, so response quality, latency, and tool-calling support
+may differ between requests. Since Neuro-SAN agents rely on tool calls, check that the model
+you choose supports them and is currently available in the catalog. The neuro-san repo has
+explicit support for OpenRouter. An example agent network with openrouter can be found
+[here](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/registries/music_nerd_pro_llm_openrouter.hocon).
+
+For integration details and supported configuration options, see the
+[LangChain OpenRouter documentation](https://docs.langchain.com/oss/python/integrations/chat/openrouter).
 
 ### Configuring Default Models with Environment Variables
 
