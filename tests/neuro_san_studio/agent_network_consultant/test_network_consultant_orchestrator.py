@@ -28,7 +28,6 @@ from unittest.mock import Mock
 from unittest.mock import call
 from unittest.mock import patch
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
 from neuro_san_studio.agent_network_consultant.consultant_run_context import ConsultantRunContext
 from neuro_san_studio.agent_network_consultant.consultant_scoring import ConsultantScoring
@@ -38,6 +37,7 @@ from neuro_san_studio.agent_network_consultant.fixture_runner import FixtureRunn
 from neuro_san_studio.agent_network_consultant.generated_tests_cache import GeneratedTestsCache
 from neuro_san_studio.agent_network_consultant.network_consultant_orchestrator import NetworkConsultantOrchestrator
 from neuro_san_studio.agent_network_consultant.network_test_environment import NetworkTestEnvironment
+from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_NAME
 
 
 class TestNetworkConsultantOrchestrator(TestCase):
