@@ -19,6 +19,7 @@ import os
 import stat as stat_module
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -99,6 +100,40 @@ class TestWriteFile(TestCase):  # pylint: disable=too-many-public-methods
         result = self._invoke({"file_path": str(path), "content": "new", "overwrite": True})
         self.assertEqual(path.read_text(encoding="utf-8"), "new")
         self.assertFalse(result["created"])
+
+    def test_async_invoke_none_flags_use_defaults(self) -> None:
+        """
+        Tests that overwrite and create_parents sent as None, as neuro-san does when the LLM leaves them out,
+        act as False.
+        """
+        path: Path = self.tmp_root / "out.txt"
+        args: dict[str, Any] = {
+            "file_path": str(path),
+            "content": "new",
+            "overwrite": None,
+            "create_parents": None,
+        }
+        result: dict[str, Any] = self._invoke(args)
+        self.assertTrue(result.get("created"))
+        self.assertEqual(path.read_text(encoding="utf-8"), "new")
+
+        # overwrite=None must still refuse to replace the file that now exists.
+        with self.assertRaises(ValueError) as ctx:
+            self._invoke(args)
+        self.assertIn("file_already_exists", str(ctx.exception))
+
+        # create_parents=None must still refuse to create a missing parent directory.
+        nested: Path = self.tmp_root / "missing" / "out.txt"
+        nested_args: dict[str, Any] = {
+            "file_path": str(nested),
+            "content": "new",
+            "overwrite": None,
+            "create_parents": None,
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self._invoke(nested_args)
+        self.assertIn("parent_not_found", str(ctx.exception))
+        self.assertFalse(nested.parent.exists())
 
     def test_async_invoke_create_parents_requires_opt_in(self):
         """Tests that a missing parent fails by default and works with create_parents=True."""
