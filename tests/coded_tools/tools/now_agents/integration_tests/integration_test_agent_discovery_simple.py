@@ -120,24 +120,24 @@ def test_agent_discovery():
         print("ERROR: Invalid response format")
         return []
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except requests.RequestException as e:
         print(f"ERROR: Agent discovery failed - {str(e)}")
         traceback.print_exc()
         return []
 
 
-def main():
-    """Run tests"""
+def main() -> int:
+    """Run tests and return a nonzero status if any validation fails."""
     print("ServiceNow Agents Integration Test")
     print("=" * 40)
 
     # Test 1: Load environment
     if not load_environment():
-        return
+        return 1
 
     # Test 2: Test connectivity
     if not test_connectivity():
-        return
+        return 1
 
     # Test 3: Test agent discovery
     agents = test_agent_discovery()
@@ -152,7 +152,8 @@ def main():
         print("\nAgents are available for interaction!")
     else:
         print("\nNo agents found - check ServiceNow configuration")
+    return 0 if agents else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

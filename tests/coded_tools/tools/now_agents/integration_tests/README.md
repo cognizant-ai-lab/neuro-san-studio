@@ -60,6 +60,17 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 
 ## Setup Requirements
 
+### Exit Status
+
+The simple discovery, debug discovery, and full workflow scripts exit with status `0` only when their validation succeeds.
+They exit with status `1` for failed validation, including missing setup, unsuccessful discovery, or failed interaction.
+An empty agent list is a failed discovery check. The full workflow requires all four stages to pass;
+an empty message response still fails validation even when it is an expected ServiceNow limitation.
+
+Handled discovery and interaction request exceptions include a traceback. Unexpected programming errors propagate
+with their original traceback and terminate the process with a nonzero status. The regression tests mock API calls
+and run without ServiceNow credentials.
+
 ### 1. Environment File (.env)
 Create in project root with:
 ```bash
