@@ -74,7 +74,7 @@ Subnetworks always start with "/" while MCP tools are represented by the server'
 
 ## How It Works
 
-The frontman, `agent_network_editor`, has multiple coded tools that can be called in different scenarios.
+The front man, `network_editor`, has multiple coded tools that can be called in different scenarios.
 
 ### Initialization and Tool Discovery
 
@@ -88,7 +88,7 @@ At the start of each session, the editor always call the following functions to 
     will be used.
 
 - `get_subnetwork`
-    — returns a dictionary of subnetworks, mapping each name to its frontman's description.
+    — returns a dictionary of subnetworks, mapping each name to its front man's description.
     - The available manifest can be set with environment variable `AGENT_NETWORK_DESIGNER_MANIFEST_FILE`. If omitted,
     [manifest_and.hocon](../../registries/manifest_and.hocon) will be used.
 
@@ -137,9 +137,9 @@ The network supports two main operational modes:
 
 - The network must always form a directed acyclic graph (DAG).
 
-- Exactly one top-level agent must exist after all edits.
+- After all edits, exactly one front man must exist: the agent that receives the user’s request and answers the user.
 
-- The top-level agent connects only to mid-level agents — not directly to the lowest-level ones.
+- The front man connects only to mid-level agents — not directly to the lowest-level ones.
 
 - At least one branch must have a depth of three or more agents.
 
@@ -163,7 +163,7 @@ If the generated structure is not as expected, or if validation fails, consider 
 
     - Each tool in the Toolbox has a clear and accurate description that conveys its purpose and usage.
 
-    - Each subnetwork, the front-man has a detailed and context-rich description.
+    - Each subnetwork, the front man has a detailed and context-rich description.
 
     These descriptions directly influence how the network assigns tools.
 

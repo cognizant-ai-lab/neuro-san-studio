@@ -62,7 +62,7 @@ NETWORK_DEF: dict[str, Any] = {
     "helper": {"description": "helps", "instructions": "Help.", "tools": [FILE_AUTH_URL]},
 }
 
-# One agent of each role. The top and regular agents have no text of their own, which leaves their
+# One agent of each role. The front man and regular agents have no text of their own, which leaves their
 # "{agent_instructions}" replacement empty, like "{demo_mode}" with demo mode off.
 ROLES_DEF: dict[str, Any] = {
     "front": {"description": "top", "instructions": "", "tools": ["router", "search"]},
@@ -162,7 +162,7 @@ class TestDeployableAgentNetworkAssembler(TestCase):
 
     def test_front_man_declares_the_schema(self) -> None:
         """
-        The top agent's function block carries the nsflow contract.
+        The front man's function block carries the nsflow contract.
         """
         agent_network: dict[str, Any] = self._assemble(CLIENT_TOKEN_MCP_HEADERS)
 
@@ -174,7 +174,7 @@ class TestDeployableAgentNetworkAssembler(TestCase):
         # The description injection it sits next to still happened.
         self.assertEqual(front_man["function"]["description"], "top")
 
-    def test_non_top_agents_carry_no_schema(self) -> None:
+    def test_non_front_man_agents_carry_no_schema(self) -> None:
         """
         Only the front man talks to clients; helpers must not declare one.
         """
@@ -287,7 +287,7 @@ class TestDeployableAgentNetworkAssembler(TestCase):
     @staticmethod
     def _assemble_roles(definition: dict[str, Any], demo_mode: bool) -> dict[str, Any]:
         """
-        Assemble a definition whose top agent is "front", from the repo root.
+        Assemble a definition whose front man is "front", from the repo root.
 
         :param definition: The definition to assemble
         :param demo_mode: Whether to use the demo template

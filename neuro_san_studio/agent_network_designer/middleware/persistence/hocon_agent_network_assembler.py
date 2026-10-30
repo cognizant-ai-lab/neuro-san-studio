@@ -78,7 +78,7 @@ FRONT_MAN_LINES_TEXT: str = FRONT_MAN_LINES_INDENT + DesignerCommonInstructions.
 # The closing quotes of a description are indented by this much in the file.
 DESCRIPTION_CLOSING_INDENT: str = " " * 16
 # The description and instructions slots take quoted text from _render_text.
-TOP_AGENT_TEMPLATE = (
+FRONT_MAN_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
@@ -138,7 +138,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     async def assemble_agent_network(
         self,
         network_def: dict[str, Any],
-        top_agent_name: str,
+        front_man_name: str,
         agent_network_name: str,
         sample_queries: list[str],
         client_token_mcp_headers: dict[str, list[str]] | None = None,
@@ -148,7 +148,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         Substitutes value from agent network definition into the template of agent network HOCON file
 
         :param network_def: Agent network definition
-        :param top_agent_name: The name of the top agent
+        :param front_man_name: The name of the front man
         :param agent_network_name: The file name, without the .hocon extension
         :param sample_queries: List of sample queries for the agent network
         :param client_token_mcp_headers: Optional mapping of client-token MCP
@@ -160,7 +160,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         :return: A full agent network HOCON as a string.
         """
         use_network_def: dict[str, Any] = shallow_copy(network_def)
-        use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
+        use_network_def = self._move_front_man_first(use_network_def, front_man_name)
 
         # Idempotent when the persistence middleware already built the block: the same queries
         # overlay the same block.
@@ -184,22 +184,22 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         body: list[str] = []
         for agent_name, agent in use_network_def.items():
-            body.append(self._render_agent_block(agent_name, agent, top_agent_name, sly_data_schema_block))
+            body.append(self._render_agent_block(agent_name, agent, front_man_name, sly_data_schema_block))
 
         return header + "".join(body) + "]\n}\n"
 
-    def _move_top_agent_first(self, network_def: dict[str, Any], top_agent_name: str) -> dict[str, Any]:
+    def _move_front_man_first(self, network_def: dict[str, Any], front_man_name: str) -> dict[str, Any]:
         """
-        Ensure the top agent is the first item in the ordered dict.
+        Ensure the front man is the first item in the ordered dict.
 
         :param network_def: Agent network definition
-        :param top_agent_name: The name of the top agent
+        :param front_man_name: The name of the front man
 
-        :return: Updated network definition with top agent first.
+        :return: Updated network definition with the front man first.
         """
-        if top_agent_name != next(iter(network_def)):
-            top_agent: dict[str, Any] = network_def.pop(top_agent_name)
-            return {top_agent_name: top_agent, **network_def}
+        if front_man_name != next(iter(network_def)):
+            front_man: dict[str, Any] = network_def.pop(front_man_name)
+            return {front_man_name: front_man, **network_def}
         return network_def
 
     def _build_header(self, agent_network_name: str, metadata: dict[str, Any]) -> str:
@@ -257,7 +257,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     def _render_sly_data_schema_block(schema: dict[str, Any] | None) -> str:
         """
         Render the front man's sly_data_schema as a HOCON fragment for the
-        TOP_AGENT_TEMPLATE slot that follows the description.
+        FRONT_MAN_TEMPLATE slot that follows the description.
 
         :param schema: The schema dict from build_mcp_sly_data_schema, or None
 
@@ -281,16 +281,16 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         return f',\n{indent}"sly_data_schema": {body}'
 
     def _render_agent_block(
-        self, agent_name: str, agent: dict[str, Any], top_agent_name: str, sly_data_schema_block: str = ""
+        self, agent_name: str, agent: dict[str, Any], front_man_name: str, sly_data_schema_block: str = ""
     ) -> str:
         """
         Render a single agent block depending on its type.
 
         :param agent_name: The name of the agent
         :param agent: The agent definition
-        :param top_agent_name: The name of the top agent
+        :param front_man_name: The name of the front man
         :param sly_data_schema_block: Rendered sly_data_schema fragment for the
-                top agent's function block ("" for none)
+                front man's function block ("" for none)
 
         :return: The rendered agent block as a string.
         """
@@ -300,9 +300,9 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         description: str = (agent.get("description") or "").strip()
         instructions: str = (agent.get("instructions") or "").strip()
 
-        if agent_name == top_agent_name:
+        if agent_name == front_man_name:
             use_description = description or "An assistant that answers inquiries from the user."
-            return TOP_AGENT_TEMPLATE % (
+            return FRONT_MAN_TEMPLATE % (
                 agent_name,
                 self._render_text(use_description, DESCRIPTION_CLOSING_INDENT),
                 sly_data_schema_block,

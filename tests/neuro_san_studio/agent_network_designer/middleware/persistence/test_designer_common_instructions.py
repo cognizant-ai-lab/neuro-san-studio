@@ -36,7 +36,7 @@ class TestDesignerCommonInstructions(IsolatedAsyncioTestCase):
     Pins the wordings of the common instructions, and the copies of them in deployable_template.hocon and
     deployable_template_demo.hocon, to DesignerCommonInstructions.
 
-    HoconAgentNetworkAssembler builds its header and top-agent template from the constants, but the reservations
+    HoconAgentNetworkAssembler builds its header and front man template from the constants, but the reservations
     templates are HOCON files and hold their own copies. CommonInstructionStripper strips copies by the
     constants' words, so a template reworded on its own would bring back the growth of copies for networks
     saved in reservations mode. The template texts are compared word by word, as the stripper matches them.
@@ -94,16 +94,16 @@ class TestDesignerCommonInstructions(IsolatedAsyncioTestCase):
 
     async def test_reservations_templates_give_each_role_the_designer_pieces(self) -> None:
         """
-        The top template writes the front man's lines between the prefix and the agent's text; the top and regular
-        templates end with the AAOSA instructions; only the leaf template has the demo sentence.
+        The front man template writes the fixed lines between the prefix and the agent's text; the front man and
+        regular templates end with the AAOSA instructions; only the leaf template has the demo sentence.
         """
         template: dict[str, Any] = await self._restore("deployable_template_standard.hocon")
         tools: list[dict[str, Any]] = template.get("tools")
 
-        expected_top: list[str] = ["{instructions_prefix}"]
-        expected_top.extend(DesignerCommonInstructions.FRONT_MAN_LINES.split())
-        expected_top.extend(["{agent_instructions}", "{aaosa_instructions}"])
-        self.assertEqual(tools[0].get("instructions").split(), expected_top)
+        expected_front_man: list[str] = ["{instructions_prefix}"]
+        expected_front_man.extend(DesignerCommonInstructions.FRONT_MAN_LINES.split())
+        expected_front_man.extend(["{agent_instructions}", "{aaosa_instructions}"])
+        self.assertEqual(tools[0].get("instructions").split(), expected_front_man)
         self.assertEqual(
             tools[1].get("instructions").split(),
             ["{instructions_prefix}", "{agent_instructions}", "{aaosa_instructions}"],

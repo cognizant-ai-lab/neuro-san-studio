@@ -48,7 +48,7 @@ Do not mention what you can NOT do. Only mention what you can do.
     # a network definition.
     "tools": [
 
-        # Top agent template
+        # Front man template
         # Note: the assembler sets "function.description" in code after
         # filtering, and — when the network uses MCP servers — also injects
         # a "function.sly_data_schema" declaring the http_headers clients

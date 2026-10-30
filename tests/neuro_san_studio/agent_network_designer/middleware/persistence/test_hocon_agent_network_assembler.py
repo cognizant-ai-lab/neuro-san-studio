@@ -142,7 +142,7 @@ class TestHoconAgentNetworkAssembler(TestCase):
         # The description substitution still landed alongside the schema.
         self.assertIn("top", front_man["function"]["description"])
 
-    def test_non_top_agents_carry_no_schema(self) -> None:
+    def test_non_front_man_agents_carry_no_schema(self) -> None:
         """
         Only the front man talks to clients; helpers must not declare one.
         """

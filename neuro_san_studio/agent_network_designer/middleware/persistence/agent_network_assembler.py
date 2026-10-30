@@ -35,7 +35,7 @@ class AgentNetworkAssembler:
     async def assemble_agent_network(
         self,
         network_def: dict[str, Any],
-        top_agent_name: str,
+        front_man_name: str,
         agent_network_name: str,
         sample_queries: list[str],
         client_token_mcp_headers: dict[str, list[str]] | None = None,
@@ -45,7 +45,7 @@ class AgentNetworkAssembler:
         Assemble the agent network from the definition.
 
         :param network_def: Agent network definition
-        :param top_agent_name: The name of the top agent
+        :param front_man_name: The name of the front man
         :param agent_network_name: The file name, without the .hocon extension
         :param sample_queries: List of sample queries for the agent network
         :param client_token_mcp_headers: Optional mapping of client-token MCP

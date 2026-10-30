@@ -61,7 +61,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
     async def assemble_agent_network(
         self,
         network_def: dict[str, Any],
-        top_agent_name: str,
+        front_man_name: str,
         agent_network_name: str,
         sample_queries: list[str],
         client_token_mcp_headers: dict[str, list[str]] | None = None,
@@ -71,7 +71,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         Assemble the agent network from the definition.
 
         :param network_def: Agent network definition
-        :param top_agent_name: The name of the top agent
+        :param front_man_name: The name of the front man
         :param agent_network_name: The file name, without the .hocon extension
         :param sample_queries: List of sample queries for the agent network
         :param client_token_mcp_headers: Optional mapping of client-token MCP
@@ -88,10 +88,10 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         self.template = await restorer.async_restore(file_reference=self.template_file)
         self.aaosa_defs = await restorer.async_restore(file_reference=self.aaosa_file)
 
-        # Move top agent to front so it is listed first
-        if top_agent_name != next(iter(use_network_def)):
-            top_agent: dict[str, Any] = use_network_def.pop(top_agent_name)
-            use_network_def = {top_agent_name: top_agent, **use_network_def}
+        # List the front man first: neuro-san takes the first agent in the list as the front man.
+        if front_man_name != next(iter(use_network_def)):
+            front_man: dict[str, Any] = use_network_def.pop(front_man_name)
+            use_network_def = {front_man_name: front_man, **use_network_def}
 
         # Start out with a copy of the template, but remove the tools and commondefs
         agent_network: dict[str, Any] = deepcopy(self.template)
@@ -137,8 +137,8 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
             # Find what node template to use from the normalized values to stay consistent
             # with what will be rendered after stripping.
             template_index: int = -1
-            if agent_name == top_agent_name:
-                # Top agent
+            if agent_name == front_man_name:
+                # Front man
                 template_index = 0
             elif tools:
                 # Regular agent
@@ -159,7 +159,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
             # Set function.description directly from the agent_network_definition,
             # analogous to ${aaosa_call}{ "description": "..." } in HOCON.
             if isinstance(agent_spec.get("function"), dict):
-                if agent_name == top_agent_name:
+                if agent_name == front_man_name:
                     agent_spec["function"]["description"] = (
                         agent_description or "An assistant that answers inquiries from the user."
                     )
