@@ -35,8 +35,11 @@ _DEPRECATION_REDIRECT = DeprecationRedirect(
         "coded_tools.agent_network_editor.connectivity_dictionary_converter.ConnectivityDictionaryConverter": "neuro_san_studio.agent_network_designer.common.connectivity_dictionary_converter.ConnectivityDictionaryConverter",  # noqa: E501
         "coded_tools.agent_network_editor.create_network.CreateNetwork": "neuro_san_studio.agent_network_designer.tools.create_network.CreateNetwork",  # noqa: E501
         "coded_tools.agent_network_editor.designer_network_inspector.DesignerNetworkInspector": "neuro_san_studio.agent_network_designer.common.designer_network_inspector.DesignerNetworkInspector",  # noqa: E501
+        # Not an old name. With AGENT_TOOL_PATH_ONLY on, neuro-san finds the editor's classes by name in this folder,
+        # so the renamed class needs an entry too.
+        "coded_tools.agent_network_editor.get_external_network.GetExternalNetwork": "neuro_san_studio.agent_network_designer.tools.get_external_network.GetExternalNetwork",  # noqa: E501
         "coded_tools.agent_network_editor.get_mcp_tool.GetMcpTool": "neuro_san_studio.agent_network_designer.tools.get_mcp_tool.GetMcpTool",  # noqa: E501
-        "coded_tools.agent_network_editor.get_subnetwork.GetSubnetwork": "neuro_san_studio.agent_network_designer.tools.get_subnetwork.GetSubnetwork",  # noqa: E501
+        "coded_tools.agent_network_editor.get_subnetwork.GetSubnetwork": "neuro_san_studio.agent_network_designer.tools.get_external_network.GetExternalNetwork",  # noqa: E501
         "coded_tools.agent_network_editor.get_toolbox.GetToolbox": "neuro_san_studio.agent_network_designer.tools.get_toolbox.GetToolbox",  # noqa: E501
         "coded_tools.agent_network_editor.globals.ProcessGlobals": "neuro_san_studio.agent_network_designer.common.globals.ProcessGlobals",  # noqa: E501
         "coded_tools.agent_network_editor.mcp_header_hygiene.McpHeaderHygiene": "neuro_san_studio.agent_network_designer.common.mcp_header_hygiene.McpHeaderHygiene",  # noqa: E501

@@ -40,16 +40,16 @@ The Agent Network Designer operates as a structured, hierarchical network, follo
 
 1. The frontman agent receives a design request and delegates it to the
 [`agent_network_editor`](../../registries/agent_network_editor.hocon)
- subnetwork.
+ support network.
 This component creates or modifies the structure (graph) of the network.
 
 2. Next, the [`agent_network_instructions_editor`](../../registries/agent_network_instructions_editor.hocon)
- subnetwork
+ support network
 generates or refines the `instructions` for each agent in the network.
 
 3. Once the structure and instructions are defined, the frontman calls the
 [`agent_network_query_generator`](../../registries/agent_network_query_generator.hocon)
- subnetwork to produce example usage queries for the new agent network.
+ support network to produce example usage queries for the new agent network.
 
 4. Finally, the
 [agent_network_persistence_middleware.py](../../neuro_san_studio/agent_network_designer/middleware/persistence/agent_network_persistence_middleware.py)
@@ -59,7 +59,8 @@ depending on the `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS` environment variable.
     The **`agent_network_definition`** is a dictionary mapping agent names to their configurations
 (e.g., instructions, tools, or other agents they can call).
 The tool also validates the network for issues such as disconnected nodes or missing instructions.
-Any detected errors are reported back to the frontman agent, which then triggers the appropriate subnetworks to resolve them.
+Any detected errors are reported back to the frontman agent, which then triggers the appropriate support networks to
+resolve them.
 
 This system serves as an example of agent-oriented software, clearly separating where we rely on:
 
@@ -69,7 +70,7 @@ This system serves as an example of agent-oriented software, clearly separating 
 
 **Implementation Detail:**
 
-The `sly_data` is used internally to hold and share the `agent_network_definition` object between subnetworks.
+The `sly_data` is used internally to hold and share the `agent_network_definition` object between support networks.
 
 ---
 
@@ -292,13 +293,13 @@ The frontman agent serves as the primary entry point for all user commands and o
 - Generates final HOCON configuration files
 
 **Available Agents/Tools:**
-- `agent_network_editor` – Subnetwork for creating and modifying `agent_network_definition`
-- `agent_network_query_generator` – Subnetwork for creating sample queries
-- `agent_network_instructions_editor` – Subnetwork for creating and refining agent instructions
+- `agent_network_editor` – Support network for creating and modifying `agent_network_definition`
+- `agent_network_query_generator` – Support network for creating sample queries
+- `agent_network_instructions_editor` – Support network for creating and refining agent instructions
 - `get_agent_network_definition` – Retrieves current network state
 - `web_search` – Researches company domains and contexts
 
-### Subnetworks
+### Support networks
 
 `agent_network_editor`
 - Modifies or creates the agent network structure

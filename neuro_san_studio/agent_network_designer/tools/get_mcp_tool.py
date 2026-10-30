@@ -372,7 +372,7 @@ class GetMcpTool(CodedTool):
                 until an mcp_info.hocon change or a process restart — the
                 outage's recovery is invisible to the frozen fingerprint —
                 so nothing is published and the next call retries instead.
-                Same failure shape, same remedy as the subnetwork
+                Same failure shape, same remedy as the external network
                 descriptions filler's all-empty guard.
         """
         # Already in a worker thread here, so the blocking get() is fine.

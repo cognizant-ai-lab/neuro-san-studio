@@ -29,10 +29,10 @@ class AgentNameGuard:
     Two rules are enforced, both about the node *key* — not tool references, which
     legitimately may point at external agents inside a `tools` list:
 
-    1. External agent/subnetwork/MCP references — names starting with "/", "http://",
+    1. External network and MCP references — names starting with "/", "http://",
        or "https://" — are only legal as tool references, never as top-level nodes
        (where they would carry the instructions/description/tools that an external
-       agent/subnetwork cannot have). This case is reported with an actionable message.
+       network or MCP server cannot have). This case is reported with an actionable message.
     2. Any remaining name must match the same pattern the framework enforces on tool
        names (ToolNameNetworkValidator.TOOL_NAME_PATTERN — letters, digits, underscore,
        and hyphen only) so a node name can never become an illegal langchain tool name.
@@ -57,9 +57,9 @@ class AgentNameGuard:
         # actionable message rather than a generic "invalid characters" one.
         if UrlNetworkValidator.is_url_or_path(agent_name):
             return (
-                f"Error: '{agent_name}' is an external agent/subnetwork/MCP reference and "
+                f"Error: '{agent_name}' is an external network or MCP reference and "
                 "cannot be a node in the network. Reference it inside another agent's tools "
-                "list instead. External agents/subnetworks cannot have instructions, "
+                "list instead. External networks cannot have instructions, "
                 "description, or tools."
             )
 

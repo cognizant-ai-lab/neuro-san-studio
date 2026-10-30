@@ -14,49 +14,54 @@
 #
 # END COPYRIGHT
 """
-Policy tests for GetSubnetwork's process-wide descriptions cache: what gets
+Policy tests for GetExternalNetwork's process-wide descriptions cache: what gets
 published, what must never be published, and when the shared cache is
 bypassed. The generic cache mechanism itself is covered by
 test_shared_process_cache.py; these tests pin the policy layered on top of
 it, with the framework session layer stubbed out.
 
 Skipped (not failed) in environments whose neuro-san predates the imports
-get_subnetwork needs, so the suite still collects everywhere.
+get_external_network needs, so the suite still collects everywhere.
 """
 
 import asyncio
 import os
+from typing import Any
 from unittest import TestCase
 from unittest import mock
 
 import pytest
 
-pytest.importorskip("neuro_san_studio.agent_network_designer.tools.get_subnetwork")
+from neuro_san_studio.agent_network_designer.common.shared_process_cache import SharedProcessCache
+
+pytest.importorskip("neuro_san_studio.agent_network_designer.tools.get_external_network")
 
 # The import must stay below importorskip so old environments skip cleanly.
 # pylint: disable-next=wrong-import-position
-from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork  # noqa: E402
+from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork  # noqa: E402
 
-SUBNETWORK_NAMES: list[str] = ["/alpha", "/beta"]
+EXTERNAL_NETWORK_NAMES: list[str] = ["/alpha", "/beta"]
 
 
-class TestGetSubnetwork(TestCase):
-    """Behavioral tests for the shared subnetwork-descriptions policy."""
+class TestGetExternalNetwork(TestCase):
+    """Behavioral tests for the shared external network descriptions policy."""
 
     def setUp(self):
         # tests/conftest.py's autouse fixture also clears the shared caches
         # around every test; clearing here as well keeps these tests correct
         # when run directly through unittest.
-        GetSubnetwork.clear_shared_subnetwork_names_for_testing()
-        GetSubnetwork.clear_shared_subnetwork_descriptions_for_testing()
+        GetExternalNetwork.clear_shared_external_network_names_for_testing()
+        GetExternalNetwork.clear_shared_external_network_descriptions_for_testing()
         self.fetch_log: list[str] = []
         self.descriptions: dict[str, str] = {"/alpha": "does alpha", "/beta": "does beta"}
 
-    def _make_tool(self) -> GetSubnetwork:
+    def _make_tool(self) -> GetExternalNetwork:
         """
-        Build a GetSubnetwork (bypassing the framework-only __init__) whose
+        Build a GetExternalNetwork (bypassing the framework-only __init__) whose
         run_context chain yields a stub session factory serving
         self.descriptions and recording each fetch in self.fetch_log.
+
+        :return: A GetExternalNetwork whose session factory serves self.descriptions.
         """
         fetch_log = self.fetch_log
         descriptions = self.descriptions
@@ -73,7 +78,7 @@ class TestGetSubnetwork(TestCase):
         factory = mock.Mock()
         factory.create_session = create_session
 
-        tool: GetSubnetwork = GetSubnetwork.__new__(GetSubnetwork)
+        tool: GetExternalNetwork = GetExternalNetwork.__new__(GetExternalNetwork)
         tool.run_context = mock.Mock()
         tool.run_context.get_invocation_context.return_value.get_async_session_factory.return_value = factory
         return tool
@@ -82,16 +87,20 @@ class TestGetSubnetwork(TestCase):
     def _patched_names():
         """Pin the names half so these tests never parse the real manifest."""
         return mock.patch.object(
-            GetSubnetwork, "get_subnetwork_names", new=mock.AsyncMock(return_value=list(SUBNETWORK_NAMES))
+            GetExternalNetwork,
+            "get_external_network_names",
+            new=mock.AsyncMock(return_value=list(EXTERNAL_NETWORK_NAMES)),
         )
 
     def test_concurrent_callers_share_one_fetch_and_warm_reads_are_free(self):
         """A cold burst fans out once for the whole loop; warm reads fetch nothing."""
 
         async def run() -> list[dict[str, str]]:
-            tools = [self._make_tool() for _ in range(10)]
-            burst = await asyncio.gather(*[tool.get_subnetworks() for tool in tools])
-            warm = await self._make_tool().get_subnetworks()
+            calls: list[Any] = []
+            for _ in range(10):
+                calls.append(self._make_tool().get_external_networks())
+            burst: list[dict[str, str]] = await asyncio.gather(*calls)
+            warm: dict[str, str] = await self._make_tool().get_external_networks()
             return burst + [warm]
 
         with self._patched_names():
@@ -99,16 +108,16 @@ class TestGetSubnetwork(TestCase):
 
         for result in results:
             self.assertEqual(result, self.descriptions)
-        # One fetch per subnetwork for the whole burst, none for the warm read.
-        self.assertEqual(sorted(self.fetch_log), sorted(SUBNETWORK_NAMES))
+        # One fetch per external network for the whole burst, none for the warm read.
+        self.assertEqual(sorted(self.fetch_log), sorted(EXTERNAL_NETWORK_NAMES))
 
     def test_context_less_caller_degrades_without_publishing(self):
         """A caller without run_context gets {} per-call, never poisoning the cache."""
-        bare: GetSubnetwork = GetSubnetwork.__new__(GetSubnetwork)
+        bare: GetExternalNetwork = GetExternalNetwork.__new__(GetExternalNetwork)
 
         async def run() -> tuple[dict[str, str], dict[str, str]]:
-            empty = await bare.get_subnetworks()
-            filled = await self._make_tool().get_subnetworks()
+            empty: dict[str, str] = await bare.get_external_networks()
+            filled: dict[str, str] = await self._make_tool().get_external_networks()
             return empty, filled
 
         with self._patched_names():
@@ -122,9 +131,9 @@ class TestGetSubnetwork(TestCase):
         """The pre-fill peek serves warm reads even to context-less callers."""
 
         async def run() -> dict[str, str]:
-            await self._make_tool().get_subnetworks()
-            bare: GetSubnetwork = GetSubnetwork.__new__(GetSubnetwork)
-            return await bare.get_subnetworks()
+            await self._make_tool().get_external_networks()
+            bare: GetExternalNetwork = GetExternalNetwork.__new__(GetExternalNetwork)
+            return await bare.get_external_networks()
 
         with self._patched_names():
             self.assertEqual(asyncio.run(run()), self.descriptions)
@@ -135,7 +144,7 @@ class TestGetSubnetwork(TestCase):
         self.descriptions.clear()
 
         async def run() -> dict[str, str]:
-            return await self._make_tool().get_subnetworks()
+            return await self._make_tool().get_external_networks()
 
         with self._patched_names():
             self.assertEqual(asyncio.run(run()), {})
@@ -149,7 +158,7 @@ class TestGetSubnetwork(TestCase):
         self.descriptions["/beta"] = ""
 
         async def run() -> dict[str, str]:
-            return await self._make_tool().get_subnetworks()
+            return await self._make_tool().get_external_networks()
 
         with self._patched_names():
             first = asyncio.run(run())
@@ -157,16 +166,16 @@ class TestGetSubnetwork(TestCase):
 
         self.assertEqual(first, {"/alpha": "does alpha", "/beta": ""})
         self.assertEqual(second, first)
-        # The second call was served warm — one fetch per subnetwork total.
-        self.assertEqual(sorted(self.fetch_log), sorted(SUBNETWORK_NAMES))
+        # The second call was served warm — one fetch per external network total.
+        self.assertEqual(sorted(self.fetch_log), sorted(EXTERNAL_NETWORK_NAMES))
 
     def test_returned_mapping_is_a_copy(self):
         """Mutating a returned mapping must not corrupt the shared value."""
 
         async def run() -> dict[str, str]:
-            first = await self._make_tool().get_subnetworks()
+            first: dict[str, str] = await self._make_tool().get_external_networks()
             first["/tampered"] = "oops"
-            return await self._make_tool().get_subnetworks()
+            return await self._make_tool().get_external_networks()
 
         with self._patched_names():
             second = asyncio.run(run())
@@ -177,15 +186,16 @@ class TestGetSubnetwork(TestCase):
         """With AGENT_AUTHORIZER set, every invocation fetches under its own identity."""
 
         async def run() -> None:
-            await self._make_tool().get_subnetworks()
-            await self._make_tool().get_subnetworks()
+            await self._make_tool().get_external_networks()
+            await self._make_tool().get_external_networks()
 
         with self._patched_names(), mock.patch.dict(os.environ, {"AGENT_AUTHORIZER": "some.authorizer.Class"}):
             asyncio.run(run())
 
         # Two invocations, two full fan-outs — /function responses are
         # caller-specific under an authorizer, so nothing may be shared...
-        self.assertEqual(sorted(self.fetch_log), sorted(SUBNETWORK_NAMES * 2))
+        self.assertEqual(sorted(self.fetch_log), sorted(EXTERNAL_NETWORK_NAMES * 2))
         # ...and nothing was left behind in the shared cache.
-        cache = GetSubnetwork._shared_subnetwork_descriptions_cache  # pylint: disable=protected-access
+        # pylint: disable-next=protected-access
+        cache: SharedProcessCache[dict[str, str]] = GetExternalNetwork._shared_external_network_descriptions_cache
         self.assertIsNone(cache.peek())

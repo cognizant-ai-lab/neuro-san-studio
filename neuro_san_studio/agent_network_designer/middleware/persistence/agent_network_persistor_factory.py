@@ -43,7 +43,7 @@ class AgentNetworkPersistorFactory:
         write_to_file: bool,
         demo_mode: bool,
         subdirectory: str,
-        subnetworks: list[str],
+        external_networks: list[str],
         mcp_servers: list[str],
     ) -> AgentNetworkPersistor:
         """
@@ -53,7 +53,7 @@ class AgentNetworkPersistorFactory:
         :param write_to_file: True if the agent network should be written to a file.
         :param demo_mode: Whether to include demo mode instructions for agents
         :param subdirectory: The subdirectory under the output path where networks are saved
-        :param subnetworks: The subnetworks for the agent network
+        :param external_networks: The external networks for the agent network
         :param mcp_servers: The MCP servers for the agent network
         :return: A new AgentNetworkPersistor of the specified type.
         """
@@ -68,7 +68,7 @@ class AgentNetworkPersistorFactory:
             persistor = FileSystemAgentNetworkPersistor(demo_mode, subdirectory)
         elif reservationist:
             # If we have a reservationist as part of the args, use the ReservationsAgentNetworkPersistor
-            persistor = ReservationsAgentNetworkPersistor(args, demo_mode, subnetworks, mcp_servers)
+            persistor = ReservationsAgentNetworkPersistor(args, demo_mode, external_networks, mcp_servers)
         else:
             # Fallback null implementation
             persistor = AgentNetworkPersistor()

@@ -54,7 +54,7 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
     would require loading every network.
 
     This is the shared home for the recipe that
-    ``neuro_san_studio/agent_network_designer/tools/get_subnetwork.py`` also implements for the designer's own
+    ``neuro_san_studio/agent_network_designer/tools/get_external_network.py`` also implements for the designer's own
     manifest.
     """
 

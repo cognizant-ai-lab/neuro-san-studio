@@ -58,9 +58,9 @@
                             "type": "boolean",
                             "description": "Indicates whether to use toolbox (default: true)"
                         },
-                        "subnetwork": {
+                        "external_network": {
                             "type": "boolean",
-                            "description": "Indicates whether to use subnetworks (external agents) (default: true)"
+                            "description": "Indicates whether to use external networks (other agent networks) (default: true)"
                         },
                         "mcp_tool": {
                             "type": "boolean",
@@ -73,16 +73,16 @@
             "instructions": ${expertise_scoping_instructions} """
 You are responsible for generating and editing the structure of the agent network according to the given specifications. 
 
-**Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool` unless the corresponding flag (toolbox, subnetwork, or mcp_tool) is explicitly set to false.**  
+**Always begin by calling `get_toolbox`, `get_external_network`, and `get_mcp_tool` unless the corresponding flag (toolbox, external_network, or mcp_tool) is explicitly set to false.**  
 These calls provide the list of available tools for use in the network:
 - `get_toolbox` returns a dictionary where each key is a tool name and the value contains the tool’s information.
-- `get_subnetwork` returns a dictionary where each key is a subnetwork name and the value contains its description.
+- `get_external_network` returns a dictionary where each key is an external network name and the value contains its description.
 - `get_mcp_tool` returns a dictionary where each key is an MCP server URL and the value is the capabilities of the tools provided by that server.
 
 When adding tools to the network, follow this priority order depending on which tool flags are enabled:
-1. Subnetworks first (only if subnetwork=true):
-    - If a subnetwork is available from `get_subnetwork`, add the name of the subnetwork to the agent’s tools list.
-    - Do not create a node for subnetworks.
+1. External networks first (only if external_network=true):
+    - If an external network is available from `get_external_network`, add the name of the external network to the agent’s tools list.
+    - Do not create a node for external networks.
 2. Toolbox tools second (only if toolbox=true):
     - Add the name of tools from `get_toolbox` to the agent’s tools list.
     - Create nodes for these tools.
@@ -90,11 +90,11 @@ When adding tools to the network, follow this priority order depending on which 
     - MCP tools can be added by adding MCP server URL from `get_mcp_tool` to an agent’s tools list.
     - Do not create nodes for MCP tools.
 
-- Subnetwork names always start with "/".
+- External network names always start with "/".
 - MCP tool names always start with "http://" or "https://"".
 - Example of attaching these tools:
 "tools": ["/banking_ops", "https://example.com/mcp"]
-- Rule: Only add subnetworks and MCP tools to the tools list. Never create nodes for them.
+- Rule: Only add external networks and MCP tools to the tools list. Never create nodes for them.
 
 ### Step-by-step workflow
 - **Create mode (`mode=create`)**  
@@ -109,7 +109,7 @@ When adding tools to the network, follow this priority order depending on which 
   - Adding an agent creates the node only; you must follow up with `update_agent_in_network` to connect it to up-chain or down-chain agents.
 
 - **Updating agents**: Use `update_agent_in_network`.  
-  - This also allows you to add or change tools from `get_subnetwork` or `get_mcp_tool` in the down-chain list.
+  - This also allows you to add or change tools from `get_external_network` or `get_mcp_tool` in the down-chain list.
 
 - **Removing agents**: Use `remove_agent_from_network`.  
   - Ensure all up-chain and down-chain references to the removed agent are updated.  
@@ -128,7 +128,7 @@ Think of this as building or refining a hierarchical organizational chart. Each 
 - All agents must remain connected; no isolated agents are allowed.  
 - If an agent has **no `instructions` key**, it is treated as a **function** and cannot have `tools`.  
 - In the graph, down-chain agents are always listed under `tools`.
-- Add tools from `get_subnetwork`, `get_toolbox`, and `get_mcp_tool` if the tool’s description or name clearly matches the agent’s responsibilities or role.
+- Add tools from `get_external_network`, `get_toolbox`, and `get_mcp_tool` if the tool’s description or name clearly matches the agent’s responsibilities or role.
 
 ### Example
 [
@@ -197,7 +197,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
                 "remove_agent_from_network",
                 "update_agent_in_network",
                 "get_mcp_tool",
-                "get_subnetwork",
+                "get_external_network",
                 "get_toolbox",
             ],
             # Parse any JSON in responses into the structure field of the ChatMessage.
@@ -320,10 +320,10 @@ Always respond with "Successfully created/edited the structure of the agent netw
         },
 
         {
-            "name": "get_subnetwork",
-            "class": "neuro_san_studio.agent_network_designer.tools.get_subnetwork.GetSubnetwork",
+            "name": "get_external_network",
+            "class": "neuro_san_studio.agent_network_designer.tools.get_external_network.GetExternalNetwork",
             "function": {
-                "description": "Retrieve the definitions of all subnetworks available in the system.",
+                "description": "Retrieve the definitions of all external networks available in the system.",
             }
         }
 

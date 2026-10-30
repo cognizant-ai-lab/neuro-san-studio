@@ -99,7 +99,7 @@ class AgentNetworkAssembler:
                 recognized as tools-list entries present in
                 client_token_mcp_headers — a membership test, never URL pattern
                 matching, since tools lists also hold agent names and
-                subnetwork references.
+                external network references.
         :param client_token_mcp_headers: Client-token MCP server URL to the
                 header names the conversation supplied for it, or None.
                 The keys are the URLs whose auth is client-supplied. Names are

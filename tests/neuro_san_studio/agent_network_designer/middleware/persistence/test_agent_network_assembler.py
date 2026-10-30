@@ -36,7 +36,7 @@ NETWORK_DEF: dict = {
     "helper": {
         "description": "helps",
         "instructions": "Help.",
-        "tools": [FILE_AUTH_URL, "/sub_network", "ddgs_search"],
+        "tools": [FILE_AUTH_URL, "/external_network", "ddgs_search"],
     },
     "ddgs_search": {},
 }
@@ -51,9 +51,12 @@ class TestBuildMcpSlyDataSchema:
         assert AgentNetworkAssembler.build_mcp_sly_data_schema(NETWORK_DEF, {}) is None
 
     def test_a_network_using_no_client_token_servers_gets_no_schema(self):
-        """Agent names and subnetwork refs in tools lists must not trigger a schema."""
+        """Agent names and external network refs in tools lists must not trigger a schema."""
         network_def = {
-            "front_man": {"instructions": "Coordinate.", "tools": ["helper", "/sub_network"]},
+            "front_man": {
+                "instructions": "Coordinate.",
+                "tools": ["helper", "/external_network"],
+            },
             "helper": {"instructions": "Help."},
         }
         assert AgentNetworkAssembler.build_mcp_sly_data_schema(network_def, CLIENT_TOKEN_MCP_HEADERS) is None

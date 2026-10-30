@@ -32,8 +32,8 @@ from neuro_san_studio.agent_network_consultant.consultant_state import Consultan
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_DEFINITION
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_HOCON_TEXT
 from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWORK_NAME
+from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
-from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
 from neuro_san_studio.agent_network_designer.tools.get_toolbox import GetToolbox
 
 
@@ -166,7 +166,7 @@ class TestConsultantPersistenceMiddleware(IsolatedAsyncioTestCase):
         )
         toolbox_tools: dict[str, dict[str, Any]] = {}
         with (
-            patch.object(GetSubnetwork, "get_subnetwork_names", new=AsyncMock(return_value=[])),
+            patch.object(GetExternalNetwork, "get_external_network_names", new=AsyncMock(return_value=[])),
             patch.object(GetMcpTool, "get_mcp_servers", new=AsyncMock(return_value=[])),
             patch.object(GetMcpTool, "sly_data_http_header_urls", return_value=[]),
             patch.object(GetToolbox, "get_toolbox_info", new=AsyncMock(return_value=toolbox_tools)),
@@ -215,7 +215,7 @@ class TestConsultantPersistenceMiddleware(IsolatedAsyncioTestCase):
         middleware = ConsultantPersistenceMiddleware(Reservationist(), sly_data)
         toolbox_tools: dict[str, dict[str, Any]] = {}
         with (
-            patch.object(GetSubnetwork, "get_subnetwork_names", new=AsyncMock(return_value=[])),
+            patch.object(GetExternalNetwork, "get_external_network_names", new=AsyncMock(return_value=[])),
             patch.object(GetMcpTool, "get_mcp_servers", new=AsyncMock(return_value=[])),
             patch.object(GetMcpTool, "sly_data_http_header_urls", return_value=[]),
             patch.object(GetToolbox, "get_toolbox_info", new=AsyncMock(return_value=toolbox_tools)),

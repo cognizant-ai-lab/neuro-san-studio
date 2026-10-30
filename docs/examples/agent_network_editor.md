@@ -1,6 +1,9 @@
 # Agent Network Editor
 
-The **Agent Network Editor** is a multi-agent system for create or modify `agent_network_definition`. It serves as a subnetwork within the [`agent_network_designer`](../../registries/agent_network_designer.hocon), focusing specifically on building and editing the structure (graph) of the agent network. It is responsible for generating and editing the structure of an agent network according to given specifications.
+The **Agent Network Editor** is a multi-agent system for create or modify `agent_network_definition`. It serves as a
+support network for the [`agent_network_designer`](../../registries/agent_network_designer.hocon), focusing
+specifically on building and editing the structure (graph) of the agent network. It is responsible for generating and
+editing the structure of an agent network according to given specifications.
 It operates autonomously within its defined scope — responding only to queries related to network structure and relationships between agents.
 
 This network is also highly useful for testing and experimenting with how agent structures are formed.
@@ -22,11 +25,11 @@ These may include:
 
     - Toolbox tools (nodes without `instructions`)
 
-    - External subnetworks or MCP tools, which appear only as entries in the tools list and do not have dedicated nodes.
+    - External networks or MCP tools, which appear only as entries in the tools list and do not have dedicated nodes.
 
 Nodes without `instructions` are considered toolbox nodes — simple references to tools from the `Toolbox`.
-Subnetworks and MCP tools are not represented as nodes; they are referenced directly in the `tools` list.
-Subnetworks always start with "/" while MCP tools are represented by the server's URL.
+External networks and MCP tools are not represented as nodes; they are referenced directly in the `tools` list.
+External networks always start with "/" while MCP tools are represented by the server's URL.
 
 ### Example
 
@@ -87,8 +90,8 @@ At the start of each session, the editor always call the following functions to 
     [agent_network_designer_toolbox_info.hocon](../../neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon)
     will be used.
 
-- `get_subnetwork`
-    — returns a dictionary of subnetworks, mapping each name to its front man's description.
+- `get_external_network`
+    — returns a dictionary of external networks, mapping each name to its front man's description.
     - The available manifest can be set with environment variable `AGENT_NETWORK_DESIGNER_MANIFEST_FILE`. If omitted,
     [manifest_and.hocon](../../registries/manifest_and.hocon) will be used.
 
@@ -107,7 +110,7 @@ These sources define what can be included in the agent network.
 
 When adding tools to an agent, the following priority order is followed:
 
-1. Subnetworks
+1. External networks
 
 2. Toolbox tools
 
@@ -125,7 +128,8 @@ The network supports two main operational modes:
 
 - Adding agents — Use `add_agent_to_network` to create one non-connected node.
 
-- Updating agents — Use `update_agent_in_network` to modify connections and add or remove tools from `get_subnetwork` or `get_mcp_tool`.
+- Updating agents — Use `update_agent_in_network` to modify connections and add or remove tools from
+  `get_external_network` or `get_mcp_tool`.
 
 - Removing agents — Use `remove_agent_from_network`.
 
@@ -157,13 +161,13 @@ If the generated structure is not as expected, or if validation fails, consider 
     The quality, organization, and logical flow of the generated graph are highly dependent on the clarity of the prompt.
     Try rewording or expanding the prompt to give more context about roles, hierarchy, or relationships between agents.
 
-- Verify toolbox and subnetwork descriptions
+- Verify toolbox and external network descriptions
 
     Ensure that:
 
     - Each tool in the Toolbox has a clear and accurate description that conveys its purpose and usage.
 
-    - Each subnetwork, the front man has a detailed and context-rich description.
+    - Each external network's front man has a detailed and context-rich description.
 
     These descriptions directly influence how the network assigns tools.
 

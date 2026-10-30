@@ -26,8 +26,8 @@ from neuro_san_studio.agent_network_designer.common.constants import AGENT_NETWO
 from neuro_san_studio.agent_network_designer.middleware.validation.agent_network_structure_validation_middleware import (  # noqa: E501
     AgentNetworkStructureValidationMiddleware,
 )
+from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
-from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
 from neuro_san_studio.agent_network_designer.tools.get_toolbox import GetToolbox
 
 # What the stubbed editor caches hold: one served network, one MCP server and one toolbox tool.
@@ -80,8 +80,10 @@ class TestAgentNetworkStructureValidationMiddleware(IsolatedAsyncioTestCase):
         """
         Stub the editor caches the middleware validates against.
         """
-        self.subnetwork_names: AsyncMock = self._start(
-            mock.patch.object(GetSubnetwork, "get_subnetwork_names", new=AsyncMock(return_value=[SERVED_NETWORK]))
+        self.external_network_names: AsyncMock = self._start(
+            mock.patch.object(
+                GetExternalNetwork, "get_external_network_names", new=AsyncMock(return_value=[SERVED_NETWORK])
+            )
         )
         # The middleware adds to the list it gets, so each call returns a new one.
         self.mcp_servers: AsyncMock = self._start(
@@ -155,7 +157,7 @@ class TestAgentNetworkStructureValidationMiddleware(IsolatedAsyncioTestCase):
         result: dict[str, Any] | None = await self._after_agent(deepcopy(VALID_NETWORK))
 
         self.assertIsNone(result)
-        self.subnetwork_names.assert_awaited_once()
+        self.external_network_names.assert_awaited_once()
         self.mcp_servers.assert_awaited_once()
         self.toolbox_info.assert_awaited_once()
 
