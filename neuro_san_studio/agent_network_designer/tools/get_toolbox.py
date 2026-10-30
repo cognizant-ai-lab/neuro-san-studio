@@ -30,35 +30,60 @@ logger = AndLogger(logging.getLogger(__name__))
 
 class GetToolbox(CodedTool):
     """
-    CodedTool implementation which provides a way to get tool definition from toolbox info file
+    CodedTool implementation which provides a way to get tool definition from toolbox info file.
+
+    The file is AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE, or the local default. A multi-user server
+    points that variable at agent_network_designer_toolbox_info_multiuser.hocon. A file that defines
+    no tools gives an empty toolbox.
     """
+
+    @staticmethod
+    def _resolve_toolbox_info_file() -> str:
+        """
+        Resolve the designer's toolbox info file.
+
+        :return: The AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE env var, or the default when it is
+                unset or empty.
+        """
+        return os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE") or DEFAULT_TOOLBOX_INFO_FILE
+
+    @staticmethod
+    def _toolbox_info_fingerprint() -> tuple[str, tuple[int, int] | None]:
+        """
+        Freshness probe for the shared toolbox info cache (see SharedProcessCache).
+
+        The cached mapping is served only while the resolved path and the file's
+        modification_time and size stay the same, so a changed env var or an edited
+        file is read again on the next call. The size also catches a rewrite that
+        finishes in the same timestamp tick as a read of the half-written file. A
+        missing file (None) is read the moment it appears.
+
+        :return: (path, (modification_time_ns, size) or None) tuple.
+        """
+        toolbox_info_file: str = GetToolbox._resolve_toolbox_info_file()
+        return (toolbox_info_file, SharedProcessCache.stat_modification_time_ns_and_size(toolbox_info_file))
 
     @staticmethod
     def _load_shared_toolbox_info() -> dict[str, str]:
         """
         Loader for the shared toolbox info (runs inside SharedProcessCache).
 
-        Resolves the toolbox info file — the AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE
-        env var or the default — reads and parses it, and reduces each entry to its
-        description.
+        Reads and parses the toolbox info file and reduces each entry to its
+        description. A file that defines no tools is a valid result, published
+        like any other.
 
-        :return: dict mapping tool names to descriptions; never empty.
-        :raise FileNotFoundError: When the file does not exist, or when it
-                yields no tools at all (after logging a warning with the
-                resolved path). The cache publishes nothing on a raise, so a
-                transient gap — a deploy replacing the file, a wrong-CWD
-                launch, a read that comes back empty — cannot pin an empty
-                toolbox for the life of the process: the next call retries
-                and heals the moment the file reads correctly. A malformed
-                file raises out of the parse, likewise unpublished.
+        :return: dict mapping tool names to descriptions; empty when the file
+                defines no tools.
+        :raises FileNotFoundError: When the file does not exist (after logging a
+                warning with the resolved path). The cache publishes nothing on a
+                raise, so the next call retries and heals the moment the file
+                appears.
+        :raises ValueError: When the file is malformed. Nothing is published
+                then either, so the next call retries.
         """
-        # Check for toolbox info file in env var
-        toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE")
-        if not toolbox_info_file:
-            # Use a default if no value specified
-            toolbox_info_file = DEFAULT_TOOLBOX_INFO_FILE
+        toolbox_info_file: str = GetToolbox._resolve_toolbox_info_file()
 
-        # Go fish — once per process once it succeeds.
+        # Go fish — once per version of the file.
         logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from Toolbox>>>>>>>>>>>>>>>>>>>")
         logger.info("Toolbox info file: %s", toolbox_info_file)
 
@@ -79,40 +104,31 @@ class GetToolbox(CodedTool):
             tools[tool_name] = tool_info.get("description", "")
 
         if not tools:
-            # The designer's toolbox file always defines tools, so an empty
-            # mapping only ever means the read went wrong — observed in the
-            # wild as a one-off restore() returning {} that this cache (no
-            # fingerprint) then pinned until a server restart. Raising
-            # instead of returning keeps the empty result unpublished: this
-            # call degrades to an empty toolbox, and the next call retries
-            # and heals. FileNotFoundError so callers' existing
-            # missing-file policy applies unchanged.
-            logger.warning("Toolbox info from %s came back empty; treating as a failed load.", toolbox_info_file)
-            raise FileNotFoundError(f"Toolbox info file {toolbox_info_file} yielded no tools")
+            # A read that caught the file mid-rewrite can also come back empty.
+            # The finished rewrite changes the file's size or modification_time,
+            # so the next call reads it again.
+            logger.info("Toolbox info file %s defines no tools.", toolbox_info_file)
         return tools
 
     # Process-wide cache of the {tool_name: description} mapping parsed from
-    # the toolbox info file. With no fingerprint the mapping is
-    # deliberately never refreshed once loaded, so picking up an edited
-    # toolbox info file requires a process restart — the same trade-off as
-    # ConnectivityDictionaryConverter's shared ToolboxFactory. Previously the
-    # cache lived in sly_data, so a server handling N concurrent conversations
-    # re-parsed the same HOCON N times, on the event loop. Locking, publish
-    # ordering, and the async once-gate live in SharedProcessCache; access
-    # goes through the class by name (not cls) so a hypothetical subclass
-    # shares the one cache instead of splitting it.
+    # the toolbox info file. The fingerprint (path, modification_time and size,
+    # see _toolbox_info_fingerprint) serves the mapping only while the file is
+    # unchanged, so an edit is read on the next call without a restart.
+    # Locking, publish ordering, and the async once-gate live in
+    # SharedProcessCache; access goes through the class by name (not cls) so
+    # a hypothetical subclass shares the one cache instead of splitting it.
     _shared_toolbox_info_cache: SharedProcessCache[dict[str, str]] = SharedProcessCache(
-        loader=_load_shared_toolbox_info
+        loader=_load_shared_toolbox_info, fingerprint=_toolbox_info_fingerprint
     )
 
     @classmethod
-    def clear_shared_toolbox_info_for_testing(cls):
+    def clear_shared_toolbox_info_for_testing(cls) -> None:
         """
         Reset the process-wide toolbox info cache. For test isolation only.
 
-        Production code must never call this: the cache is deliberately
-        load-once-per-process (see the class comment above). Tests call it
-        (via tests/conftest.py) so toolbox info loaded under one test's
+        Production code must never call this: the fingerprint already reloads
+        the file when it changes. Tests call it (via tests/conftest.py) so
+        toolbox info loaded under one test's
         AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE state cannot leak into later
         tests. Living here rather than in conftest keeps all the singleton
         policy in this one class.
@@ -122,14 +138,15 @@ class GetToolbox(CodedTool):
     @staticmethod
     async def get_toolbox_info() -> dict[str, str]:
         """
-        Read toolbox info from the process-wide cache, loading it from a file
-        on the first call in the process. The cold load runs off the event
-        loop and is shared by concurrent cold callers.
+        Read toolbox info from the process-wide cache, loading it from the file
+        on the first call and again whenever the file changes. A load runs off
+        the event loop and is shared by concurrent callers.
 
         :return: dict mapping tool names to descriptions; empty if the toolbox
-                info file does not exist (retried on the next call, never
-                cached). A malformed file raises. The returned dict is a copy,
-                so callers may mutate it without corrupting the shared cache.
+                info file defines no tools, or if it does not exist (retried on
+                the next call, never cached). The returned dict is a copy, so
+                callers may mutate it without corrupting the shared cache.
+        :raises ValueError: When the toolbox info file is malformed.
         """
         try:
             tools: dict[str, str] = await GetToolbox._shared_toolbox_info_cache.aget()
@@ -164,7 +181,8 @@ class GetToolbox(CodedTool):
             In case of successful execution:
                 the tool definition from toolbox as a dictionary.
             otherwise:
-                an empty dictionary if the toolbox info file does not exist;
-                a malformed file raises.
+                an empty dictionary if the toolbox info file defines no tools
+                or does not exist.
+        :raises ValueError: When the toolbox info file is malformed.
         """
         return await self.get_toolbox_info()

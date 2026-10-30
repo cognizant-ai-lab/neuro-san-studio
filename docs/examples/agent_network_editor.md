@@ -89,6 +89,10 @@ At the start of each session, the editor always call the following functions to 
     If not provided,
     [agent_network_designer_toolbox_info.hocon](../../neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon)
     will be used.
+    - A multi-user server, such as the Docker image in `deploy/`, sets this variable to the
+    [multi-user toolbox file](../../neuro_san_studio/toolbox/agent_network_designer_toolbox_info_multiuser.hocon)
+    instead. Every user of such a server shares its files and API keys, so that file lists only tools that read no
+    server files and use no server key. For now that is only `web_fetch`.
 
 - `get_external_network`
     — returns a dictionary of external networks, mapping each name to its front man's description.
