@@ -86,12 +86,6 @@ _Example Usage in Neuro San Studio_:
 
 - [ddgs_search.hocon](../registries/tools/ddgs_search.hocon),
 - [agent\_network\_designer.hocon](../registries/agent_network_designer.hocon),
-- [agentic\_rag.hocon](../registries/tools/agentic_rag.hocon),
-- [airbnb.hocon](../registries/industry/airbnb.hocon),
-- [booking.hocon](../registries/industry/booking.hocon),
-- [carmax.hocon](../registries/industry/carmax.hocon),
-- [expedia.hocon](../registries/industry/expedia.hocon),
-- [LinkedInJobSeekerSupportNetwork.hocon](../registries/industry/LinkedInJobSeekerSupportNetwork.hocon),
 - available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Firecrawl Search
@@ -325,6 +319,13 @@ omit the `Authorization` header — see the commented "free tier" example in
 _Example Usage in Neuro San Studio:_
 
 - [you\_search.hocon](../registries/tools/you_search.hocon),
+- [internet\_info\_gatherer.hocon](../registries/tools/internet_info_gatherer.hocon) (free tier), used by
+  [agentic\_rag.hocon](../registries/tools/agentic_rag.hocon),
+  [airbnb.hocon](../registries/industry/airbnb.hocon),
+  [booking.hocon](../registries/industry/booking.hocon),
+  [carmax.hocon](../registries/industry/carmax.hocon),
+  [expedia.hocon](../registries/industry/expedia.hocon) and
+  [LinkedInJobSeekerSupportNetwork.hocon](../registries/industry/LinkedInJobSeekerSupportNetwork.hocon),
 - see also [MCP server configuration](../neuro_san_studio/mcp/mcp_info.hocon)
 
 ## Comparison of Search Tools

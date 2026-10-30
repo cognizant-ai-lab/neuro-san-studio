@@ -27,6 +27,10 @@ pip install slack-sdk
 Set either `SLACK_BOT_TOKEN` or `SLACK_USER_TOKEN` to retrieve Slack messages. Without the package or a configured
 token, the Slack tool returns demo data.
 
+Web search goes through the [Internet Info Gatherer](internet_info_gatherer.md) agent network, so
+`tools/internet_info_gatherer.hocon` must also be served. It is enabled by default in
+[registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon).
+
 ---
 
 ## Description
@@ -41,7 +45,8 @@ fashion.
 - **Conversational Orchestration**: The front agent abstracts complexity, ensuring users experience a seamless and fluid
 interaction.
 - **RAG-based Retrieval**: Supports intelligent document Q&A via vectorstore-backed retrieval pipelines.
-- **Live Source Access**: Enables up-to-date query resolution via Bing search or Slack message retrieval.
+- **Live Source Access**: Enables up-to-date query resolution via the Internet Info Gatherer agent network or Slack
+message retrieval.
 
 ---
 
@@ -81,10 +86,10 @@ in the RFP.
 
 ### Supporting Tools
 
-1. **website_search**
-   - Powered by `ddgs_search`.
-   - Retrieves up-to-date web results based on the query.
-   - Additional info on [DDGS Search](https://github.com/deedy5/ddgs).
+1. **/tools/internet_info_gatherer**
+   - External agent network that searches the web and reads the pages it finds.
+   - Retrieves up-to-date, cited web information based on the query.
+   - Additional info on [Internet Info Gatherer](internet_info_gatherer.md).
 
 2. **rag_retriever**
    - Powered by the shared `pdf_rag` toolbox tool (see [PDF RAG](pdf_rag.md)).
@@ -102,9 +107,10 @@ in the RFP.
 
 These tools are independently defined and invoked by the frontman agent:
 
-- **Bing Search Tool (`website_search`)**
-    - Retrieves public web data using Bing.
-    - Accepts configurable arguments like number of results.
+- **Internet Info Gatherer (`/tools/internet_info_gatherer`)**
+    - Searches the web through the you.com MCP server's free tier and reads result pages with `web_fetch`.
+    - Returns answers grounded in page content, with cited URLs.
+    - Subject to the usage limits of the you.com free tier.
 
 - **RAG PDF Retriever (`rag_retriever`)**
     - Loads a remote PDF through the SSRF-hardened fetch path, builds an in-memory vectorstore,
