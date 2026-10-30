@@ -121,8 +121,8 @@ Think of this as building or refining a hierarchical organizational chart. Each 
 ### Rules
 - Prefer simplicity. Use the fewest agents necessary to fulfill the requirements. Do not add agents speculatively.
 - The network must always remain a directed acyclic graph (DAG).  
-- There must be exactly one top agent after all modifications.  
-- The top agent connects only to mid-level agents, not directly to the lowest-level ones.  
+- After all modifications, there must be exactly one front man: the agent that receives the user’s request and answers the user.  
+- The front man connects only to mid-level agents, not directly to the lowest-level ones.  
 - When adding an agent, always follow up with `update_agent_in_network` to connect it properly.  
 - When removing an agent, update related up-chain and down-chain references to avoid dangling links.  
 - All agents must remain connected; no isolated agents are allowed.  

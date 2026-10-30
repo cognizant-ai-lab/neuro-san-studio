@@ -27,12 +27,12 @@ class DesignerCommonInstructions:  # pylint: disable=too-few-public-methods
     text. Every save adds the common instructions back, and which pieces an agent gets depends on its role:
 
     - the prefix, for every LLM agent;
-    - the front man's three fixed lines, for the top agent;
+    - three fixed lines, for the front man;
     - the demo sentence, for leaf agents when demo mode is on;
-    - the AAOSA instructions, for the top agent and agents with tools. Their text lives in
+    - the AAOSA instructions, for the front man and agents with tools. Their text lives in
       registries/aaosa.hocon, the file every generated network includes, so it is not repeated here.
 
-    HoconAgentNetworkAssembler builds its header and top-agent template from these constants, and
+    HoconAgentNetworkAssembler builds its header and front man template from these constants, and
     CommonInstructionStripper matches copies by the same constants, so a change here changes what is written and
     what is stripped at once. deployable_template.hocon and deployable_template_demo.hocon are HOCON and cannot
     import them; a test pins their copies to these values.
@@ -57,7 +57,7 @@ class DesignerCommonInstructions:  # pylint: disable=too-few-public-methods
         "Do not mention what you can NOT do. Only mention what you can do."
     )
 
-    # The lines the top-agent template writes inside the front man's own triple-quoted body, ahead of its text.
+    # The lines the front man template writes inside the agent's own triple-quoted body, ahead of its text.
     FRONT_MAN_LINES: str = (
         "Never express irrelevance unless you have first consulted all your tools.\n"
         "Once you have determined the relevant tools, do not express that to the user, rather,\n"

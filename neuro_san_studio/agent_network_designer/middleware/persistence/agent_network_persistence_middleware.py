@@ -506,7 +506,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         persistor: AgentNetworkPersistor
         client_token_mcp_headers: dict[str, list[str]]
         persistor, client_token_mcp_headers = await self._create_persistor()
-        top_agent_name: str = UnreachableNodesNetworkValidator().find_all_front_man_agents(network_def).pop()
+        front_man_name: str = UnreachableNodesNetworkValidator().find_all_front_man_agents(network_def).pop()
         # Built once so the HOCON text handed to the client and the persisted content carry one block,
         # and before the write so the fallback read never sees a half-written file. The assemblers run
         # the same merge again on it; that pass is idempotent (nothing new to drop), at most a generated
@@ -518,7 +518,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # Always assemble HOCON content for client consumption.
         hocon_text: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(
             network_def,
-            top_agent_name,
+            front_man_name,
             agent_network_name,
             sample_queries,
             client_token_mcp_headers=client_token_mcp_headers,
@@ -538,7 +538,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             # The persisted content for reservations is config.
             persisted_content = await assembler.assemble_agent_network(
                 network_def,
-                top_agent_name,
+                front_man_name,
                 agent_network_name,
                 sample_queries,
                 client_token_mcp_headers=client_token_mcp_headers,
