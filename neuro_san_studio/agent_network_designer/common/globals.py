@@ -58,8 +58,8 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #    Holds:   the {tool_name: description} mapping parsed from the designer's
     #             toolbox info file (AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE).
     #    Lives:   get_toolbox.GetToolbox (async get_toolbox_info)
-    #    Expiry:  none — loaded once (a missing file is retried, never cached);
-    #             restart to pick up edits.
+    #    Expiry:  the toolbox info file's path, modification_time or size
+    #             changes (a missing file is retried, never cached).
     #    Used by: GetToolbox.async_invoke() (the coded tool the editor LLM calls);
     #             agent_network_structure_validation_middleware
     #             .AgentNetworkStructureValidationMiddleware.validate().
