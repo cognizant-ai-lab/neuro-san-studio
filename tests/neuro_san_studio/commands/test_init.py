@@ -58,6 +58,7 @@ EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "agent_network_query_generator.hocon",
     "tools/internet_info_gatherer.hocon",
     "agent_network_test_generator.hocon",
+    "agent_network_consultant.hocon",
     "experimental/cruse_theme_agent.hocon",
     "experimental/cruse_widget_agent.hocon",
 ]
@@ -699,6 +700,12 @@ class TestDefaultNetworks:
             "experimental/cruse_widget_agent.hocon",
         ):
             assert dict(keys[support]) == {"serve": True, "public": False}, support
+
+    def test_agent_network_consultant_is_installed_but_disabled(self, scaffolded_project: Path) -> None:
+        """Install Consultant beside Designer without enabling it in the server manifest."""
+        keys = self._manifest_keys(scaffolded_project)
+
+        assert keys.get("agent_network_consultant.hocon") is False
 
     def test_public_networks_are_plain_true(self, scaffolded_project: Path) -> None:
         """The entry points a user picks from the UI stay publicly listed."""
