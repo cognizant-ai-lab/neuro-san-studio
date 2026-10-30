@@ -12,11 +12,11 @@ on:
 
 jobs:
     checkmarx:
-        # 1.0.12
-        uses: cognizant-ai-lab/build-common/.github/workflows/_checkmarx.yml@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
+        # 1.0.13
+        uses: cognizant-ai-lab/build-common/.github/workflows/_checkmarx.yml@e11ab4d3725a79bd8b28c3f7fb0785615290cf24
         with:
-            # 1.0.12
-            build-common-ref: "3f4cdab31b6ac10382c99452b720eb0b8b2dab8f"
+            # 1.0.13
+            build-common-ref: "e11ab4d3725a79bd8b28c3f7fb0785615290cf24"
             base-uri: ${{ vars.CX_BASE_URI }}
             cx-tenant: ${{ vars.CX_TENANT }}
             cx-client-id: ${{ vars.CX_CLIENT_ID }}

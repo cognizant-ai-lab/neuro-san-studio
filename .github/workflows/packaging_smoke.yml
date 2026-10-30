@@ -13,13 +13,15 @@ jobs:
   packaged-install-smoke-test:
     # don't run this job in sync'd clones
     if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
-    # cognizant-ai-lab/build-common 1.0.12
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
+    # cognizant-ai-lab/build-common 1.0.13
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@e11ab4d3725a79bd8b28c3f7fb0785615290cf24
     with:
       python-version: '3.12'
       # Every version the package claims support for: what the wheel ships, and whether its
       # dependencies resolve at all, differs per interpreter.
       test-python-versions: '["3.12", "3.13", "3.14"]'
+      # The wheel and the ns console script are installed per platform, so exercise Windows too.
+      test-os: '["ubuntu-latest", "windows-latest"]'
       # The runtime dependency tree is installed into the clean venv under test; the test
       # process itself only needs requirements-build.txt (pytest, build).
       requirements-file: ''

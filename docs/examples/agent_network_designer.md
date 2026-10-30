@@ -40,26 +40,27 @@ The Agent Network Designer operates as a structured, hierarchical network, follo
 
 1. The frontman agent receives a design request and delegates it to the
 [`agent_network_editor`](../../registries/agent_network_editor.hocon)
- subnetwork.
+ support network.
 This component creates or modifies the structure (graph) of the network.
 
 2. Next, the [`agent_network_instructions_editor`](../../registries/agent_network_instructions_editor.hocon)
- subnetwork
+ support network
 generates or refines the `instructions` for each agent in the network.
 
 3. Once the structure and instructions are defined, the frontman calls the
 [`agent_network_query_generator`](../../registries/agent_network_query_generator.hocon)
- subnetwork to produce example usage queries for the new agent network.
+ support network to produce example usage queries for the new agent network.
 
 4. Finally, the
-[agent_network_persistence_middleware.py](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
+[agent_network_persistence_middleware.py](../../neuro_san_studio/agent_network_designer/middleware/persistence/agent_network_persistence_middleware.py)
 middleware converts the `agent_network_definition` into a HOCON file saving it to disk or creates a temporary network,
 depending on the `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS` environment variable.
 
     The **`agent_network_definition`** is a dictionary mapping agent names to their configurations
 (e.g., instructions, tools, or other agents they can call).
 The tool also validates the network for issues such as disconnected nodes or missing instructions.
-Any detected errors are reported back to the frontman agent, which then triggers the appropriate subnetworks to resolve them.
+Any detected errors are reported back to the frontman agent, which then triggers the appropriate support networks to
+resolve them.
 
 This system serves as an example of agent-oriented software, clearly separating where we rely on:
 
@@ -69,7 +70,7 @@ This system serves as an example of agent-oriented software, clearly separating 
 
 **Implementation Detail:**
 
-The `sly_data` is used internally to hold and share the `agent_network_definition` object between subnetworks.
+The `sly_data` is used internally to hold and share the `agent_network_definition` object between support networks.
 
 ---
 
@@ -292,13 +293,13 @@ The frontman agent serves as the primary entry point for all user commands and o
 - Generates final HOCON configuration files
 
 **Available Agents/Tools:**
-- `agent_network_editor` – Subnetwork for creating and modifying `agent_network_definition`
-- `agent_network_query_generator` – Subnetwork for creating sample queries
-- `agent_network_instructions_editor` – Subnetwork for creating and refining agent instructions
+- `agent_network_editor` – Support network for creating and modifying `agent_network_definition`
+- `agent_network_query_generator` – Support network for creating sample queries
+- `agent_network_instructions_editor` – Support network for creating and refining agent instructions
 - `get_agent_network_definition` – Retrieves current network state
 - `web_search` – Researches company domains and contexts
 
-### Subnetworks
+### Support networks
 
 `agent_network_editor`
 - Modifies or creates the agent network structure
@@ -330,7 +331,7 @@ specifically given the hocon file name in the user prompt
 
 #### Definition (Middleware)
 
-[`AgentNetworkDefinitionMiddleware`](../../middleware/agent_network_designer/agent_network_definition_middleware.py)
+[`AgentNetworkDefinitionMiddleware`](../../neuro_san_studio/agent_network_designer/middleware/agent_network_definition_middleware.py)
 - Runs before the model is called and resolves the `agent_network_definition` from sly data, from the file
 named in `agent_network_hocon_file`, or from the reservation named in `agent_reservations`
 - When the network comes from a file or a reservation, its top-level `metadata` block is returned under
@@ -340,13 +341,44 @@ any `agent_network_metadata` sent with the same request
 - A load that yields no agent (a `tools` list that is missing, not a list, empty, or whose every entry is skipped)
 ends the turn with an error message, as a missing or unparseable file does. `agent_network_name` is set from the
 file name or the reservation id only once the load has produced a definition
+- With `skip_designer` set to `true`, what happens depends on what the request sends:
+  - `agent_network_definition`: the definition is validated and saved without the LLM. If it fails validation,
+    the LLM fixes the definition before the save
+  - `agent_network_hocon_file` or `agent_reservations`, and no definition: the network is only loaded. Its
+    definition, name and metadata are returned, and nothing is validated, saved or deployed. nsflow's Load Existing
+    sends this load-only request, so it works only when the server serves `agent_network_designer`. A request that
+    names nothing to load, such as a reservation entry with no `reservation_id`, ends the turn with an error
+  - both: the definition is saved and nothing is loaded. When the request names a file, a warning says that the
+    file was not loaded
+- Without `skip_designer`, loading a file or a reservation starts an LLM turn, and the network is saved at the end
+of it
+- Each agent's `instructions` in the `agent_network_definition` hold only its custom instructions, the agent's own
+text, since every save adds the common instructions again: the instructions prefix, the front man's fixed lines, the
+demo mode sentence and the AAOSA instructions. Copies of the common instructions already in the instructions, such
+as the resolved text of a saved network sent back by a client, are removed before the definition is validated, shown
+to the LLM or saved, so a save writes one copy instead of adding another. Every piece is removed from every agent,
+whatever its role and whatever `AGENT_NETWORK_DESIGNER_DEMO_MODE` is set to, and the save adds back the ones the
+agent's role calls for. So a hand-written network that gives its leaves the AAOSA instructions loses them from those
+leaves once loaded. An agent whose instructions are nothing but common instructions keeps one copy of each piece.
+Only the current wording of each piece is recognized, at the start or the end of the text: a copy in another
+wording, sent back by a client or loaded from a file, stays in the agent's own text, once, and does not grow. The
+text left keeps its own line breaks and indentation
+- A file named in `agent_network_hocon_file` must resolve, symlinks and `..` included, to a path inside a
+registries directory: the directory of any manifest in `AGENT_MANIFEST_FILE`, or `registries` when it is unset.
+A path outside those directories, or a missing, unreadable or unsupported file, ends the turn with one generic
+error message; the server log records the path and the reason
 
 #### Persistence (Middleware)
 
-[`AgentNetworkPersistenceMiddleware`](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
+[`AgentNetworkPersistenceMiddleware`](../../neuro_san_studio/agent_network_designer/middleware/persistence/agent_network_persistence_middleware.py)
 - Runs after the agent finishes (no pending tool calls remain)
+- Does nothing more than return the definition on a turn that only loads a network (see `skip_designer` above):
+no validation, no save, no deploy, and no `agent_network_hocon_text`
 - Validates the network definition for structural and instruction errors; re-injects any errors as a human message so the agent can self-correct
 - Converts the `agent_network_definition` to HOCON format and either saves it to the local registries directory (file mode) or registers it as a temporary network (reservations mode)
+- Writes each agent's description and instructions between triple quotes, so a multi-line text keeps its lines
+in the file; a tab there reads back as spaces. A text with three double quotes, which triple quotes cannot hold,
+goes on one line as a double-quoted string, with `\n` for each line break, and reads back as written
 - Writes the network's top-level `metadata` block from the `agent_network_metadata` sly data the client sent
 back, so the block survives a save the same way the definition and the name do: `description`, `tags` and any
 other key are written as sent, `sample_queries` is replaced only when `agent_network_query_generator` ran on
@@ -355,8 +387,8 @@ network gets no studio dates in its deployed spec (neuro-san records `stored_at`
 for download always carries a `date_created`, as a saved file would. The resulting block
 is returned under `agent_network_metadata` for the client to send back with its next request. A
 `skip_designer` save that carries the block therefore leaves `metadata` intact. A client that sends no
-`agent_network_metadata` at all (nsflow's manual save sends nothing as of nsflow 0.7.1) gets the existing file's
-block kept in file mode; sending the key, even empty, makes the block client-owned and nothing is read from disk.
+`agent_network_metadata` at all gets the existing file's block kept in file mode; sending the key, even empty,
+makes the block client-owned and nothing is read from disk.
 - In reservations mode a deployment the server rejects ends the turn with an error message
 (`Error: the agent network could not be deployed as a temporary network: ...`) and clears `agent_reservations`,
 a handle the request carried from an earlier deploy included; `agent_network_definition`,

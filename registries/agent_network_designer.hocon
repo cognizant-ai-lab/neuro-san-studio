@@ -111,17 +111,26 @@
                     "properties": {
                         "agent_network_definition": {
                             "type": "object",
-                            "description": "An internal representation of the agent network used for further iteration."
+                            "description": """
+An internal representation of the agent network used for further iteration.
+Each agent's instructions are meant to hold only its custom instructions, the agent's own text: every save adds the
+common instructions the agent's role calls for again (the instructions prefix, the front man's fixed lines, the demo
+mode sentence and the AAOSA instructions). Copies of any of those at the start or end of any agent's instructions,
+such as the resolved text of a saved network, are removed before the definition is used.
+"""
                         },
                         "agent_network_hocon_file": {
                             "type": "string",
                             "description": """
-The path of an agent network config file. HOCON (.hocon) is preferred — hence the field name — but JSON (.json) is also accepted. Accepted in order:
-(1) an absolute path; (2) a path relative to the current working directory (typically the repo root, e.g. 'registries/generated/foo.hocon');
+The path of an agent network config file. HOCON (.hocon) is preferred — hence the field name — but JSON (.json) is also accepted.
+Accepted in order: (1) an absolute path; (2) a path relative to the current working directory (typically the repo root, e.g. 'registries/generated/foo.hocon');
 (3) a path relative to the registries folder — the directory of the first file in the AGENT_MANIFEST_FILE env var, falling back to 'registries' in the repo root.
+The resolved file must remain inside a registries directory: the directory of any file in AGENT_MANIFEST_FILE, or 'registries' when it is unset.
+Absolute paths, '..' traversal and symlinks whose target is outside those directories are rejected; a working-directory match outside them falls back to (3).
 This is for users who want to provide the full agent network definition as input.
 The file's top-level metadata block is returned under agent_network_metadata and replaces any block sent
-with the same request.
+with the same request. With skip_designer and no agent_network_definition, the network is only loaded and
+returned, not saved.
 """
                         },
                         "agent_network_metadata": {
@@ -156,6 +165,7 @@ A list of reservation structures describing the temporary agent networks that we
 with this agent. By convention, the last one in the list is a top-level handle which may reference any others listed.
 When a reservation is loaded, its metadata block is returned under agent_network_metadata (without the
 reservation and stored_at keys neuro-san's storage adds) and replaces any block sent with the same request.
+With skip_designer and no agent_network_definition, the network is only loaded and returned, not saved.
 """,
                             "items": {
                                 "type": "object",
@@ -184,8 +194,15 @@ No specific URLs are declared here because the set depends on what the user has 
                         "skip_designer": {
                             "type": "boolean",
                             "description": """
-Use this key when you want to persist the agent network definition without having the LLM make any modifications.
-Send agent_network_metadata back with it so the saved network keeps its metadata block.
+Skip the LLM for a save or a load.
+With agent_network_definition, the definition is validated and saved without the LLM. If it fails validation,
+the designer's LLM fixes the definition before it is saved. Send agent_network_metadata back with it so the
+saved network keeps its metadata block.
+Without agent_network_definition, the network named in agent_network_hocon_file or agent_reservations is only
+loaded: it is returned under agent_network_definition, agent_network_name and agent_network_metadata, and it is
+not validated, saved or deployed. If nothing can be loaded, for example a reservation entry with no
+reservation_id, the turn ends with an error.
+When both a definition and a file or reservation are sent, the definition is saved and nothing is loaded.
 """
                         }
                     }
@@ -200,14 +217,19 @@ Send agent_network_metadata back with it so the saved network keeps its metadata
                     "properties": {
                         "agent_network_definition": {
                             "type": "object",
-                            "description": "An internal representation of the agent network used for further iteration."
+                            "description": """
+An internal representation of the agent network used for further iteration.
+Send it back as it is: each agent's instructions are its custom instructions, and the next save adds the common
+instructions again.
+"""
                         },
                         "agent_network_hocon_text": {
                             "type": "string",
                             "description": """
 The contents of an agent network HOCON file describing the created network. In file mode this is exactly
 the saved file. In reservations mode it is the downloadable form of the network, returned whether or not the
-deploy succeeded, and carries a date_created the deployed spec does not have.
+deploy succeeded, and carries a date_created the deployed spec does not have. Absent after a turn that only
+loads a network (see skip_designer in the input schema).
 """
                         },
                         "agent_network_metadata": {
@@ -264,8 +286,9 @@ After this time the network can no longer be counted upon to exist.
                             }
                         }
                     },
-                    # Note: "agent_reservations" is not strictly required depending on env vars.
-                    "required": ["agent_network_definition", "agent_network_hocon_text", "agent_network_name"]
+                    # Note: "agent_reservations" is not strictly required depending on env vars, and
+                    # "agent_network_hocon_text" is absent after a turn that only loads a network.
+                    "required": ["agent_network_definition", "agent_network_name"]
                 }
             },
             "instructions": ${expertise_scoping_instructions} """
@@ -337,7 +360,7 @@ Operational notes:
                     # client (nsflow) injects into sly_data for the designer (nsflow injects ALL
                     # connected servers' tokens when chatting with this network). It must flow to
                     # /agent_network_editor so its get_mcp_tool can list OAuth-protected MCP
-                    # servers' tools. The other subnetworks ignore it, and no to_upstream /
+                    # servers' tools. The other support networks ignore it, and no to_upstream /
                     # to_tracing allowlist includes it, so tokens never leave the server side.
                     # Optionally propagate any BYOK keys to downstream tools.
                     "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries",
@@ -359,14 +382,14 @@ Operational notes:
             "structure_formats": "json",
             "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
                         "progress_reporter": true,
                         "sly_data": true
                     }
                 },
                 {
-                    "class": "middleware.agent_network_designer.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",
                     "allow": {
                         "reservations": true
                     },

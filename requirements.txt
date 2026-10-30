@@ -1,7 +1,7 @@
 # Neuro SAN
-leaf-common>=1.4.2
-neuro-san==0.7.4
-nsflow==0.7.0
+leaf-common>=1.4.11
+neuro-san==0.7.12
+nsflow==0.7.5
 
 # For config parsing
 pyhocon>=0.3.60
@@ -45,7 +45,7 @@ langchain-text-splitters>=1.1.2,<2.0
 numpy>=2.1.0,<3.0
 
 # Neuro-SAN now requires explicit installation of langchain LLM providers' libs
-langchain-openai>=1.1.9,<2.0
+langchain-openai>=1.4.0,<2.0
 langchain-anthropic>=1.4.3,<2.0
 langchain-google-genai>=4.2.2,<5.0
 
@@ -66,8 +66,8 @@ pyvis~=0.3.2
 # For web search tools without needing API keys, using DuckDuckGo's search results
 ddgs>=9.4.1
 
-# For the neuro-san-studio CLI
-typer>=0.12.0,<1.0
+# For the neuro-san-studio CLI. 0.19.0 is the first version that supports Literal options.
+typer>=0.19.0,<1.0
 
 # For chat-based cli tools not used in deployment
 # Also used by neuro-san

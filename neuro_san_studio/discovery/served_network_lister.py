@@ -53,8 +53,9 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
     served, whereas the server stores nothing for a served entry whose network fails to load; knowing that
     would require loading every network.
 
-    This is the shared home for the recipe that ``coded_tools/agent_network_editor/get_subnetwork.py`` also
-    implements for the designer's own manifest.
+    This is the shared home for the recipe that
+    ``neuro_san_studio/agent_network_designer/tools/get_external_network.py`` also implements for the designer's own
+    manifest.
     """
 
     def __init__(self, manifest_files: Sequence[str], base_dir: Optional[str] = None):

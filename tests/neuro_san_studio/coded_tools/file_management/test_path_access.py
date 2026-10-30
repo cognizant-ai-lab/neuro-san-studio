@@ -52,9 +52,7 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         file.write_text("x", encoding="utf-8")
         return file
 
-    def _call_check_path_allowed(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self, path, allowed_paths, allowed_exts=None, blocked_paths=None, blocked_exts=None
-    ):
+    def _call_check_path_allowed(self, path, allowed_paths, allowed_exts=None, blocked_paths=None, blocked_exts=None):
         """Invoke check_path_allowed with sensible defaults; returns None or raises."""
         return PathAccess.check_path_allowed(
             path,

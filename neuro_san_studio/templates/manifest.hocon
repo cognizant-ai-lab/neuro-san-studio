@@ -39,6 +39,9 @@
     # Generates test fixtures for an existing agent network.
     "agent_network_test_generator.hocon": true,
 
+    # Installed for direct `ns consultant` sessions, but disabled in the server manifest by default.
+    "agent_network_consultant.hocon": false,
+
     #
     # CRUSE: the interactive UI that adapts itself to the user's and agents' needs.
     # Support networks for the interface, so served but not publicly listed.

@@ -18,10 +18,12 @@
     - [Anthropic](#anthropic)
     - [Bedrock](#bedrock)
       - [Default Bedrock models](#default-bedrock-models)
+      - [Other Bedrock models](#other-bedrock-models)
     - [Gemini](#gemini)
       - [Gemini with ADC](#gemini-with-adc)
         - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
         - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
+        - [Simpler ADC Alternative: Built-in gemini Class](#simpler-adc-alternative-built-in-gemini-class)
     - [Ollama](#ollama)
       - [Ollama Prerequisites](#ollama-prerequisites)
       - [Ollama Configuration](#ollama-configuration)
@@ -29,6 +31,8 @@
       - [Using llmman](#using-llmman)
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
+    - [vLLM](#vllm)
+    - [OpenRouter](#openrouter)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -339,11 +343,9 @@ After your Azure OpenAI resource is created, you must deploy a model
 - Click on `Go to Azure AI Foundry portal`
 - Click on `Create new deployment`
 - Choose a model (e.g., `gpt-4o`), then pick a deployment name (e.g., `my-gpt4o`), and click `Deploy`
-- Find the `api_version` on the deployed model page (e.g., "2024-12-01-preview")
-- Optionally, set environment variables to the value of the deployment name and API version
+- Optionally, set an environment variable to the value of the deployment name
 
-    export AZURE_OPENAI_DEPLOYMENT_NAME="Your deployment name"\
-    export OPENAI_API_VERSION="Your OpenAI API version"
+    export AZURE_OPENAI_DEPLOYMENT_NAME="Your deployment name"
 
 Finally, get your API key and endpoint
 
@@ -369,15 +371,19 @@ If you did NOT set the environment variables, the `llm_config` in your `.hocon` 
     "llm_config": {
         "model_name": "azure-gpt-4o",
         "openai_api_key": "your_api_key"
-        "openai_api_version": "your_api_version",
         "azure_endpoint": "your_end_point",
         "deployment_name": "your_deployment_name"
     }
 ```
 
-> **Note**: Make sure your `model_name` starts with `azure-`. E.g., if you have a `gpt-4o` model,
-> your model name should be `azure-gpt-4o`, or else your agent network might think you are using
-> an OpenAI model (and not an Azure OpenAI model).
+> **Note**: Use one of the `azure-` model names in neuro-san's default model list (e.g., `azure-gpt-4o`), or set
+> `"class": "azure-openai"` with the OpenAI model behind your deployment as the `model_name` (e.g.,
+> `"model_name": "gpt-5.2"`), as `config/private_llm_config.hocon` does. Otherwise your agent network might think
+> you are using an OpenAI model (and not an Azure OpenAI model).
+>
+> **Note**: Requests go to Azure's v1 API (`<endpoint>/openai/v1/`), which needs no API version, and use the
+> Responses API by default. If your region or model does not offer it, add `"use_responses_api": false` to the
+> `llm_config` to use Chat Completions instead.
 >
 > **Tip**: While `OPENAI_API_KEY` may still be recognized for backward compatibility,
 > it's recommended to use `AZURE_OPENAI_API_KEY` to avoid conflicts and align with upcoming changes in LangChain.
@@ -407,85 +413,112 @@ Here you can get an Anthropic API [key](https://console.anthropic.com/settings/k
 
 ### Bedrock
 
-To use Amazon Bedrock models, you need valid AWS credentials. Below are the recommended ways to provide credentials,
-followed by guidance on how to select and configure models.
+Neuro-San has two classes for Amazon Bedrock:
 
-1. Environment variables
+- `anthropic-bedrock` for Anthropic Claude models. The [default Bedrock models](#default-bedrock-models) use it, and
+  it takes the same `llm_config` keys as the Anthropic models, `thinking` included
+- `bedrock` for other Bedrock models, such as Amazon Nova, Mistral or Meta Llama
+  (see [Other Bedrock models](#other-bedrock-models))
 
-    You can set the following environment variables directly:
+1. Package
 
-   - `AWS_ACCESS_KEY_ID`
+    Neuro-san-studio does not install `langchain-aws`, which both classes need. Install it for the class you use:
 
-   - `AWS_SECRET_ACCESS_KEY`
+    ```bash
+    pip install "langchain-aws[anthropic]"   # for anthropic-bedrock
+    pip install langchain-aws                # for bedrock
+    ```
 
-   - `AWS_REGION` or `AWS_DEFAULT_REGION`
+    Without it, Neuro-San raises an error that names the package to install.
 
-    > Note: You may set `region_name` in the `llm_config` of the agent network HOCON file instead
+2. Credentials
 
-    This is sufficient if you only have **one AWS profile** or if you're certain these environment variables
-    correspond to the correct credentials.
+    Provide AWS credentials in one of these ways:
 
-2. Named profile (**required for multiple profiles**)
+   - Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables, plus `AWS_SESSION_TOKEN` for
+     temporary credentials
 
-    If you have **multiple profiles** in `~/.aws/credentials` or `~/.aws/config`, it's recommended to explicitly set
-    the credentials_profile_name field to avoid ambiguity. This tells the system exactly which profile to use,
-    even if other credentials are present in the environment.
+   - Use a named profile from `~/.aws/credentials` or `~/.aws/config` by setting the `AWS_PROFILE` environment
+     variable. Its credentials are used only when `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are not set
 
-    If `credentials_profile_name` is not specified in the `llm_config` of the HOCON file:
+   - Set a Bedrock API key in the `AWS_BEARER_TOKEN_BEDROCK` environment variable. Do not also set
+     `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: the `anthropic-bedrock` class then fails with an error, and
+     the `bedrock` class ignores the keys and logs a warning
 
-   - The default profile will be used.
-
-   - On EC2 instance, credentials may be automatically loaded from the Instance Metadata Service (IMDS).
-
-    See the full AWS credential resolution order
+    With none of these, the default profile is used, and on an EC2 instance the credentials may come from the
+    Instance Metadata Service (IMDS). See the full AWS credential resolution order
     [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
 
-   > Note: You may also need to specify environment variable `AWS_REGION` or the `region_name` field if
-region is not set in your AWS profile.
+    > Note: The `credentials_profile_name` key in `llm_config` works only with the `bedrock` class. The
+    > `anthropic-bedrock` class ignores it without a warning, so use `AWS_PROFILE` for Claude models.
 
-3. Model selection
+3. Region
 
-    In your agent network HOCON file, specify the model name, the credentials profile, and the region (if needed):
+    Set `region_name` in the `llm_config`, the `AWS_REGION` or `AWS_DEFAULT_REGION` environment variable, or a region
+    in your AWS profile. With none of these, the `anthropic-bedrock` class sends requests to `us-east-1` and logs a
+    warning.
+
+4. Model selection
+
+    In your agent network HOCON file, specify the model name and, if needed, the region:
 
     ```hocon
         "llm_config": {
+            "model_name": "bedrock-claude-sonnet",
 
-            # Bedrock documentation lists both model name and model ID.
-            # Use the **Model ID** as the value for "model_name".
-            "model_name": "bedrock-us-claude-3-7-sonnet",
-
-            # Optional if using env vars or default profile
-            "credentials_profile_name": "<profile_name>",
-
-            # Optional, but required if not defined in your profile config
-            # or with env var AWS_REGION or AWS_DEFAULT_REGION
+            # Optional if the region comes from AWS_REGION, AWS_DEFAULT_REGION or your AWS profile
             "region_name": "us-west-2"
         }
     ```
 
 #### Default Bedrock models
 
-The default supported Bedrock model names currently include:
+The default Bedrock model names are:
 
-- `bedrock-us-claude-opus-4`
+- `bedrock-claude-fable` (Claude Fable 5.1)
 
-- `bedrock-us-claude-sonnet-4`
+- `bedrock-claude-opus` (Claude Opus 5.5)
 
-- `bedrock-us-claude-3-7-sonnet`
+- `bedrock-claude-sonnet` (Claude Sonnet 5.5)
 
-These models require access to one of the following AWS regions:
+- `bedrock-claude-haiku` (Claude Haiku 5.5)
 
-- `us-east-1`
+They use Bedrock's global cross-region inference profiles, such as `global.anthropic.claude-sonnet-5-5`, which may
+route a request to any AWS region. To keep requests within one geography, or to use another Claude model, set the
+`anthropic-bedrock` class and the model or inference profile ID. Set `max_tokens` as well, or the output can be
+limited to 4096 tokens:
 
-- `us-east-2`
+```hocon
+    "llm_config": {
+        "class": "anthropic-bedrock",
+        "model_name": "us.anthropic.claude-sonnet-5-5",
+        "max_tokens": 16384,
+        "region_name": "us-west-2"
+    }
+```
 
-- `us-west-2`
+See [Cross-region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html) for
+how geographic and global profiles differ. Each model's page in
+[Models at a glance](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html) lists its inference
+profile IDs and the AWS Regions where it is available.
 
-If these are not available in your account, you can still use other Bedrock models available to you by
-[using the class key](#using-the-class-key).
+#### Other Bedrock models
 
-To find which models are available in your region, refer to the official AWS documentation:
-[Supported models – Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html)
+For a model other than Claude, set the `bedrock` class and the model ID
+(see [Using the `class` Key](#using-the-class-key)). Also set `"beta_use_converse_api": true`. Without it the model
+gets no tools, and no error says so.
+
+```hocon
+    "llm_config": {
+        "class": "bedrock",
+        "model_name": "amazon.nova-pro-v1:0",
+        "beta_use_converse_api": true,
+
+        # Optional: a named profile. This class uses it even when AWS_ACCESS_KEY_ID is set
+        "credentials_profile_name": "<profile_name>",
+        "region_name": "us-east-1"
+    }
+```
 
 ### Gemini
 
@@ -537,7 +570,8 @@ API keys is not desirable or permitted.
     gcloud auth application-default login
     ```
 
-3. Install the required package (already included in `requirements.txt`):
+3. Install the required package. This is a separate, optional dependency — it is **not**
+   included in `requirements.txt` by default, since only this `ChatVertexAI`-based path needs it:
 
     ```bash
     pip install langchain-google-vertexai
@@ -553,8 +587,8 @@ API keys is not desirable or permitted.
 ##### Gemini with ADC Configuration
 
 Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
-Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
-`ChatVertexAI` directly in your `llm_config`:
+Neuro-SAN's default Gemini model definitions — you can use the `class` key to instantiate
+`ChatVertexAI` directly in your `llm_config` (see also the simpler alternative below):
 
 ```hocon
 llm_config: {
@@ -585,6 +619,38 @@ No API key is required — authentication is handled transparently by Google's A
 For more information on Vertex AI authentication and available models, see the
 [Vertex AI documentation](https://cloud.google.com/vertex-ai/docs/authentication) and the
 [LangChain ChatVertexAI reference](https://python.langchain.com/docs/integrations/chat/google_vertex_ai_palm/).
+
+##### Simpler ADC Alternative: Built-in gemini Class
+
+`ChatVertexAI` (above) is also flagged by LangChain itself as deprecated in favor of
+`langchain-google-genai`, which neuro-san's built-in `class: "gemini"` already uses under the
+hood. That class can be routed into Vertex AI/ADC mode purely through environment variables,
+with no explicit `project`/`location` keys in the config and no extra dependency to install.
+
+Note that these variables apply to the whole server process: once set, every Gemini client in
+the process routes to Vertex AI, including fallback models in other configs and the
+`gemini_image_generation` tool. A BYOK `google_api_key` from `sly_data` is silently ignored
+and the request is billed to the server's GCP project instead.
+
+```hocon
+llm_config: {
+    class: "gemini"
+    model_name: "gemini-3.5-flash"
+    temperature: 1.0   # recommended for Gemini 3.0+; 0.7 (the default) can cause loops and degraded reasoning
+}
+```
+
+```bash
+GOOGLE_GENAI_USE_VERTEXAI="true"
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GOOGLE_CLOUD_LOCATION="global"   # a specific region may 404 on newer models; global is the safe default
+```
+
+See [`config/vertex_adc_llm_config.hocon`](../config/vertex_adc_llm_config.hocon) for a
+ready-to-use version of this config, and run
+`ns check-config --hocon-path config/vertex_adc_llm_config.hocon` to verify it can actually
+connect before deploying it. Use `GOOGLE_CLOUD_LOCATION=global`; newer Gemini models may not be
+available in all regional endpoints.
 
 ### Ollama
 
@@ -763,6 +829,109 @@ in the `llm_config` section of an agent network hocon file:
 
 Here you can get a Mistral API [key](https://admin.mistral.ai/).
 
+### vLLM
+
+[vLLM](https://docs.vllm.ai/en/latest/) is a high-throughput, memory-efficient open-source inference and serving engine
+for Large Language Models (LLMs). Developed initially by researchers at UC Berkeley, it is designed to drastically
+improve the speed and reduce the memory overhead of running LLMs in production environments.
+
+vLLM provides an OpenAI-compatible API that Neuro-SAN can use as an LLM provider. Start vLLM separately from the Neuro-SAN
+server, and make sure its API address is reachable from the machine or container running Neuro-SAN. We can leverage the
+`openai` class to call the vLLM endpoint.
+
+#### 1. Start vLLM
+
+Please check the vLLM's docs for installing vLLM and install it for your particular environment. You can install VLLM
+by following the instructions [here](https://docs.vllm.ai/en/stable/getting_started/installation/).
+Once installed, you can serve the model like so:
+
+```bash
+vllm serve Qwen/Qwen3.8-27B \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --language-model-only \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_xml \
+  --default-chat-template-kwargs '{"enable_thinking": false}'
+```
+
+In the above launch command, the `--language-model-only` option disables multimodal inputs, even if the model supports
+them. This is appropriate here because typical agent networks do not require multimodal inputs.
+
+Neuro-SAN needs `--enable-auto-tool-choice` for the agent network to function.
+Automatic tool selection lets the model choose when to call tools. This also needs a matching parser. The parser must
+match the model and its expected tool-call format. For example, use `qwen3_xml` for Qwen and `openai` for GPT-OSS.
+
+For models that support a thinking toggle, `enable_thinking: false` disables thinking by default. Else, the agent network
+maybe slower to respond. The above launch parameters may vary according to your model, please modify them as required.
+
+Once the model loads, you can check that vLLM is responding with:
+
+```bash
+curl http://127.0.0.1:8000/v1/models
+```
+
+#### Configure Neuro-SAN
+
+Set the agent’s [llm_config.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/config/llm_config.hocon)
+to use the vLLM endpoint. The model_name should match the model served by vLLM:
+
+```hocon
+"llm_config": {
+    "class": "openai",
+    "model_name": "Qwen/Qwen3.8-27B",
+    "openai_api_base": "http://127.0.0.1:8000/v1",
+    "openai_api_key": "not-needed",
+    "use_responses_api": false
+}
+```
+
+The address `127.0.0.1` works when vLLM and Neuro-SAN run on the same host. If they run in separate containers or on different
+machines, use an address reachable from the Neuro-SAN server instead.
+
+Once vLLM is ready, start or restart Neuro-SAN to load the configuration, then test the agent in Neuro-SAN Studio.
+
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai/) provides access to models from multiple providers through one API. Neuro-SAN uses
+LangChain's OpenRouter integration, which is an optional dependency. Install it in the same Python environment that
+runs the Neuro-SAN server:
+
+```bash
+pip install -U langchain-openrouter
+```
+
+Create an API key in [OpenRouter](https://openrouter.ai/settings/keys), then set it in the server environment or in
+your `.env` file. Do not put the key in HOCON:
+
+```bash
+export OPENROUTER_API_KEY="your-api-key"
+```
+
+Choose a model from the [OpenRouter model catalog](https://openrouter.ai/models). Set `class` to `openrouter` and
+`model_name` to the model's ID, typically in `provider/model` format:
+
+```hocon
+"llm_config": {
+    "class": "openrouter",
+    "model_name": "inclusionai/ling-3.1-flash",
+}
+```
+
+> Neuro-SAN may not have pricing information for every OpenRouter model. If it is unavailable, you may see this
+> message. Model use is unaffected, but cost reporting may be incomplete:
+> `No price info found for model inclusionai/ling-3.1-flash in llm info.`
+
+OpenRouter also provides the `openrouter/free` model ID, which routes requests to an available
+free model. The selected model can vary, so response quality, latency, and tool-calling support
+may differ between requests. Since Neuro-SAN agents rely on tool calls, check that the model
+you choose supports them and is currently available in the catalog. The neuro-san repo has
+explicit support for OpenRouter. An example agent network with openrouter can be found
+[here](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/registries/music_nerd_pro_llm_openrouter.hocon).
+
+For integration details and supported configuration options, see the
+[LangChain OpenRouter documentation](https://docs.langchain.com/oss/python/integrations/chat/openrouter).
+
 ### Configuring Default Models with Environment Variables
 
 You can easily switch LLM models across all agent networks that share the same configuration by
@@ -878,45 +1047,46 @@ Claude models support extended thinking, which allows them to use additional tok
 before generating a final answer.
 This improves performance on complex tasks and can provide insight into the model’s reasoning process.
 
-For Anthropic models, extended thinking is configured with the `thinking` field.
-
-Example:
+Extended thinking is configured with the `thinking` field, for Anthropic models and for Claude on Bedrock alike.
+The default Claude models (`claude-fable`, `claude-opus`, `claude-sonnet`, `claude-haiku` and their
+`bedrock-claude-*` versions) use adaptive thinking, where the model decides how much to think:
 
 ```hocon
     "llm_config": {
-        "model_name": "claude-3-7-sonnet-20250219",
+        "model_name": "claude-sonnet",
+        "thinking": {"type": "adaptive"}
+    }
+```
+
+These models think adaptively even when `thinking` is left out. To change how much they think, set `"effort"` to
+`low`, `medium`, `high`, `xhigh` or `max`.
+
+The Claude 4.5 models (`claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929`, `claude-haiku-4-5-20251001` and,
+on Bedrock, `global.anthropic.claude-haiku-4-5-20251001-v1:0`) take a fixed thinking budget instead:
+
+```hocon
+    "llm_config": {
+        "model_name": "claude-haiku-4-5-20251001",
         "thinking": {"type": "enabled", "budget_tokens": 10000}
     }
 ```
 
 > Ensure that budget_tokens is at least **1024** and less than the model’s maximum token limit.
 
-**Supported models for extended thinking:**
+Each of these models rejects the other kind of thinking with an error.
 
-- Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
-- Claude Sonnet 4 (`claude-sonnet-4-20250514`)
-- Claude Sonnet 3.7 (`claude-3-7-sonnet-20250219`)
-- Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
-- Claude Opus 4.1 (`claude-opus-4-1-20250805`)
-- Claude Opus 4 (`claude-opus-4-20250514`)
-
-These same models can also be accessed via AWS Bedrock. In that case, extended thinking is configured under `model_kwargs`.
-
-Example:
+On Bedrock, `thinking` goes in the same place. Do not put it under `model_kwargs`, which is ignored:
 
 ```hocon
     "llm_config": {
-        "model_name": "bedrock-us-claude-3-7-sonnet",
-        "credentials_profile_name": "<profile_name>",
+        "model_name": "bedrock-claude-sonnet",
         "region_name": "us-west-2",
-        "model_kwargs": {
-            "thinking": {"type": "enabled", "budget_tokens": 1024}
-        }
+        "thinking": {"type": "adaptive"}
     }
 ```
 
 See
-[Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking)
+[LangChain ChatAnthropic documentation](https://reference.langchain.com/python/langchain-anthropic/chat_models/ChatAnthropic/thinking)
 for more information.
 
 ### Gemini Models
@@ -998,15 +1168,16 @@ You can define an LLM directly in `llm_config` using the `class` key in two diff
 
     Set the `class` key to one of the values listed below, then specify the model using the `model_name` key.
 
-    | LLM Provider  | `class` Value   |
-    |:--------------|:----------------|
-    | Amazon Bedrock| `bedrock`       |
-    | Anthropic     | `anthropic`     |
-    | Azure OpenAI  | `azure-openai`  |
-    | Google Gemini | `gemini`        |
-    | NVidia        | `nvidia`        |
-    | Ollma         | `ollama`        |
-    | OpenAI        | `openai`        |
+    | LLM Provider                    | `class` Value       |
+    |:--------------------------------|:--------------------|
+    | Amazon Bedrock (other models)   | `bedrock`           |
+    | Anthropic                       | `anthropic`         |
+    | Anthropic Claude on Bedrock     | `anthropic-bedrock` |
+    | Azure OpenAI                    | `azure-openai`      |
+    | Google Gemini                   | `gemini`            |
+    | NVidia                          | `nvidia`            |
+    | Ollama                          | `ollama`            |
+    | OpenAI                          | `openai`            |
 
     For example,
 
@@ -2025,6 +2196,10 @@ Please select the execution option that best aligns with the level of validation
     ```
 
 ## Improving agent networks
+
+Use [Agent Network Consultant](examples/agent_network_consultant.md) to generate and run fixtures, diagnose failures,
+and apply targeted repairs from the `ns consultant` command. Its guide covers nsflow integration and every output
+location.
 
 <!-- pyml disable line-length -->
 
