@@ -672,8 +672,9 @@ ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
 ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 
 # Toolbox info file providing available tools for the Agent Network Designer to choose from.
-# Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
-ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+# This multi-user image uses its own file, which offers no tool that reads the server's files or uses its API
+# keys. Without this line the designer would use the local file, agent_network_designer_toolbox_info.hocon.
+ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="${APP_SOURCE}/neuro_san_studio/toolbox/agent_network_designer_toolbox_info_multiuser.hocon"
 
 # Time in seconds that the Agent Network Designer's cached MCP tool listings are served before
 # being re-fetched from the MCP servers. Positive values are clamped to at least twice the
