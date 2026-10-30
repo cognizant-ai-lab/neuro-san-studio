@@ -173,6 +173,7 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
                 "industry/telco_network_support_test.hocon",
                 "industry/consumer_decision_assistant_comprehensive.hocon",
                 "industry/cpg_agents_test.hocon",
+                "industry/simulink_mbd_verifier_overview.hocon",
                 # List more hocon files as they become available here.
             ]
         ),
