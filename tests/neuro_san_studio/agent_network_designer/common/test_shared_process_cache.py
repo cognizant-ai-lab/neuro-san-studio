@@ -24,6 +24,7 @@ rather than depending on an asyncio pytest plugin.
 """
 
 import asyncio
+import os
 import tempfile
 import threading
 import time
@@ -32,7 +33,7 @@ from unittest import TestCase
 from neuro_san_studio.agent_network_designer.common.shared_process_cache import SharedProcessCache
 
 
-class TestSharedProcessCache(TestCase):
+class TestSharedProcessCache(TestCase):  # pylint: disable=too-many-public-methods
     """Behavioral and regression tests for the shared cache mechanism."""
 
     def test_get_loads_once_and_peek_reflects_state(self):
@@ -370,6 +371,17 @@ class TestSharedProcessCache(TestCase):
         self.assertIsNone(SharedProcessCache.stat_modification_time_ns("/nonexistent/definitely/not/here"))
         with tempfile.NamedTemporaryFile() as probe:
             self.assertIsInstance(SharedProcessCache.stat_modification_time_ns(probe.name), int)
+
+    def test_stat_modification_time_ns_and_size_probes_without_raising(self) -> None:
+        """
+        The modification_time-and-size building block reports a bad path as None and a file's size in bytes.
+        """
+        self.assertIsNone(SharedProcessCache.stat_modification_time_ns_and_size("/nonexistent/definitely/not/here"))
+        with tempfile.NamedTemporaryFile() as probe:
+            probe.write(b"twelve bytes")
+            probe.flush()
+            probed: tuple[int, int] | None = SharedProcessCache.stat_modification_time_ns_and_size(probe.name)
+            self.assertEqual(probed, (os.stat(probe.name).st_mtime_ns, 12))
 
     def test_time_bucket_rolls_with_the_period_and_freezes_otherwise(self):
         """Positive periods roll once per period; zero, negative, and non-finite pin bucket 0."""

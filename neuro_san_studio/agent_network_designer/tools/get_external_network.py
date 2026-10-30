@@ -388,9 +388,7 @@ class GetExternalNetwork(BranchActivation, CodedTool):
                 changes nothing the fingerprint observes. Publishing it would
                 blank every conversation's view, on a static server (manifest
                 update period <= 0, manifest never rewritten) until the process
-                restarts. Same failure shape, same remedy as the toolbox loader's
-                empty-mapping guard: raise so nothing is published and the next
-                call retries.
+                restarts. Raising publishes nothing, so the next call retries.
         """
         names: list[str] = await GetExternalNetwork.get_external_network_names()
         if not names:

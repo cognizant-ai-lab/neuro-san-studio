@@ -32,6 +32,7 @@ from asyncio import to_thread
 from functools import partial
 from math import isfinite
 from os import stat
+from os import stat_result
 from threading import Lock
 from time import monotonic
 from typing import Any
@@ -67,8 +68,9 @@ class SharedProcessCache(Generic[CachedValue]):
       fingerprint no longer matches the stored one, the entry is treated as a
       miss and reloaded. It must be lock-free-safe and must not raise. When
       None, the value is loaded once and lives for the life of the process.
-      stat_modification_time_ns() and time_bucket() below are the standard building
-      blocks for composing such fingerprints.
+      stat_modification_time_ns(), stat_modification_time_ns_and_size() and
+      time_bucket() below are the standard building blocks for composing such
+      fingerprints.
 
     Concurrency notes (the reasoning previously duplicated per cache):
     * The guard is a threading.Lock rather than an asyncio.Lock because
@@ -147,6 +149,24 @@ class SharedProcessCache(Generic[CachedValue]):
             return stat(path).st_mtime_ns
         except OSError:
             return None
+
+    @staticmethod
+    def stat_modification_time_ns_and_size(path: str) -> tuple[int, int] | None:
+        """
+        Fingerprint building block: a file's modification time and size.
+
+        The size tells two versions of a file apart when a rewrite lands in the
+        same timestamp tick, which file systems with coarse timestamps allow.
+
+        :param path: The file to probe.
+        :return: (st_mtime_ns, st_size), or None when the file cannot be
+                stat-ed. Never raises, per the fingerprint contract.
+        """
+        try:
+            file_stat: stat_result = stat(path)
+        except OSError:
+            return None
+        return (file_stat.st_mtime_ns, file_stat.st_size)
 
     @staticmethod
     def time_bucket(period_seconds: float) -> int:
