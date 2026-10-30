@@ -59,10 +59,9 @@ class ListDirectory(CodedTool):
     denies access.
 
     Entries that fail the allow/block rules are silently omitted from the
-    listing rather than reported, so the listing never leaks the existence of
-    files the operator has scoped out (e.g. a blocked_paths subtree) — not
-    through an error, not through the truncated flag, and not through the
-    unreadable_entries count. For symlinks, the link is followed by the kernel
+    listing rather than reported: they raise no error, do not set the
+    truncated flag, and are not counted in unreadable_entries.
+    For symlinks, the link is followed by the kernel
     relative to the listed directory's handle and its target must be a regular
     file or a directory; path rules are checked against the resolved target (so
     a link pointing outside the allowed roots is omitted) and extension rules
@@ -79,10 +78,11 @@ class ListDirectory(CodedTool):
     made relative to that descriptor; on platforms without descriptor-relative
     calls the path is strictly re-verified at open time instead and reads go
     through the path (a narrower guarantee, documented on DirectoryHandle).
-    Either way a component swapped for a symlink after the check fails closed
-    (list_error). Names the rules exclude are dropped as they are read, and at
-    most MAX_SCAN_ENTRIES in-scope names are kept (list_error beyond that), so a
-    huge allowed directory cannot drive an unbounded response.
+    Either way a component swapped for a symlink between the access check and
+    the open fails closed (list_error). Names the rules exclude are dropped as
+    they are read, and at most MAX_SCAN_ENTRIES in-scope names are kept
+    (list_error beyond that), so a huge allowed directory cannot drive an
+    unbounded response.
 
     An unsearchable directory (names readable, metadata not) is detected up
     front and fails with list_error rather than presenting as empty. Otherwise
@@ -104,8 +104,9 @@ class ListDirectory(CodedTool):
         not_a_directory  – the path points to a file, not a directory.
         list_error       – the directory could not be opened or read (permission
                            error, not searchable, I/O failure, a path component
-                           swapped for a symlink after the access check, or more
-                           than MAX_SCAN_ENTRIES in-scope entries).
+                           swapped for a symlink between the access check and
+                           the open, or more than MAX_SCAN_ENTRIES in-scope
+                           entries).
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any] | None) -> dict[str, Any]:

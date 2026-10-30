@@ -711,7 +711,7 @@ Options are `ascending` and `descending`. Default to `descending`.
     # The directory target is exempt from the extension allow-list (directories
     # have no meaningful extension) but block rules always apply to it; extension
     # rules filter the file entries inside it. Entries outside the allow/block
-    # rules are silently omitted so the listing never leaks scoped-out paths.
+    # rules are silently omitted from the listing.
     "list_directory": {
         "class": "neuro_san_studio.coded_tools.file_management.list_directory.ListDirectory",
         "description": "Lists the files and subdirectories of a local directory (name, type, size), sorted by name. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists. Entries outside the allowed scope are omitted from the listing.",
