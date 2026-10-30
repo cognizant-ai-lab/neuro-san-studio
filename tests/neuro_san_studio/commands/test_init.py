@@ -651,7 +651,7 @@ class TestDefaultNetworks:
     ) -> None:
         """The scaffolded manifest_and.hocon must parse cleanly through the designer's read path.
 
-        The designer's GetSubnetwork reads registries/manifest_and.hocon relative to the
+        The designer's GetExternalNetwork reads registries/manifest_and.hocon relative to the
         project root via RawManifestRestorer, and pyhocon resolves its `include` directives
         against the process CWD. A template drift — e.g. "syncing" it with the repo-level
         registries/manifest_and.hocon, which additionally includes the industry manifest that

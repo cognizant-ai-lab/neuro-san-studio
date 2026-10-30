@@ -78,8 +78,8 @@ from neuro_san_studio.agent_network_designer.middleware.persistence.hocon_agent_
 from neuro_san_studio.agent_network_designer.middleware.persistence.reservations_agent_network_persistor import (
     ReservationsAgentNetworkPersistor,
 )
+from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
-from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
 from neuro_san_studio.agent_network_designer.tools.get_toolbox import GetToolbox
 
 # Generated HOCON files include registries/aaosa.hocon and config/llm_config.hocon relative to the
@@ -176,7 +176,9 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         os.environ.pop("AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", None)
         # WRITE_TO_FILE is an import-time constant; patch the module attribute the code reads at call time.
         self._start(mock.patch.object(persistence_module, "WRITE_TO_FILE", True))
-        self._start(mock.patch.object(GetSubnetwork, "get_subnetwork_names", new=AsyncMock(return_value=[])))
+        self._start(
+            mock.patch.object(GetExternalNetwork, "get_external_network_names", new=AsyncMock(return_value=[]))
+        )
         self._start(
             mock.patch.object(GetMcpTool, "get_mcp_servers_load", new=AsyncMock(return_value=McpServersLoad([], True)))
         )
@@ -232,7 +234,7 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
     @staticmethod
     def _network_def() -> dict[str, Any]:
         """
-        Build a two-agent definition that passes every validator without toolbox/MCP/subnetwork lookups.
+        Build a two-agent definition that passes every validator without toolbox/MCP/external network lookups.
 
         :return: The agent network definition dict
         """

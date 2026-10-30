@@ -76,9 +76,9 @@ class UpdateAgent(CodedTool):
         if not the_agent_name:
             return "Error: No agent_name provided."
         # Guard the target node key only. An external reference (e.g. a malformed input
-        # network that already contains a "/subnetwork" node) must not receive tools.
+        # network that already contains a "/some_network" node) must not receive tools.
         # new_down_chains is intentionally NOT guarded: external references are valid
-        # there, since that is how a subnetwork is referenced.
+        # there, since that is how an external network is referenced.
         name_error: str | None = AgentNameGuard.agent_name_error(the_agent_name)
         if name_error:
             return name_error

@@ -19,7 +19,7 @@ Generic process-wide, load-once cache for expensive shared values.
 This is the one copy of the locking and publish discipline that the Agent
 Network Designer family's shared caches were previously each hand-rolling
 (ConnectivityDictionaryConverter's ToolboxFactory, GetToolbox's toolbox info,
-GetSubnetwork's subnetwork names). Each owning class keeps its public
+GetExternalNetwork's external network names). Each owning class keeps its public
 accessors and clear_*_for_testing API and delegates to an instance of this
 class, so all cache *policy* stays visible on the owner while the subtle
 *mechanism* lives here once.

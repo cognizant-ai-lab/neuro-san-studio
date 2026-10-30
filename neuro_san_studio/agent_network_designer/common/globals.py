@@ -64,10 +64,10 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             agent_network_structure_validation_middleware
     #             .AgentNetworkStructureValidationMiddleware.validate().
     #
-    # 3. Shared subnetwork names
+    # 3. Shared external network names
     #    Holds:   the "/<network_name>" list parsed from the designer manifest
     #             (AGENT_NETWORK_DESIGNER_MANIFEST_FILE).
-    #    Lives:   get_subnetwork.GetSubnetwork (async get_subnetwork_names)
+    #    Lives:   get_external_network.GetExternalNetwork (async get_external_network_names)
     #    Expiry:  manifest path/modification_time change, or one
     #             AGENT_MANIFEST_UPDATE_PERIOD_SECONDS period when manifest
     #             updates are enabled — the same setting that drives the
@@ -77,30 +77,30 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             registries/generated/manifest.hocon which grows as the designer
     #             saves networks on local runs; server deployments never write
     #             the manifest at runtime.
-    #    Used by: GetSubnetwork.get_subnetworks() (the coded tool path);
+    #    Used by: GetExternalNetwork.get_external_networks() (the coded tool path);
     #             agent_network_structure_validation_middleware
     #             .AgentNetworkStructureValidationMiddleware.validate();
     #             agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware
     #             ._assemble_and_persist().
     #
-    # 4. Shared subnetwork descriptions
+    # 4. Shared external network descriptions
     #    Holds:   the {/<network_name>: front-man description} mapping shown
     #             to the designer LLM, fetched via one session.function({})
-    #             call per subnetwork.
-    #    Lives:   get_subnetwork.GetSubnetwork (async get_subnetworks)
-    #    Expiry:  the same fingerprint as the subnetwork names above (they
+    #             call per external network.
+    #    Lives:   get_external_network.GetExternalNetwork (async get_external_networks)
+    #    Expiry:  the same fingerprint as the external network names above (they
     #             share _manifest_fingerprint), so names and descriptions go
     #             stale and refresh together. Unlike the other caches it has
     #             no loader: descriptions can only be fetched through a live
     #             run_context's session factory, so the first
-    #             get_subnetworks() call of each refresh period fills the
+    #             get_external_networks() call of each refresh period fills the
     #             cache in-context (SharedProcessCache.aget_or_fill). A fill
     #             whose fetches ALL failed raises instead of publishing —
     #             that failure's recovery is invisible to the fingerprint —
     #             and the cache is bypassed entirely when AGENT_AUTHORIZER
     #             is set, because /function responses are then
     #             caller-specific (see _shared_descriptions_cache_enabled).
-    #    Used by: GetSubnetwork.get_subnetworks() (the coded tool path).
+    #    Used by: GetExternalNetwork.get_external_networks() (the coded tool path).
     #
     # 5. Shared MCP servers
     #    Holds:   the list of MCP server URLs parsed from mcp_info.hocon
@@ -155,14 +155,14 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
             "clear_shared_toolbox_info_for_testing",
         ),
         (
-            "neuro_san_studio.agent_network_designer.tools.get_subnetwork",
-            "GetSubnetwork",
-            "clear_shared_subnetwork_names_for_testing",
+            "neuro_san_studio.agent_network_designer.tools.get_external_network",
+            "GetExternalNetwork",
+            "clear_shared_external_network_names_for_testing",
         ),
         (
-            "neuro_san_studio.agent_network_designer.tools.get_subnetwork",
-            "GetSubnetwork",
-            "clear_shared_subnetwork_descriptions_for_testing",
+            "neuro_san_studio.agent_network_designer.tools.get_external_network",
+            "GetExternalNetwork",
+            "clear_shared_external_network_descriptions_for_testing",
         ),
         (
             "neuro_san_studio.agent_network_designer.tools.get_mcp_tool",

@@ -123,9 +123,9 @@ class ProgressHandler:
         :param force: When True, bypass the throttle and always send.
                 Used by AgentNetworkDefinitionMiddleware of the top-level designer,
                 whose reports fire at most once per designer model call — far less
-                frequently than the editor tools in the subnetworks — and which is
+                frequently than the editor tools in the support networks — and which is
                 what guarantees the client sees the fully merged network state
-                (including subnetwork edits whose own reports were throttled)
+                (including support network edits whose own reports were throttled)
                 before each designer model call.
         """
         progress_reporter: AgentProgressReporter | None = args.get("progress_reporter")
@@ -198,7 +198,7 @@ class ProgressHandler:
         The report goes out through the reporter stashed from the suppressed tool
         call, so from the client's perspective it originates from the same tool as
         every other progress report. This is what lets the (by design)
-        reporter-less subnetwork middleware flush without creating a duplicate
+        reporter-less support network middleware flush without creating a duplicate
         progress stream of its own.
 
         :param sly_data: The sly_data dictionary holding the throttling state.

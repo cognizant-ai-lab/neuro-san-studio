@@ -47,8 +47,8 @@ from neuro_san_studio.agent_network_designer.middleware.persistence import agent
 from neuro_san_studio.agent_network_designer.middleware.validation import (
     agent_network_instructions_validation_middleware,
 )
+from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
-from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
 from neuro_san_studio.agent_network_designer.tools.get_toolbox import GetToolbox
 
 
@@ -227,7 +227,7 @@ class ConsultantPersistenceMiddleware(agent_network_persistence_middleware.Agent
         :param network_def: The edited agent-network definition.
         :return: Structural and instruction validation errors.
         """
-        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names()
+        external_network_names: list[str] = await GetExternalNetwork.get_external_network_names()
         mcp_servers: list[str] = await GetMcpTool.get_mcp_servers()
         for url in GetMcpTool.sly_data_http_header_urls(self.sly_data):
             if url not in mcp_servers:
@@ -238,7 +238,7 @@ class ConsultantPersistenceMiddleware(agent_network_persistence_middleware.Agent
         structure_errors: list[str] = (
             StructureNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(toolbox_tools).validate(network_def)
-            + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
+            + UrlNetworkValidator(external_network_names, mcp_servers).validate(network_def)
         )
         instructions_validator = (
             agent_network_instructions_validation_middleware.AgentNetworkInstructionsValidationMiddleware(

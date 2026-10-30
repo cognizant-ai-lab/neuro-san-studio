@@ -68,8 +68,8 @@ from neuro_san_studio.agent_network_designer.middleware.validation.agent_network
 from neuro_san_studio.agent_network_designer.middleware.validation.agent_network_structure_validation_middleware import (  # noqa: E501
     AgentNetworkStructureValidationMiddleware,
 )
+from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
-from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
 from neuro_san_studio.agent_network_designer.tools.set_sample_queries import AGENT_NETWORK_QUERIES
 
 # To use reservations, turn this environment variable to true
@@ -108,10 +108,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     agent_network_definition, see AgentNetworkDefinitionMiddleware.is_load_only_request) is neither validated nor
     saved: the loaded network goes back to the client as it is.
 
-    Note: Validation is intentionally duplicated here even though individual subnetworks
+    Note: Validation is intentionally duplicated here even though individual support networks
     already perform their own validation. This is a safeguard for cases where the agent
-    returns a final response without having called the necessary tools or subnetworks —
-    meaning the subnetwork validators may never have run. By validating in this middleware,
+    returns a final response without having called the necessary tools or support networks —
+    meaning the support network validators may never have run. By validating in this middleware,
     we catch those premature completions and force the agent to correct itself.
     """
 
@@ -203,7 +203,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         export shape. Such a turn returns no HOCON text, even when the load fails.
 
         This validation acts as a final safety net: even if the agent bypassed calling
-        the necessary tools or subnetworks (and thus their built-in validators never ran),
+        the necessary tools or support networks (and thus their built-in validators never ran),
         errors will still be caught here before the network is persisted.
 
         :param state: Current agent state
@@ -399,7 +399,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
         :return: The persistor and the client-token MCP header map (see _client_token_mcp_headers)
         """
-        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names()
+        external_network_names: list[str] = await GetExternalNetwork.get_external_network_names()
         load: McpServersLoad = await GetMcpTool.get_mcp_servers_load()
         client_token_mcp_headers: dict[str, list[str]] = self._client_token_mcp_headers(load)
         mcp_servers: list[str] = load.urls + list(client_token_mcp_headers)
@@ -408,7 +408,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             WRITE_TO_FILE,
             DEMO_MODE,
             SUBDIRECTORY,
-            subnetwork_names,
+            external_network_names,
             mcp_servers,
         )
         return persistor, client_token_mcp_headers

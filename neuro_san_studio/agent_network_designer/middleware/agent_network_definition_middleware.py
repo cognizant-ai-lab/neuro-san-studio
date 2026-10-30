@@ -193,7 +193,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         if self.error_message:
             # Loading errors (HOCON file or S3 reservation) only occur in the top-level agent_network_designer
-            # network, not in its subnetworks, since loading is only triggered from the main network's sly_data.
+            # network, not in its support networks, since loading is only triggered from the main network's sly_data.
             # Therefore, this jump will only fire in the agent_network_designer agent itself.
             return {
                 "messages": [AIMessage(self.error_message)],
@@ -271,7 +271,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         out. (If the run aborts on an unhandled error, after-agent hooks are skipped and
         the throttled report stays dropped, matching pre-throttle behavior.)
 
-        This matters most in the subnetworks (agent_network_editor and pals) and when those
+        This matters most in the support networks (agent_network_editor and pals) and when those
         networks are used directly: their middleware has no progress_reporter by design
         (the client already receives the tools' own progress reports, so a middleware
         reporter would duplicate that stream). The flush therefore reuses the reporter
@@ -625,9 +625,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             #
             # force=True keeps this report unthrottled: it fires at most once per model call of
             # the top-level designer (only the designer's middleware is configured with a
-            # progress_reporter) — far less frequently than the editor tools in the subnetworks —
+            # progress_reporter) — far less frequently than the editor tools in the support networks —
             # and it is what guarantees the client sees the fully merged network state, including
-            # subnetwork edits whose own throttled reports may have been dropped, before each
+            # support network edits whose own throttled reports may have been dropped, before each
             # designer model call.
             await ProgressHandler.report_progress(
                 {"progress_reporter": self.progress_reporter},

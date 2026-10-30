@@ -23,8 +23,8 @@ from neuro_san.internals.validation.network.url_network_validator import UrlNetw
 from neuro_san_studio.agent_network_designer.middleware.validation.agent_network_validation_middleware import (
     AgentNetworkValidationMiddleware,
 )
+from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import GetMcpTool
-from neuro_san_studio.agent_network_designer.tools.get_subnetwork import GetSubnetwork
 from neuro_san_studio.agent_network_designer.tools.get_toolbox import GetToolbox
 
 
@@ -55,15 +55,14 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         :return: A list of error strings (empty if valid)
         """
 
-        # Get infos from the agent network editor's tools. All three now
+        # Get infos from the agent network editor's tools. All three
         # come from their process-wide caches. Validating against the
-        # shared subnetwork cache (rather than the per-session snapshot used
-        # before the process-wide cache) cannot contradict the list the LLM
+        # shared external network cache cannot contradict the list the LLM
         # was shown, because the manifest does not change mid-conversation:
         # server deployments never write it at runtime — generated networks
         # are only saved into the local manifest on local runs, where the
         # fingerprint TTL bounds any staleness from the designer's own saves.
-        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names()
+        external_network_names: list[str] = await GetExternalNetwork.get_external_network_names()
         # File-configured servers plus the per-conversation servers the
         # client supplied auth headers for via sly_data (nsflow injects one
         # per connected server when chatting with the designer) — the same
@@ -84,7 +83,7 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
             # - unreachable nodes: all agents must be reachable
             StructureNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(toolbox_tools).validate(network_def)
-            + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
+            + UrlNetworkValidator(external_network_names, mcp_servers).validate(network_def)
         )
 
     def format_error(self, error_list: list[str]) -> str:
