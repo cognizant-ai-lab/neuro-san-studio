@@ -158,8 +158,21 @@ class PathAccess:
 
     @staticmethod
     def validate_bool(args: dict[str, Any], param_name: str, default: bool) -> bool:
-        """Return a validated boolean parameter, raising invalid_input on non-bool input."""
-        value: Any = args.get(param_name, default)
+        """
+        Return a validated boolean parameter, or the default when it was not given.
+
+        A missing key and a None value both mean "not given", because neuro-san
+        passes an optional argument the LLM left out as None.
+
+        :param args: The tool argument dictionary.
+        :param param_name: Name of the args key holding the flag.
+        :param default: The value to use when the flag was not given.
+        :return: The flag's value.
+        :raises ValueError: invalid_input when the value is not a bool.
+        """
+        value: Any = args.get(param_name)
+        if value is None:
+            return default
         if not isinstance(value, bool):
             raise ValueError(f"invalid_input: '{param_name}' must be a boolean, got {value!r}.")
         return value
