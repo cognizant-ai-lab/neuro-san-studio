@@ -63,13 +63,13 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         # are only saved into the local manifest on local runs, where the
         # fingerprint TTL bounds any staleness from the designer's own saves.
         external_network_names: list[str] = await GetExternalNetwork.get_external_network_names()
-        # File-configured servers plus the per-conversation servers the
+        # The designer's servers plus the per-conversation servers the
         # client supplied auth headers for via sly_data (nsflow injects one
-        # per connected server when chatting with the designer) — the same
-        # union get_mcp_tool listed for the LLM, so a network referencing a
-        # connected-only server validates. get_mcp_servers returns a fresh
-        # copy, so appending here cannot corrupt the shared cache.
-        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers()
+        # per connected server when chatting with the designer). The URL
+        # validator accepts any http(s) URL anyway; this list fills the
+        # "Available URLs" hint in its errors. get_designer_mcp_servers
+        # returns a fresh copy, so appending here cannot corrupt the shared cache.
+        mcp_servers: list[str] = await GetMcpTool.get_designer_mcp_servers()
         for url in GetMcpTool.sly_data_http_header_urls(self.sly_data):
             if url not in mcp_servers:
                 mcp_servers.append(url)

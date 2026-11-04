@@ -101,8 +101,11 @@ At the start of each session, the editor always call the following functions to 
 
 - `get_mcp_tool`
     — returns a dictionary of MCP server URLs and the capabilities of tools provided by each server.
-    - The available MCP servers can be set with environment variable `MCP_SERVERS_INFO_FILE`. If not provided,
-    [mcp_info.hocon](../../neuro_san_studio/mcp/mcp_info.hocon) will be used.
+    - The MCP servers the designer offers can be set with environment variable
+    `AGENT_NETWORK_DESIGNER_MCP_INFO_FILE`. If not provided,
+    [agent_network_designer_mcp_info.hocon](../../neuro_san_studio/mcp/agent_network_designer_mcp_info.hocon)
+    will be used. A server's `tools` list there limits which of its tools the designer shows; without one, it shows
+    them all.
     - Tool listings are fetched once per process and refreshed every `AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS`
     seconds (default `300`). Zero or a negative value disables the time-based refresh; positive values are clamped
     to at least twice the fetch timeout below.

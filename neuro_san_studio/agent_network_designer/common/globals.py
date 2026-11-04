@@ -112,22 +112,32 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #    Lives:   get_mcp_tool.GetMcpTool (async get_mcp_servers)
     #    Expiry:  resolved path, modification_time or size change — no time
     #             bucket, since nothing writes the file at runtime.
-    #    Used by: GetMcpTool (input to the tool-descriptions cache below);
-    #             agent_network_structure_validation_middleware
-    #             .AgentNetworkStructureValidationMiddleware.validate();
+    #    Used by: GetMcpTool.async_invoke() (servers left out of the
+    #             client-token fetch);
     #             agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware
     #             ._assemble_and_persist().
     #
-    # 6. Shared MCP tool descriptions
+    # 6. Shared designer MCP servers
+    #    Holds:   the {server URL: "tools" list} mapping of the servers the
+    #             designer offers, parsed from AGENT_NETWORK_DESIGNER_MCP_INFO_FILE
+    #             or the bundled agent_network_designer_mcp_info.hocon (see
+    #             GetMcpTool.get_designer_mcp_info_file).
+    #    Lives:   get_mcp_tool.GetMcpTool (async get_designer_mcp_servers)
+    #    Expiry:  resolved path, modification_time or size change.
+    #    Used by: GetMcpTool (input to the tool-descriptions cache below);
+    #             agent_network_structure_validation_middleware
+    #             .AgentNetworkStructureValidationMiddleware.validate().
+    #
+    # 7. Shared MCP tool descriptions
     #    Holds:   the {server URL: tool descriptions} mapping fetched from
-    #             the file-configured MCP servers themselves (network
+    #             the designer's MCP servers themselves (network
     #             calls). Listings for per-conversation sly_data servers
     #             are deliberately NOT cached here — their auth headers
     #             belong to one conversation, and a process-wide entry
     #             would serve one user's authenticated listing to every
     #             other (see GetMcpTool._fetch_sly_data_tool_descriptions).
     #    Lives:   get_mcp_tool.GetMcpTool (async get_mcp_tool_descriptions)
-    #    Expiry:  mcp_info.hocon path/modification_time/size change, or one
+    #    Expiry:  designer list path/modification_time/size change, or one
     #             AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS window
     #             (default 300s, clamped to at least twice the per-server
     #             fetch cap; <= 0 disables time-based refresh) — the
@@ -168,6 +178,11 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
             "neuro_san_studio.agent_network_designer.tools.get_mcp_tool",
             "GetMcpTool",
             "clear_shared_mcp_servers_for_testing",
+        ),
+        (
+            "neuro_san_studio.agent_network_designer.tools.get_mcp_tool",
+            "GetMcpTool",
+            "clear_shared_designer_mcp_servers_for_testing",
         ),
         (
             "neuro_san_studio.agent_network_designer.tools.get_mcp_tool",

@@ -22,6 +22,9 @@
 #         }, # Optional: if the server requires authentication
 #         "tools": ["tool_1", "tool_2"]  # Optional: list of specific tools to load from this server. Load all tools if not specified.
 #     },
+#
+# The agent network designer offers the servers in agent_network_designer_mcp_info.hocon
+# (AGENT_NETWORK_DESIGNER_MCP_INFO_FILE), not the ones in this file.
 
 {
     # Wolfram Cloud MCP — connects to Wolfram's computational engine and Wolfram|Alpha

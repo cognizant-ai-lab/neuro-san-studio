@@ -676,10 +676,14 @@ ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 # keys. Without this line the designer would use the local file, agent_network_designer_toolbox_info.hocon.
 ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="${APP_SOURCE}/neuro_san_studio/toolbox/agent_network_designer_toolbox_info_multiuser.hocon"
 
+# MCP servers the Agent Network Designer offers. A server's "tools" list there limits which of its tools the
+# designer shows. The image uses the same file as local runs, because it lists only servers that need no API key.
+ENV AGENT_NETWORK_DESIGNER_MCP_INFO_FILE="${APP_SOURCE}/neuro_san_studio/mcp/agent_network_designer_mcp_info.hocon"
+
 # Time in seconds that the Agent Network Designer's cached MCP tool listings are served before
 # being re-fetched from the MCP servers. Positive values are clamped to at least twice the
 # fetch timeout below; 0 or a negative value disables the time-based refresh (listings then
-# refresh only when the MCP servers info file changes).
+# refresh only when the designer's MCP server list changes).
 # Defaults to "300" if not set.
 ENV AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS="300"
 
