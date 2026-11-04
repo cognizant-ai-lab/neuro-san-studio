@@ -68,7 +68,7 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #    Holds:   the "/<network_name>" list parsed from the designer manifest
     #             (AGENT_NETWORK_DESIGNER_MANIFEST_FILE).
     #    Lives:   get_external_network.GetExternalNetwork (async get_external_network_names)
-    #    Expiry:  manifest path/modification_time change, or one
+    #    Expiry:  manifest path, modification_time or size change, or one
     #             AGENT_MANIFEST_UPDATE_PERIOD_SECONDS period when manifest
     #             updates are enabled — the same setting that drives the
     #             server's own manifest refresh; <= 0 (static server) means no
@@ -110,8 +110,8 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             this cache; callers union them in via
     #             GetMcpTool.sly_data_http_header_urls(sly_data).
     #    Lives:   get_mcp_tool.GetMcpTool (async get_mcp_servers)
-    #    Expiry:  resolved path or modification_time change — no time bucket, since
-    #             nothing writes the file at runtime.
+    #    Expiry:  resolved path, modification_time or size change — no time
+    #             bucket, since nothing writes the file at runtime.
     #    Used by: GetMcpTool (input to the tool-descriptions cache below);
     #             agent_network_structure_validation_middleware
     #             .AgentNetworkStructureValidationMiddleware.validate();
@@ -127,7 +127,7 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             would serve one user's authenticated listing to every
     #             other (see GetMcpTool._fetch_sly_data_tool_descriptions).
     #    Lives:   get_mcp_tool.GetMcpTool (async get_mcp_tool_descriptions)
-    #    Expiry:  mcp_info.hocon path/modification_time change, or one
+    #    Expiry:  mcp_info.hocon path/modification_time/size change, or one
     #             AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS window
     #             (default 300s, clamped to at least twice the per-server
     #             fetch cap; <= 0 disables time-based refresh) — the

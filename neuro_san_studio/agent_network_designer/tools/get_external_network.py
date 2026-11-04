@@ -85,7 +85,7 @@ class GetExternalNetwork(BranchActivation, CodedTool):
                 the server never picks up new manifest entries, a fresher
                 name list would only advertise networks that are not
                 reachable yet — so on a static server the cached list goes
-                static too (a manifest path or modification_time change still refreshes
+                static too (a change to the manifest path or file still refreshes
                 it). When updates are enabled, one manifest parse per period
                 (~15-20ms, off the event loop, and only if a caller actually
                 reads in that period) is the whole steady-state refresh cost.
@@ -96,7 +96,7 @@ class GetExternalNetwork(BranchActivation, CodedTool):
             return 0.0
 
     @staticmethod
-    def _manifest_fingerprint() -> tuple[str, int | None, int]:
+    def _manifest_fingerprint() -> tuple[str, tuple[int, int] | None, int]:
         """
         Freshness probe for the shared external network names cache (see
         SharedProcessCache): the cached list is served only while this value is
@@ -104,8 +104,8 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         go stale:
 
         * the resolved path — an env-var change takes effect on the next read;
-        * the manifest file's modification_time — a direct edit invalidates immediately, and
-          a missing manifest (modification_time None) self-heals the moment the file appears;
+        * the manifest file's modification_time and size — a direct edit invalidates immediately,
+          and a missing manifest (None) self-heals the moment the file appears;
         * a time bucket that rolls once per manifest-update period (see
           _manifest_update_period_seconds) — the manifest composes other
           manifests via `include` (notably registries/generated/manifest.hocon,
@@ -113,15 +113,14 @@ class GetExternalNetwork(BranchActivation, CodedTool):
           server deployments never write the manifest), and a cheap probe
           cannot see those included files, so the rolling bucket bounds that
           staleness instead. With updates disabled (period <= 0, the
-          static-server default) the bucket is constant, so only a path or
-          modification_time change invalidates.
+          static-server default) the bucket is constant, so only a change to
+          the path or the manifest file itself invalidates.
 
-        :return: (path, modification_time_ns or None, time bucket) tuple.
+        :return: (path, (modification_time_ns, size) or None, time bucket) tuple.
         """
         manifest_file: str = GetExternalNetwork._resolve_manifest_file()
-        modification_time_ns: int | None = SharedProcessCache.stat_modification_time_ns(manifest_file)
         period: float = GetExternalNetwork._manifest_update_period_seconds()
-        return (manifest_file, modification_time_ns, SharedProcessCache.time_bucket(period))
+        return SharedProcessCache.file_fingerprint(manifest_file) + (SharedProcessCache.time_bucket(period),)
 
     @staticmethod
     def _load_external_network_names() -> list[str]:
@@ -136,11 +135,11 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         :return: List of external network name strings (in "/<network_name>" form).
                 A missing or unparseable manifest returns an empty list, which IS
                 published: unlike an immortal cache this entry expires on its own
-                (modification_time change or manifest-update-period roll, whichever comes
+                (a change to the manifest file or a manifest-update-period roll, whichever comes
                 first), so a bad manifest cannot poison the process beyond one
                 refresh period — and publishing the empty result prevents a
                 per-call parse storm within it. (On a static server with
-                updates disabled, healing relies on the modification_time/path change that
+                updates disabled, healing relies on the change to the manifest file or path that
                 fixing the manifest entails.)
         """
         manifest_file: str = GetExternalNetwork._resolve_manifest_file()
@@ -202,10 +201,10 @@ class GetExternalNetwork(BranchActivation, CodedTool):
     # caches, this source legitimately changes at runtime on local runs —
     # the designer saves every generated network into a manifest the top
     # file `include`s; server deployments persist elsewhere and never write
-    # it — so the fingerprint (path + modification_time + a manifest-update-period
-    # bucket, see _manifest_fingerprint) keeps the list at most one
-    # AGENT_MANIFEST_UPDATE_PERIOD_SECONDS period stale, the same cadence at
-    # which the server itself picks up new manifest entries.
+    # it — so the fingerprint (path + modification_time and size + a
+    # manifest-update-period bucket, see _manifest_fingerprint) keeps the
+    # list at most one AGENT_MANIFEST_UPDATE_PERIOD_SECONDS period stale, the
+    # same cadence at which the server itself picks up new manifest entries.
     # Locking, publish ordering, and the async once-gate live in
     # SharedProcessCache; access goes through the class by name (not cls) so
     # a hypothetical subclass shares the one cache instead of splitting it.

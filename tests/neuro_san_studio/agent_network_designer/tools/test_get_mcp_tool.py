@@ -27,6 +27,9 @@ get_mcp_tool needs, so the suite still collects everywhere.
 
 import asyncio
 import os
+import shutil
+import tempfile
+from pathlib import Path
 from unittest import TestCase
 from unittest import mock
 
@@ -51,8 +54,16 @@ MCP_SERVERS: list[str] = ["https://one.example/mcp", "https://two.example/mcp"]
 # A server the conversation supplies auth headers for (not file-configured).
 CLIENT_URL: str = "https://oauth.example/mcp"
 
+MCP_INFO_ENV: str = "MCP_SERVERS_INFO_FILE"
 TTL_ENV: str = "AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS"
 FETCH_TIMEOUT_ENV: str = "AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS"
+
+# MCP server files for the tests that read real files: one server, and both servers.
+ONE_SERVER: str = '{"https://one.example/mcp": {}}'
+BOTH_SERVERS: str = '{"https://one.example/mcp": {}, "https://two.example/mcp": {}}'
+
+# One modification time, so a rewrite with it is visible to the fingerprint only through the file's size.
+MODIFICATION_TIME_NS: int = 1_700_000_000_000_000_000
 
 
 class TestGetMcpToolConfig(TestCase):
@@ -141,6 +152,35 @@ class TestGetMcpServers(TestCase):
         # when run directly through unittest.
         GetMcpTool.clear_shared_mcp_servers_for_testing()
         GetMcpTool.clear_shared_mcp_tool_descriptions_for_testing()
+
+    @staticmethod
+    def _write_file(path: Path, text: str) -> None:
+        """
+        Write a file and give it the shared test modification time.
+
+        :param path: The file to write.
+        :param text: The HOCON text to write.
+        """
+        # Bytes, so no platform newline translation changes the file's size.
+        path.write_bytes(text.encode("utf-8"))
+        os.utime(path, ns=(MODIFICATION_TIME_NS, MODIFICATION_TIME_NS))
+
+    def test_a_rewrite_in_the_same_timestamp_tick_is_read_again(self) -> None:
+        """
+        A rewrite of mcp_info.hocon that keeps its modification time but changes its size is read on the next call.
+        """
+        folder: Path = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        mcp_info: Path = folder / "mcp_info.hocon"
+        self.enterContext(mock.patch.dict(os.environ, {MCP_INFO_ENV: str(mcp_info)}))
+        self._write_file(mcp_info, ONE_SERVER)
+        before: list[str] = asyncio.run(GetMcpTool.get_mcp_servers())
+
+        self._write_file(mcp_info, BOTH_SERVERS)
+        after: list[str] = asyncio.run(GetMcpTool.get_mcp_servers())
+
+        self.assertEqual(before, ["https://one.example/mcp"])
+        self.assertEqual(after, ["https://one.example/mcp", "https://two.example/mcp"])
 
     def test_a_missing_file_publishes_an_empty_list(self):
         """No config file means no file-configured MCP servers, not an error."""

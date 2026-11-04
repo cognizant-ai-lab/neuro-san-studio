@@ -26,6 +26,9 @@ get_external_network needs, so the suite still collects everywhere.
 
 import asyncio
 import os
+import shutil
+import tempfile
+from pathlib import Path
 from typing import Any
 from unittest import TestCase
 from unittest import mock
@@ -41,6 +44,9 @@ pytest.importorskip("neuro_san_studio.agent_network_designer.tools.get_external_
 from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork  # noqa: E402
 
 EXTERNAL_NETWORK_NAMES: list[str] = ["/alpha", "/beta"]
+
+# One modification time, so a rewrite with it is visible to the fingerprint only through the file's size.
+MODIFICATION_TIME_NS: int = 1_700_000_000_000_000_000
 
 
 class TestGetExternalNetwork(TestCase):
@@ -199,3 +205,29 @@ class TestGetExternalNetwork(TestCase):
         # pylint: disable-next=protected-access
         cache: SharedProcessCache[dict[str, str]] = GetExternalNetwork._shared_external_network_descriptions_cache
         self.assertIsNone(cache.peek())
+
+    def test_a_manifest_rewrite_in_the_same_timestamp_tick_changes_the_fingerprint(self) -> None:
+        """
+        A manifest rewrite that keeps the modification time but changes the size gives a new fingerprint, even on a
+        static server, where the time bucket never rolls.
+        """
+        folder: Path = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        manifest: Path = folder / "manifest.hocon"
+        settings: dict[str, str] = {
+            "AGENT_NETWORK_DESIGNER_MANIFEST_FILE": str(manifest),
+            "AGENT_MANIFEST_UPDATE_PERIOD_SECONDS": "0",
+        }
+        self.enterContext(mock.patch.dict(os.environ, settings))
+
+        manifest.write_bytes(b'{"alpha.hocon": true}')
+        os.utime(manifest, ns=(MODIFICATION_TIME_NS, MODIFICATION_TIME_NS))
+        # pylint: disable-next=protected-access
+        before: tuple[Any, ...] = GetExternalNetwork._manifest_fingerprint()
+
+        manifest.write_bytes(b'{"alpha.hocon": true, "beta.hocon": true}')
+        os.utime(manifest, ns=(MODIFICATION_TIME_NS, MODIFICATION_TIME_NS))
+        # pylint: disable-next=protected-access
+        after: tuple[Any, ...] = GetExternalNetwork._manifest_fingerprint()
+
+        self.assertNotEqual(after, before)
