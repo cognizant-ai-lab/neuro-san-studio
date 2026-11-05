@@ -292,9 +292,10 @@ via the Model Context Protocol (MCP), exposing three tools through a single MCP 
 
 _Free Tier (No Credentials Required):_
 
-You.com also exposes a free profile of `you-search` that requires no API key. Append `?profile=free` to the MCP
+You.com also exposes a free profile that requires no API key. Append `?profile=free` to the MCP
 server URL — `https://api.you.com/mcp?profile=free` — to use it without authentication. This profile is limited
-to `you-search`; `you-contents` and `you-research` are not available on the free tier.
+to `you-search` and `you-discover`, which finds AI agents, MCP servers and skills; `you-contents` and `you-research`
+are not available on the free tier.
 
 _Getting a Free API Key:_
 
@@ -320,7 +321,8 @@ and set the `YDC_API_KEY` environment variable.
 
 To use the no-credentials free tier instead, use `https://api.you.com/mcp?profile=free` as the MCP server URL and
 omit the `Authorization` header — see the commented "free tier" example in
-[mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon). Only `you-search` is available on this profile.
+[mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon). Only `you-search` and `you-discover` are available on
+this profile.
 
 _Example Usage in Neuro San Studio:_
 

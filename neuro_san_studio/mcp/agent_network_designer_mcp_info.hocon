@@ -18,6 +18,8 @@
 # AGENT_NETWORK_DESIGNER_MCP_INFO_FILE to use another list.
 #
 # An optional "tools" list limits which of a server's tools the designer shows; without one it shows them all.
+# Saved networks keep only the server URL, so they run with the tools that mcp_info.hocon lists for it. Show no
+# tool here that mcp_info.hocon leaves out.
 # This file holds no keys. Leave out servers that need the client's key: the designer offers them whenever the
 # client sends a key, and a listed one would also be tried without a key, which fails and is logged.
 #
@@ -30,9 +32,11 @@
     "https://agenttools.wolfram.com/mcp": {},
 
     # DeepWiki: questions about public GitHub repositories.
-    "https://mcp.deepwiki.com/mcp": {},
+    "https://mcp.deepwiki.com/mcp": {
+        "tools": ["read_wiki_structure", "ask_wiki_question"]
+    },
 
-    # You.com free tier: web search.
+    # You.com free tier: web search, and a search for AI agents, MCP servers and skills.
     "https://api.you.com/mcp?profile=free": {},
 
     # World Clock Pro: current time, time zone conversion and daylight saving time.

@@ -4,7 +4,7 @@ The **Internet Info Gatherer** is a single-agent network that gathers informatio
 it searches the web through the you.com MCP server's free tier to find sources, then reads the pages it finds with
 the `web_fetch` toolbox tool to ground its answers in actual page content, with cited URLs.
 
-The two tools deliberately complement each other: the free you.com tier exposes only the `you-search` tool — search
+The two tools deliberately complement each other: the free you.com tier exposes only search tools — search
 result titles, URLs, and snippets, with no page content (the `you-contents` and `you-research` tools require the
 authenticated tier; see the [you_search](../../search_tools.md) network for that). `web_fetch` fills the gap by
 fetching the promising result URLs and returning their plain-text body, so the agent answers from what pages
@@ -40,7 +40,8 @@ None — this network runs out of the box:
 ### Tool: you.com MCP server (free tier)
 
 - `https://api.you.com/mcp?profile=free`, connected as a remote MCP tool over streamable HTTP.
-- Free tier exposes `you-search` only: web search results with titles, URLs, and snippets.
+- Free tier exposes two tools: `you-search` returns web search results with titles, URLs, and snippets, and
+  `you-discover` finds AI agents, MCP servers and skills.
 
 ### Tool: `web_fetch` (toolbox)
 
