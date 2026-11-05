@@ -21,6 +21,7 @@
     #
     # Experimental and research
     #
+    "experimental/decision_prescriptor.hocon": true,
     "experimental/mdap_decomposer.hocon": true,
     "experimental/copy_cat.hocon": true,
     "experimental/kwik_agents.hocon": false,

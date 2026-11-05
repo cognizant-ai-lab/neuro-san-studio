@@ -1,0 +1,247 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Decision Prescriptor: Evolutionary Surrogate-assisted Prescription as an agent network.
+#
+# The network does not answer "what will happen?" It answers "what should we do,
+# and what does each option cost us?" A predictor is fitted from historical data,
+# policies are evolved against it, and the result is a Pareto front of strategies
+# that no other strategy beats outright. Picking among them is left to a person,
+# because that choice encodes what the objectives are worth to them.
+
+{
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "config/llm_config.hocon",
+
+    "metadata": {
+        "description": "Multi-agent decision optimizer implementing Evolutionary Surrogate-assisted Prescription. Fits a ridge-regression surrogate from historical records, evolves neural prescriptor policies against it with NSGA-II, and returns a Pareto front of non-dominated strategies rendered as an interactive HTML report with trade-off, parallel-coordinate and convergence charts.",
+        "tags": ["decision-optimization", "pareto", "evolutionary", "tool", "visualization"],
+        "sample_queries": [
+            "Run the built-in delivery staffing example and show me the trade-offs.",
+            "What are my options if I want margin above 25% without pushing delivery risk past 0.4?",
+            "Which strategy gives the best balance between margin, delivery risk and time to value?",
+            "Fit the surrogate with alpha 0.1 and evolve for 80 generations, then write the report.",
+        ]
+    },
+
+    "max_steps": 40000,
+    "max_execution_seconds": 6000,
+
+    "tools": [
+
+        # The front man. Talks to the user and drives the four stages in order.
+        # It cannot carry a CodedTool "class" definition, which is why the numeric
+        # work all sits in the specialists below.
+        {
+            "name": "decision_advisor",
+            "function": {
+                "description": "I turn a decision problem into a set of trade-off options, backed by a model fitted on your own historical data."
+            },
+            "instructions": """
+You are the decision_advisor, the only agent the user talks to. Never mention the
+other agents or the tools by name; describe what you are doing in plain language.
+
+Run these four stages strictly in order. Each one depends on the last, so never
+skip ahead or run them in parallel.
+
+Stage 1 - load the problem. Call problem_loader. If the user supplied records and
+named which fields are context, which are decisions and which are outcomes, pass
+them through. If they did not, call it with no arguments to load the built-in
+delivery staffing example, and say clearly that the example data is synthetic.
+
+Stage 2 - fit the predictor. Call surrogate_modeler. Report the R-squared per
+outcome in your own words. If any outcome scores below 0.5, say plainly that the
+model does not explain that outcome well and that the strategies which follow are
+indicative only. Do not bury this.
+
+Stage 3 - search for strategies. Call strategy_evolver. It returns the achievable
+range of each outcome across the front.
+
+Stage 4 - explain and render. Send the result to tradeoff_explainer for the plain
+language reading, then call report_writer to produce the HTML charts. Give the
+user the file path.
+
+Rules you must not break:
+- Never invent, estimate or fill in a number yourself. Every figure you state must
+  have come back from one of the specialists. If you do not have a number, say so.
+- Never present one strategy as "the answer". Every strategy on the front is
+  optimal in the sense that improving any objective requires giving up another.
+  Which trade is acceptable is the user's judgement, not yours.
+- If the user asks for the single best option, explain why no such thing exists
+  here, then offer the balanced compromise as a starting point for discussion.
+- If a stage returns a message starting with "Error:", relay the problem to the
+  user in plain language and stop rather than continuing to the next stage.
+            """,
+            "tools": ["problem_loader", "surrogate_modeler", "strategy_evolver", "tradeoff_explainer", "report_writer"]
+        },
+
+        # Stage 1: load records and the field specification into sly_data.
+        {
+            "name": "problem_loader",
+            "function": {
+                "description": "Loads historical records and records which fields are context, which are decisions, and which are outcomes to be optimized.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "rows": {
+                            "type": "array",
+                            "description": "Historical records, each a flat object of field name to number. Omit entirely to load the built-in synthetic example.",
+                            "items": {"type": "object"}
+                        },
+                        "context_fields": {
+                            "type": "array",
+                            "description": "Fields describing the situation, which cannot be chosen.",
+                            "items": {"type": "string"}
+                        },
+                        "action_fields": {
+                            "type": "array",
+                            "description": "Fields describing the decision, which can be chosen.",
+                            "items": {"type": "string"}
+                        },
+                        "outcome_fields": {
+                            "type": "array",
+                            "description": "Fields describing what happened, to be predicted and optimized.",
+                            "items": {"type": "string"}
+                        },
+                        "maximize": {
+                            "type": "array",
+                            "description": "One boolean per outcome field: true where a larger value is better.",
+                            "items": {"type": "boolean"}
+                        }
+                    },
+                    "required": []
+                }
+            },
+            "class": "load_decision_problem.LoadDecisionProblem"
+        },
+
+        # Stage 2: fit the predictor that the search will be run against.
+        {
+            "name": "surrogate_modeler",
+            "function": {
+                "description": "Fits a ridge-regression surrogate predicting outcomes from context and action, and reports the R-squared per outcome.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "alpha": {
+                            "type": "float",
+                            "description": "Ridge regularization strength. Larger values trade fit for stability. Defaults to 1.0.",
+                            "default": 1.0
+                        }
+                    },
+                    "required": []
+                }
+            },
+            "class": "fit_surrogate.FitSurrogate"
+        },
+
+        # Stage 3: evolve prescriptor policies and return the front.
+        {
+            "name": "strategy_evolver",
+            "function": {
+                "description": "Evolves neural prescriptor policies against the fitted surrogate using NSGA-II, returning the Pareto front of non-dominated strategies.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "population_size": {
+                            "type": "int",
+                            "description": "Candidate policies carried between generations, at most 500. Defaults to 60.",
+                            "default": 60
+                        },
+                        "generations": {
+                            "type": "int",
+                            "description": "Number of generations to run, at most 500. Defaults to 50.",
+                            "default": 50
+                        },
+                        "hidden_dim": {
+                            "type": "int",
+                            "description": "Width of the prescriptor's hidden layer, at most 32. Defaults to 4.",
+                            "default": 4
+                        },
+                        "seed": {
+                            "type": "int",
+                            "description": "Random seed; the same seed reproduces a run exactly. Defaults to 0.",
+                            "default": 0
+                        }
+                    },
+                    "required": []
+                }
+            },
+            "class": "evolve_prescriptors.EvolvePrescriptors"
+        },
+
+        # Reads the numbers the search produced and puts the trade-off into words.
+        {
+            "name": "tradeoff_explainer",
+            "function": {
+                "description": "Explains what a Pareto front means in plain language, given the achievable range of each outcome.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "front_summary": {
+                            "type": "string",
+                            "description": "The JSON summary returned by strategy_evolver."
+                        }
+                    },
+                    "required": ["front_summary"]
+                }
+            },
+            "instructions": """
+You are the tradeoff_explainer. You are given the JSON summary of a Pareto front:
+the achievable best and worst of each outcome across strategies that no other
+strategy beats outright.
+
+Explain, in at most six sentences:
+- the span of each outcome, in the units the fields are named in;
+- which outcomes are actually in tension, judging only by the ranges you were
+  given, and say plainly when you cannot tell from the summary alone;
+- what a decision maker is really choosing between.
+
+You must not invent numbers, name a single winner, or recommend a strategy. If the
+summary does not support a claim, do not make it. Write for someone who has not
+heard of Pareto fronts: say "no option beats every other on everything at once"
+rather than leaning on the jargon.
+            """
+        },
+
+        # Stage 4: render the charts to a self-contained HTML file.
+        {
+            "name": "report_writer",
+            "function": {
+                "description": "Renders the Pareto front as a self-contained HTML report with trade-off scatter, parallel-coordinate and convergence charts, plus a data table.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "Heading for the report page."
+                        },
+                        "output_path": {
+                            "type": "string",
+                            "description": "Where to write the HTML file, inside the working directory and ending in .html. Defaults to decision_prescriptor_report.html in the working directory.",
+                            "default": "decision_prescriptor_report.html"
+                        }
+                    },
+                    "required": []
+                }
+            },
+            "class": "render_pareto_report.RenderParetoReport"
+        }
+    ]
+}
