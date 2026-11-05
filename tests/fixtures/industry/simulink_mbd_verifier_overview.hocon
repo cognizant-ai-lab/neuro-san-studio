@@ -1,0 +1,16 @@
+# Architecture-only check; this test must not start MATLAB or modify a model.
+{
+    "agent": "simulink_mbd_verifier",
+    "connections": ["direct"],
+    "timeout_in_seconds": 300,
+    "interactions": [
+        {
+            "text": "Explain the roles in the automotive model-based development workflow without connecting to MATLAB.",
+            "response": {
+                "text": {
+                    "gist": "Describe a workflow with requirement analysis, model planning, Simulink model creation, model verification, and an engineering report; clarify that MATLAB is needed only for live model operations."
+                }
+            }
+        }
+    ]
+}

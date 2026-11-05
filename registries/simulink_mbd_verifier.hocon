@@ -1,0 +1,314 @@
+{
+    "llm_config": {
+        "fallbacks": [
+            {
+                "class": "ollama",
+                "model_name": "qwen2.5:7b",
+                "base_url": "http://127.0.0.1:11434",
+                "temperature": 0.1,
+                "num_ctx": 16384
+            }
+        ]
+    },
+    "max_steps": 60,
+    "max_execution_seconds": 900,
+    "metadata": {
+        "description": "Automotive model-based development workflow coordinating requirements analysis, hierarchical subsystem planning, Simulink implementation, closed-loop Simulink Data Inspector (SDI) verification, and reporting via the MATLAB Simulink Agentic Toolkit MCP server.",
+        "tags": ["automotive", "model-based-design", "ACC", "simulink", "SDI", "MCP", "multi-agent"],
+        "sample_queries": [
+            "Analyze Requirement R-CC-001 (Adaptive Cruise Control Basic Speed Hold), plan a hierarchical Simulink model with an ACC_Controller subsystem, build it, verify it with Simulink Data Inspector (SDI) plots, and report results: Maintain driver target speed v_set (25 m/s) from initial v_veh (20 m/s) when lead_detected == false, with 50 ms sample time, mutual exclusion between Throttle (0-100%) and Brake (0-100%), steady-state error <= 1.0 m/s, rise time < 8 s, and overshoot < 10%.",
+            "Analyze this requirement, plan a Simulink model, build it, verify it, and report results: When vehicle speed is at least 10 km/h and the driver door is open, assert a warning output; otherwise clear it."
+        ]
+    },
+    "tools": [
+        {
+            "name": "automotive_mbd_lead",
+            "function": {
+                "description": "Coordinates the automotive requirements-to-model workflow and synthesizes the final engineering report."
+            },
+            "instructions": """
+You are the Automotive Model-Based Development (MBD) Lead. Never return an empty response.
+CRITICAL: Call only ONE tool at a time and wait for its result before calling the next tool. Never call multiple tools in parallel.
+
+Determine whether the user's message is TURN 1 (a new requirement) or TURN 2 (confirming/approving assumptions from Turn 1):
+
+--- IF TURN 1 (User provides a new requirement) ---
+1. Call 'requirements_analyst' with 'requirement_text' set to the user's requirement.
+2. Wait for 'requirements_analyst' to return, then STOP and reply to the user displaying:
+   - The full Requirement Contract (ID, Inputs, Outputs, Control Logic, Acceptance Criteria, and Engineering Assumptions).
+   - Ask at the end: "Please confirm if these engineering assumptions and signal definitions are acceptable so I can proceed to plan, build the Simulink subsystem architecture, and run Simulink Data Inspector (SDI) verification."
+
+--- IF TURN 2 (User says "yes", "confirm", "approved", or "proceed") ---
+Execute these steps strictly ONE BY ONE (wait for each result before invoking the next):
+1. Call 'model_planner' with 'approved_requirement_contract' from Turn 1, and wait for its result.
+2. Call 'simulink_model_builder' with 'model_name' and 'model_plan' from Step 1, and wait for its result.
+3. Call 'model_verification_agent' with 'model_name' and 'build_outcome' from Step 2, and wait for its result.
+4. Call 'engineering_reporter' with the actual outputs from Steps 1, 2, and 3, and present the final report.
+""",
+            "tools": [
+                "requirements_analyst",
+                "model_planner",
+                "simulink_model_builder",
+                "model_verification_agent",
+                "engineering_reporter"
+            ]
+        },
+        {
+            "name": "requirements_analyst",
+            "function": {
+                "description": "Analyzes an automotive requirement and returns a structured Requirement Contract.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "requirement_text": {
+                            "type": "string",
+                            "description": "Requirement text from the user."
+                        }
+                    },
+                    "required": ["requirement_text"]
+                }
+            },
+            "instructions": """
+Analyze 'requirement_text' and return a structured Requirement Contract with:
+1. Requirement ID (e.g., R-CC-001) & Title
+2. Inputs (names, types, units, e.g., v_set [double, m/s], v_veh [double, m/s], lead_detected [boolean])
+3. Outputs (names, types, units, e.g., Throttle_Cmd [double, 0-100%], Brake_Cmd [double, 0-100%], System_Mode [boolean])
+4. Control Law & Subsystem Partitioning (e.g., ACC_Controller subsystem for error tracking & actuator split; Vehicle_Plant subsystem for longitudinal dynamics)
+5. Quantitative Acceptance Criteria (e.g., sample time = 50 ms, |v_veh - v_set| <= 1.0 m/s at 30 s, rise time < 8 s, overshoot < 10%, Throttle/Brake mutual exclusion)
+6. Engineering Assumptions requiring confirmation.
+Keep your response under 280 words.
+"""
+        },
+        {
+            "name": "model_planner",
+            "function": {
+                "description": "Creates a hierarchical Simulink architecture plan (including Subsystems) and SDI verification plan.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "approved_requirement_contract": {
+                            "type": "string",
+                            "description": "Approved requirement contract."
+                        }
+                    },
+                    "required": ["approved_requirement_contract"]
+                }
+            },
+            "instructions": """
+From 'approved_requirement_contract', return a concise Simulink implementation plan:
+1. Exact Model Name (e.g., 'ACC_Basic_Speed_Hold' for R-CC-001, or 'Door_Speed_Warning' for door warning).
+2. Root-Level Architecture & Subsystems:
+   - Root Inports, Subsystems (e.g., 'ACC_Controller' subsystem and 'Vehicle_Plant' subsystem), and Root Outports.
+   - Internal blocks inside 'ACC_Controller' (Sum for speed error, Gain for Kp, Saturate 0..100 for Throttle_Cmd, Gain + Saturate 0..100 for Brake_Cmd, NOT gate on lead_detected for System_Mode).
+3. Verification Plan: Structural check ('model_check') + 30s closed-loop simulation logged to Simulink Data Inspector ('simulate_and_inspect_sdi').
+Keep your response under 280 words.
+"""
+        },
+        {
+            "name": "simulink_model_builder",
+            "function": {
+                "description": "Builds the planned Simulink model and subsystems in MATLAB via simulink_executor.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "model_name": {
+                            "type": "string",
+                            "description": "Exact Simulink model name to create (e.g., 'ACC_Basic_Speed_Hold')."
+                        },
+                        "model_plan": {
+                            "type": "string",
+                            "description": "Architecture plan from model_planner."
+                        }
+                    },
+                    "required": ["model_name", "model_plan"]
+                }
+            },
+            "instructions": """
+Call 'simulink_executor' ONCE with:
+- 'skill_topic': 'building-simulink-models'
+- 'task': "Build model '<model_name>' using model_edit according to this plan: <model_plan>"
+Return the exact tool output, created root block IDs, and subsystem block IDs.
+""",
+            "tools": ["simulink_executor"]
+        },
+        {
+            "name": "model_verification_agent",
+            "function": {
+                "description": "Verifies the built Simulink model using model_check and Simulink Data Inspector (simulate_and_inspect_sdi).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "model_name": {
+                            "type": "string",
+                            "description": "Name of the created Simulink model."
+                        },
+                        "build_outcome": {
+                            "type": "string",
+                            "description": "Build result from simulink_model_builder."
+                        }
+                    },
+                    "required": ["model_name", "build_outcome"]
+                }
+            },
+            "instructions": """
+Call 'simulink_executor' ONCE with:
+- 'task': "Verify model '<model_name>' by running model_check (scope='root', checks='[\"all\"]') and running simulate_and_inspect_sdi on '<model_name>' to generate Simulink Data Inspector plots and R-CC-001 test metrics."
+As soon as 'simulink_executor' returns, immediately return its verification diagnostics and SDI metrics to 'automotive_mbd_lead'. Never call 'simulink_executor' a second time.
+""",
+            "tools": ["simulink_executor"]
+        },
+        {
+            "name": "engineering_reporter",
+            "function": {
+                "description": "Generates the final engineering report summarizing requirement, subsystem architecture, build, and SDI verification.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "requirement_summary": {
+                            "type": "string",
+                            "description": "Requirement contract summary."
+                        },
+                        "model_plan": {
+                            "type": "string",
+                            "description": "Simulink subsystem design plan."
+                        },
+                        "build_outcome": {
+                            "type": "string",
+                            "description": "Model build outcome and block IDs."
+                        },
+                        "verification_outcome": {
+                            "type": "string",
+                            "description": "Verification results from model_check and simulate_and_inspect_sdi."
+                        }
+                    },
+                    "required": ["requirement_summary", "model_plan", "build_outcome", "verification_outcome"]
+                }
+            },
+            "instructions": """
+Write a comprehensive, executive-ready MBD Engineering Report containing:
+1. Requirement Contract & Confirmed Assumptions (R-CC-001 / REQ ID)
+2. Hierarchical Simulink Architecture & Requirement Traceability Matrix (Root + Subsystem blocks)
+3. Implementation Outcome (Model Name, Root & Subsystem Block IDs)
+4. Verification Evidence & Simulink Data Inspector (SDI) Telemetry (Steady-State Error, Rise Time, Overshoot, Mutual Exclusion, and Structural Check Status)
+5. Conclusion & Next Steps
+"""
+        },
+        {
+            "name": "simulink_executor",
+            "function": {
+                "description": "Executes Simulink MCP tools (model_edit, model_read, model_check, simulate_and_inspect_sdi).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "Simulink build or verification task with exact model name."
+                        },
+                        "skill_topic": {
+                            "type": "string",
+                            "description": "Optional skill topic such as 'building-simulink-models'."
+                        }
+                    },
+                    "required": ["task"]
+                }
+            },
+            "instructions": """
+You execute Simulink tasks using 'run_simulink_mcp'.
+
+1. When asked to BUILD the Adaptive Cruise Control model ('ACC_Basic_Speed_Hold' or R-CC-001):
+   Call 'run_simulink_mcp' with tool_name='model_edit' and tool_arguments:
+   {
+     "model": "ACC_Basic_Speed_Hold",
+     "scope": "root",
+     "layout_mode": "full",
+     "operations": [
+       {"op": "add_block", "type": "Constant", "name": "v_set_Target", "ref": "in_vset", "params": {"Value": "25"}},
+       {"op": "add_block", "type": "Constant", "name": "v_veh_Feedback", "ref": "in_vveh", "params": {"Value": "20"}},
+       {"op": "add_block", "type": "Constant", "name": "lead_detected", "ref": "in_lead", "params": {"Value": "0"}},
+       {"op": "create_subsystem", "name": "ACC_Controller", "ref": "sub_acc", "interface": {"inputs": ["v_set", "v_veh", "lead_flag"], "outputs": ["Throttle_Cmd", "Brake_Cmd", "Active_Mode"]}},
+       {"op": "add_block", "type": "Outport", "name": "Throttle_Out", "ref": "out_thr"},
+       {"op": "add_block", "type": "Outport", "name": "Brake_Out", "ref": "out_brk"},
+       {"op": "add_block", "type": "Outport", "name": "System_Mode_Out", "ref": "out_mode"},
+       {"op": "connect", "target": "#in_vset.y1 -> #sub_acc.u1"},
+       {"op": "connect", "target": "#in_vveh.y1 -> #sub_acc.u2"},
+       {"op": "connect", "target": "#in_lead.y1 -> #sub_acc.u3"},
+       {"op": "connect", "target": "#sub_acc.y1 -> #out_thr.u1"},
+       {"op": "connect", "target": "#sub_acc.y2 -> #out_brk.u1"},
+       {"op": "connect", "target": "#sub_acc.y3 -> #out_mode.u1"}
+     ],
+     "subsystems": {
+       "sub_acc": [
+         {"op": "add_block", "type": "Sum", "name": "Speed_Error", "ref": "sum_err", "params": {"Inputs": "+-"}},
+         {"op": "add_block", "type": "Gain", "name": "Kp_Throttle", "ref": "kp_thr", "params": {"Gain": "20"}},
+         {"op": "add_block", "type": "Saturate", "name": "Throttle_Sat_0_100", "ref": "sat_thr", "params": {"UpperLimit": "100", "LowerLimit": "0"}},
+         {"op": "add_block", "type": "Gain", "name": "Kp_Brake", "ref": "kp_brk", "params": {"Gain": "-25"}},
+         {"op": "add_block", "type": "Saturate", "name": "Brake_Sat_0_100", "ref": "sat_brk", "params": {"UpperLimit": "100", "LowerLimit": "0"}},
+         {"op": "add_block", "type": "Logic", "name": "No_Lead_Active", "ref": "not_lead", "params": {"Operator": "NOT"}},
+         {"op": "connect", "target": "blk_1.y1 -> #sum_err.u1"},
+         {"op": "connect", "target": "blk_2.y1 -> #sum_err.u2"},
+         {"op": "connect", "target": "#sum_err.y1 -> #kp_thr.u1"},
+         {"op": "connect", "target": "#kp_thr.y1 -> #sat_thr.u1"},
+         {"op": "connect", "target": "#sat_thr.y1 -> blk_4.u1"},
+         {"op": "connect", "target": "#sum_err.y1 -> #kp_brk.u1"},
+         {"op": "connect", "target": "#kp_brk.y1 -> #sat_brk.u1"},
+         {"op": "connect", "target": "#sat_brk.y1 -> blk_5.u1"},
+         {"op": "connect", "target": "blk_3.y1 -> #not_lead.u1"},
+         {"op": "connect", "target": "#not_lead.y1 -> blk_6.u1"}
+       ]
+     }
+   }
+
+2. When asked to BUILD a simpler model (such as 'Door_Speed_Warning'):
+   Call 'run_simulink_mcp' with tool_name='model_edit' and the appropriate root blocks and connections.
+
+3. When asked to VERIFY a model:
+   - First call 'run_simulink_mcp' with tool_name='model_check' and tool_arguments={"model": "<ExactModelName>", "scope": "root", "checks": "[\"all\"]"}.
+   - Next call 'run_simulink_mcp' with tool_name='simulate_and_inspect_sdi' and tool_arguments={"model": "<ExactModelName>"}.
+
+Return all tool outputs clearly.
+""",
+            "tools": ["load_simulink_skill", "run_simulink_mcp"],
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["last_simulink_telemetry"]
+                }
+            }
+        },
+        {
+            "name": "load_simulink_skill",
+            "class": "simulink_bridge.LoadSimulinkSkill",
+            "function": {
+                "description": "Loads official MathWorks SKILL.md instructions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "skill_topic": {
+                            "type": "string",
+                            "description": "Skill name to load, such as 'building-simulink-models'."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "run_simulink_mcp",
+            "class": "simulink_bridge.SimulinkMcpBridge",
+            "function": {
+                "description": "Calls a tool on the MATLAB/Simulink MCP server.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tool_name": {
+                            "type": "string",
+                            "description": "MCP tool name: 'model_edit', 'model_read', 'model_check', 'simulate_and_inspect_sdi', or 'evaluate_matlab_code'."
+                        },
+                        "tool_arguments": {
+                            "type": "object",
+                            "description": "Arguments dictionary for the selected MCP tool."
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
