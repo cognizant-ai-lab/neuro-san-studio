@@ -62,13 +62,13 @@ class SharedProcessCache(Generic[CachedValue]):
       could reach), construct the cache without a loader and fill it through
       aget_or_fill() instead; get() and aget() then raise on a miss.
     * fingerprint: optional cheap callable identifying the version of the
-      source the value was built from (e.g. a (path, modification_time) tuple, which can
-      also fold in a time bucket for TTL-style expiry). It is captured just
-      BEFORE the loader runs and re-checked on every read; when the current
-      fingerprint no longer matches the stored one, the entry is treated as a
-      miss and reloaded. It must be lock-free-safe and must not raise. When
-      None, the value is loaded once and lives for the life of the process.
-      stat_modification_time_ns(), stat_modification_time_ns_and_size() and
+      source the value was built from (e.g. file_fingerprint() of a config
+      file, which can also be combined with a time bucket for TTL-style
+      expiry). It is captured just BEFORE the loader runs and re-checked on
+      every read; when the current fingerprint no longer matches the stored
+      one, the entry is treated as a miss and reloaded. It must be
+      lock-free-safe and must not raise. When None, the value is loaded once
+      and lives for the life of the process. file_fingerprint() and
       time_bucket() below are the standard building blocks for composing such
       fingerprints.
 
@@ -134,39 +134,28 @@ class SharedProcessCache(Generic[CachedValue]):
         self._loads_in_flight: WeakKeyDictionary = WeakKeyDictionary()
 
     @staticmethod
-    def stat_modification_time_ns(path: str) -> int | None:
+    def file_fingerprint(path: str) -> tuple[str, tuple[int, int] | None]:
         """
-        Fingerprint building block: a file's modification time.
+        Fingerprint building block for a value read from one file: the path
+        plus the file's modification time and size.
 
-        :param path: The file to probe.
-        :return: The file's st_mtime_ns (the stat field's real name), or None
-                when it cannot be stat-ed (missing file, permission problem,
-                ...). Never raises, per the fingerprint contract — and None
-                compares like any other component value, so "file missing" is
-                itself a version that goes stale the moment the file appears.
-        """
-        try:
-            return stat(path).st_mtime_ns
-        except OSError:
-            return None
+        A changed path, an edited file and a file that appears all count as a
+        new version. The size tells two versions apart when a rewrite lands in
+        the same timestamp tick, which file systems with coarse timestamps
+        allow.
 
-    @staticmethod
-    def stat_modification_time_ns_and_size(path: str) -> tuple[int, int] | None:
-        """
-        Fingerprint building block: a file's modification time and size.
-
-        The size tells two versions of a file apart when a rewrite lands in the
-        same timestamp tick, which file systems with coarse timestamps allow.
-
-        :param path: The file to probe.
-        :return: (st_mtime_ns, st_size), or None when the file cannot be
-                stat-ed. Never raises, per the fingerprint contract.
+        :param path: The file the value is read from.
+        :return: (path, (st_mtime_ns, st_size)), or (path, None) when the file
+                cannot be stat-ed (missing file, permission problem, ...).
+                Never raises, per the fingerprint contract, and None compares
+                like any other version, so a missing file goes stale the moment
+                it appears.
         """
         try:
             file_stat: stat_result = stat(path)
         except OSError:
-            return None
-        return (file_stat.st_mtime_ns, file_stat.st_size)
+            return (path, None)
+        return (path, (file_stat.st_mtime_ns, file_stat.st_size))
 
     @staticmethod
     def time_bucket(period_seconds: float) -> int:

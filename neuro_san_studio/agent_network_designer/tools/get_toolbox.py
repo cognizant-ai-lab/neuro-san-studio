@@ -58,10 +58,10 @@ class GetToolbox(CodedTool):
         finishes in the same timestamp tick as a read of the half-written file. A
         missing file (None) is read the moment it appears.
 
-        :return: (path, (modification_time_ns, size) or None) tuple.
+        :return: (path, (modification_time_ns, size) or None) tuple, from
+                SharedProcessCache.file_fingerprint.
         """
-        toolbox_info_file: str = GetToolbox._resolve_toolbox_info_file()
-        return (toolbox_info_file, SharedProcessCache.stat_modification_time_ns_and_size(toolbox_info_file))
+        return SharedProcessCache.file_fingerprint(GetToolbox._resolve_toolbox_info_file())
 
     @staticmethod
     def _load_shared_toolbox_info() -> dict[str, str]:
