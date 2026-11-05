@@ -569,7 +569,9 @@ class TestListDirectory(TestCase):
         """Invoke _check_directory_target with allowed_paths defaulted to the temp root."""
         args = {"allowed_paths": [str(self.tmp_root)]}
         args.update(extra_args)
-        self.tool._check_directory_target(PathRules(args), path, path.name, str(path))  # pylint: disable=protected-access
+        self.tool._check_directory_target(  # pylint: disable=protected-access
+            PathRules(args), path, path.name, str(path)
+        )
 
     def test_check_directory_target_passes_for_directory(self):
         """Tests that an existing directory passes the existence check."""
@@ -611,3 +613,177 @@ class TestListDirectory(TestCase):
             self.assertIn("list_error", str(ctx.exception))
         finally:
             os.chmod(locked, 0o700)
+
+    def test_detail_false_by_default(self):
+        """Tests that detail fields are absent by default."""
+        self._make("a.txt", "content")
+        result = self._invoke({})
+        self.assertIn("target", result)
+        self.assertEqual(result["target"]["name"], self.tmp_root.name)
+        self.assertEqual(result["target"]["type"], "directory")
+        self.assertIsNone(result["target"]["size_bytes"])
+        self.assertNotIn("modified", result["target"])
+        self.assertNotIn("mode", result["target"])
+        self.assertNotIn("is_executable", result["target"])
+
+        entry = result["entries"][0]
+        self.assertEqual(entry["name"], "a.txt")
+        self.assertEqual(entry["type"], "file")
+        self.assertEqual(entry["size_bytes"], 7)
+        self.assertNotIn("modified", entry)
+        self.assertNotIn("mode", entry)
+        self.assertNotIn("is_executable", entry)
+
+    def test_detail_true_fields(self):
+        """Tests that detail=True populates modified, mode, and is_executable."""
+        self._make("file.txt", "hello")
+        sub = self.tmp_root / "subdir"
+        sub.mkdir()
+
+        result = self._invoke({"detail": True})
+        target = result["target"]
+        self.assertIn("modified", target)
+        self.assertIn("mode", target)
+        self.assertEqual(len(target["mode"]), 4)
+        self.assertFalse(target["is_executable"])
+
+        entries_by_name = {e["name"]: e for e in result["entries"]}
+        file_entry = entries_by_name["file.txt"]
+        self.assertEqual(file_entry["type"], "file")
+        self.assertIn("modified", file_entry)
+        self.assertIn("mode", file_entry)
+        self.assertEqual(len(file_entry["mode"]), 4)
+        self.assertIsInstance(file_entry["is_executable"], bool)
+
+        dir_entry = entries_by_name["subdir"]
+        self.assertEqual(dir_entry["type"], "directory")
+        self.assertIn("modified", dir_entry)
+        self.assertIn("mode", dir_entry)
+        self.assertFalse(dir_entry["is_executable"])
+
+    def test_detail_invalid_type(self):
+        """Tests that non-boolean detail argument raises invalid_input."""
+        for bad_val in ["true", 1, [], {}]:
+            with self.assertRaises(ValueError) as ctx:
+                self._invoke({"detail": bad_val})
+            self.assertIn("invalid_input", str(ctx.exception))
+
+    def test_sort_by_name_and_reverse(self):
+        """Tests alphabetical sorting by name and reverse order."""
+        self._make("c.txt")
+        self._make("a.txt")
+        self._make("b.txt")
+
+        asc_result = self._invoke({"sort_by": "name", "reverse": False})
+        self.assertEqual(self._names(asc_result), ["a.txt", "b.txt", "c.txt"])
+
+        desc_result = self._invoke({"sort_by": "name", "reverse": True})
+        self.assertEqual(self._names(desc_result), ["c.txt", "b.txt", "a.txt"])
+
+    def test_sort_by_modified_and_reverse(self):
+        """Tests sorting by modified timestamp (newest first by default) and reverse (oldest first)."""
+        p_old = self._make("old.txt")
+        p_mid1 = self._make("mid_b.txt")
+        p_mid2 = self._make("mid_a.txt")
+        p_new = self._make("new.txt")
+
+        os.utime(p_old, (1000.0, 1000.0))
+        os.utime(p_mid1, (2000.0, 2000.0))
+        os.utime(p_mid2, (2000.0, 2000.0))
+        os.utime(p_new, (3000.0, 3000.0))
+
+        # Default reverse=False: newest first, ties broken by name ascending
+        newest_result = self._invoke({"sort_by": "modified", "reverse": False})
+        self.assertEqual(self._names(newest_result), ["new.txt", "mid_a.txt", "mid_b.txt", "old.txt"])
+
+        # reverse=True: oldest first, ties broken by name ascending
+        oldest_result = self._invoke({"sort_by": "modified", "reverse": True})
+        self.assertEqual(self._names(oldest_result), ["old.txt", "mid_a.txt", "mid_b.txt", "new.txt"])
+
+    def test_sort_by_size_and_reverse(self):
+        """Tests sorting by size (largest first by default) and reverse (smallest first)."""
+        self._make("large.txt", "x" * 100)
+        self._make("medium_b.txt", "x" * 50)
+        self._make("medium_a.txt", "x" * 50)
+        self._make("small.txt", "x" * 10)
+
+        # Default reverse=False: largest first, ties broken by name ascending
+        largest_result = self._invoke({"sort_by": "size", "reverse": False})
+        self.assertEqual(
+            self._names(largest_result), ["large.txt", "medium_a.txt", "medium_b.txt", "small.txt"]
+        )
+
+        # reverse=True: smallest first, ties broken by name ascending
+        smallest_result = self._invoke({"sort_by": "size", "reverse": True})
+        self.assertEqual(
+            self._names(smallest_result), ["small.txt", "medium_a.txt", "medium_b.txt", "large.txt"]
+        )
+
+    def test_sort_by_invalid_option(self):
+        """Tests that invalid sort_by value raises invalid_input."""
+        for bad_sort in ["unknown", "date", 123, True]:
+            with self.assertRaises(ValueError) as ctx:
+                self._invoke({"sort_by": bad_sort})
+            self.assertIn("invalid_input", str(ctx.exception))
+
+    def test_reverse_invalid_type(self):
+        """Tests that non-boolean reverse argument raises invalid_input."""
+        for bad_val in ["true", 1, [], {}]:
+            with self.assertRaises(ValueError) as ctx:
+                self._invoke({"reverse": bad_val})
+            self.assertIn("invalid_input", str(ctx.exception))
+
+    def test_name_pattern_matching(self):
+        """Tests glob filtering on entry names."""
+        self._make("file1.py")
+        self._make("file2.txt")
+        self._make("test_file.py")
+        self._make("other.md")
+
+        py_result = self._invoke({"name_pattern": "*.py"})
+        self.assertEqual(self._names(py_result), ["file1.py", "test_file.py"])
+
+        test_result = self._invoke({"name_pattern": "test_*"})
+        self.assertEqual(self._names(test_result), ["test_file.py"])
+
+    def test_name_pattern_with_rules(self):
+        """Tests that denied files matching name_pattern are omitted without affecting counts."""
+        self._make("allowed.py")
+        self._make("blocked.py")
+
+        result = self._invoke(
+            {
+                "name_pattern": "*.py",
+                "blocked_paths": [str(self.tmp_root / "blocked.py")],
+            }
+        )
+        self.assertEqual(self._names(result), ["allowed.py"])
+        self.assertFalse(result["truncated"])
+        self.assertEqual(result["unreadable_entries"], 0)
+
+    def test_name_pattern_invalid_type(self):
+        """Tests that non-string or blank name_pattern raises invalid_input."""
+        for bad_pattern in ["", "   ", 123, True, []]:
+            with self.assertRaises(ValueError) as ctx:
+                self._invoke({"name_pattern": bad_pattern})
+            self.assertIn("invalid_input", str(ctx.exception))
+
+    def test_target_metadata_block(self):
+        """Tests the target object metadata block in responses."""
+        result = self._invoke({})
+        self.assertIn("target", result)
+        target = result["target"]
+        self.assertEqual(target["name"], self.tmp_root.name)
+        self.assertEqual(target["type"], "directory")
+        self.assertIsNone(target["size_bytes"])
+
+    def test_truncated_with_sort_by(self):
+        """Tests that pagination/truncation works correctly when sorting by size or modified."""
+        self._make("a_small.txt", "x")
+        self._make("b_large.txt", "x" * 100)
+        self._make("c_medium.txt", "x" * 50)
+
+        result = self._invoke({"sort_by": "size", "max_entries": 2})
+        self.assertEqual(result["total_entries"], 2)
+        self.assertTrue(result["truncated"])
+        self.assertEqual(self._names(result), ["b_large.txt", "c_medium.txt"])
