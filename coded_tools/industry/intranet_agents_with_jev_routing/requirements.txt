@@ -1,0 +1,2 @@
+# Optional dependency of registries/industry/intranet_agents_with_jev_routing.hocon (JevToolSelectorMiddleware).
+typesafe-sdk==0.7.2

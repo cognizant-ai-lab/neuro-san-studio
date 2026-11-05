@@ -1,0 +1,46 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+
+# Clear single-department question: the Jev network must take the fast path to Payroll.
+# Requires TYPESAFE_API_KEY. The sly_data assertions check the path the middleware recorded and the tools
+# the LLM was given on that path (jev_turn.llm_tools).
+{
+    "agent": "industry/intranet_agents_with_jev_routing",
+    "timeout_in_seconds": 240,
+    "success_ratio": "1/1",
+    "interactions": [
+        {
+            "text": """
+How do I check my pay stub?
+""",
+            "response": {
+                "text": {
+                    "gist": ["""
+Explains how an employee can view or access their pay stub (payslip): through the payroll system, HR portal or intranet page, possibly with a link.
+                             """]
+                },
+                "sly_data": {
+                    "jev_turn": {
+                        "path": { "value": "jev" },
+                        "department": { "value": "Payroll" },
+                        "llm_tools": { "keywords": ["Payroll", "URLProvider"], "not_keywords": ["HR"] },
+                    }
+                }
+            }
+        },
+    ]
+}
