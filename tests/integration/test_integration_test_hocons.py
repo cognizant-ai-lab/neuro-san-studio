@@ -300,6 +300,7 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "tools/cohesivity_backend/backend_resources_offered.hocon",
                 "tools/fxmacrodata/latest_us_cpi_release.hocon",
                 # List more hocon files as they become available here.
             ]
