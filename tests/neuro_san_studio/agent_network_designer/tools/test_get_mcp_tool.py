@@ -26,10 +26,13 @@ get_mcp_tool needs, so the suite still collects everywhere.
 """
 
 import asyncio
+import contextlib
 import os
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Any
+from typing import Iterator
 from unittest import TestCase
 from unittest import mock
 
@@ -42,6 +45,7 @@ pytest.importorskip("neuro_san_studio.agent_network_designer.tools.get_mcp_tool"
 # pylint: disable=wrong-import-position,protected-access
 from neuro_san_studio.agent_network_designer.common.globals import ProcessGlobals  # noqa: E402
 from neuro_san_studio.agent_network_designer.common.mcp_servers_load import McpServersLoad  # noqa: E402
+from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import BUNDLED_DESIGNER_MCP_INFO_FILE  # noqa: E402
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import BUNDLED_MCP_INFO_FILE  # noqa: E402
 from neuro_san_studio.agent_network_designer.tools.get_mcp_tool import (
     DEFAULT_MCP_TOOLS_FETCH_TIMEOUT_SECONDS,  # noqa: E402
@@ -54,6 +58,7 @@ MCP_SERVERS: list[str] = ["https://one.example/mcp", "https://two.example/mcp"]
 # A server the conversation supplies auth headers for (not file-configured).
 CLIENT_URL: str = "https://oauth.example/mcp"
 
+DESIGNER_MCP_INFO_ENV: str = "AGENT_NETWORK_DESIGNER_MCP_INFO_FILE"
 MCP_INFO_ENV: str = "MCP_SERVERS_INFO_FILE"
 TTL_ENV: str = "AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS"
 FETCH_TIMEOUT_ENV: str = "AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS"
@@ -142,6 +147,24 @@ class TestGetMcpToolConfig(TestCase):
             ):
                 self.assertEqual(GetMcpTool.get_mcp_info_file(), str(BUNDLED_MCP_INFO_FILE))
 
+    def test_the_designer_list_defaults_to_the_bundled_file(self) -> None:
+        """
+        The designer's list comes from AGENT_NETWORK_DESIGNER_MCP_INFO_FILE, or the bundled file when it is unset or
+        empty.
+        """
+        with mock.patch.dict(os.environ):
+            os.environ.pop(DESIGNER_MCP_INFO_ENV, None)
+            unset: str = GetMcpTool.get_designer_mcp_info_file()
+            os.environ[DESIGNER_MCP_INFO_ENV] = ""
+            empty: str = GetMcpTool.get_designer_mcp_info_file()
+            os.environ[DESIGNER_MCP_INFO_ENV] = "/custom/designer_mcp_info.hocon"
+            custom: str = GetMcpTool.get_designer_mcp_info_file()
+
+        self.assertEqual(unset, str(BUNDLED_DESIGNER_MCP_INFO_FILE))
+        self.assertEqual(empty, str(BUNDLED_DESIGNER_MCP_INFO_FILE))
+        self.assertEqual(custom, "/custom/designer_mcp_info.hocon")
+        self.assertTrue(BUNDLED_DESIGNER_MCP_INFO_FILE.is_file())
+
 
 class TestGetMcpServers(TestCase):
     """Publish policy for the shared MCP-servers cache."""
@@ -151,6 +174,7 @@ class TestGetMcpServers(TestCase):
         # around every test; clearing here as well keeps these tests correct
         # when run directly through unittest.
         GetMcpTool.clear_shared_mcp_servers_for_testing()
+        GetMcpTool.clear_shared_designer_mcp_servers_for_testing()
         GetMcpTool.clear_shared_mcp_tool_descriptions_for_testing()
 
     @staticmethod
@@ -181,6 +205,96 @@ class TestGetMcpServers(TestCase):
 
         self.assertEqual(before, ["https://one.example/mcp"])
         self.assertEqual(after, ["https://one.example/mcp", "https://two.example/mcp"])
+
+    def _use_designer_file(self, text: str) -> Path:
+        """
+        Write the designer's list into a temporary folder, and point AGENT_NETWORK_DESIGNER_MCP_INFO_FILE at it for
+        the rest of the test.
+
+        :param text: The HOCON text of the designer's list.
+        :return: The path of the designer's list.
+        """
+        folder: Path = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        designer_file: Path = folder / "designer_mcp_info.hocon"
+        self._write_file(designer_file, text)
+        self.enterContext(mock.patch.dict(os.environ, {DESIGNER_MCP_INFO_ENV: str(designer_file)}))
+        return designer_file
+
+    def test_the_designer_list_maps_each_server_to_its_tools(self) -> None:
+        """
+        Each server in the designer's list maps to its "tools" list, or to an empty list (all tools) without one.
+        """
+        self._use_designer_file('{"https://one.example/mcp": {}, "https://two.example/mcp": {"tools": ["search"]}}')
+
+        servers: dict[str, list[str]] = asyncio.run(GetMcpTool._shared_designer_mcp_servers_cache.aget())
+        urls: list[str] = asyncio.run(GetMcpTool.get_designer_mcp_servers())
+
+        expected: dict[str, list[str]] = {
+            "https://one.example/mcp": [],
+            "https://two.example/mcp": ["search"],
+        }
+        self.assertEqual(servers, expected)
+        self.assertEqual(urls, ["https://one.example/mcp", "https://two.example/mcp"])
+
+    def test_an_entry_without_a_valid_tools_list_shows_all_tools(self) -> None:
+        """
+        An entry that is not an object, or whose "tools" value is not a list, is logged, and the designer shows all of
+        that server's tools.
+        """
+        self._use_designer_file('{"https://one.example/mcp": {"tools": "search"}, "https://two.example/mcp": "x"}')
+
+        with self.assertLogs(level="WARNING") as captured:
+            servers: dict[str, list[str]] = asyncio.run(GetMcpTool._shared_designer_mcp_servers_cache.aget())
+
+        expected: dict[str, list[str]] = {
+            "https://one.example/mcp": [],
+            "https://two.example/mcp": [],
+        }
+        logged: str = "\n".join(captured.output)
+        self.assertEqual(servers, expected)
+        self.assertIn("https://one.example/mcp", logged)
+        self.assertIn("https://two.example/mcp", logged)
+
+    def test_an_edit_to_the_designer_list_refreshes_the_listings(self) -> None:
+        """
+        The tool-descriptions fingerprint changes when the designer's list is rewritten, even within one timestamp
+        tick.
+        """
+        designer_file: Path = self._use_designer_file(ONE_SERVER)
+        self.enterContext(mock.patch.dict(os.environ, {TTL_ENV: "100000"}))
+        before: tuple[Any, ...] = GetMcpTool._mcp_tools_fingerprint()
+
+        self._write_file(designer_file, BOTH_SERVERS)
+        after: tuple[Any, ...] = GetMcpTool._mcp_tools_fingerprint()
+
+        self.assertNotEqual(after, before)
+
+    def test_the_registry_clears_the_designer_cache(self) -> None:
+        """
+        ProcessGlobals.clear_all_for_testing empties the designer servers cache, so a list loaded in one test cannot
+        reach the next.
+        """
+        self._use_designer_file(ONE_SERVER)
+        asyncio.run(GetMcpTool.get_designer_mcp_servers())
+        filled: dict[str, list[str]] | None = GetMcpTool._shared_designer_mcp_servers_cache.peek()
+
+        ProcessGlobals.clear_all_for_testing()
+
+        self.assertEqual(filled, {"https://one.example/mcp": []})
+        self.assertIsNone(GetMcpTool._shared_designer_mcp_servers_cache.peek())
+
+    def test_a_missing_designer_list_offers_no_servers(self) -> None:
+        """
+        A designer list that does not exist offers no servers, with a warning.
+        """
+        designer_file: Path = self._use_designer_file(ONE_SERVER)
+        designer_file.unlink()
+
+        with self.assertLogs(level="WARNING"):
+            urls: list[str] = asyncio.run(GetMcpTool.get_designer_mcp_servers())
+
+        self.assertEqual(urls, [])
 
     def test_a_missing_file_publishes_an_empty_list(self):
         """No config file means no file-configured MCP servers, not an error."""
@@ -305,31 +419,129 @@ class TestGetMcpToolDescriptions(TestCase):
 
     def setUp(self):
         GetMcpTool.clear_shared_mcp_servers_for_testing()
+        GetMcpTool.clear_shared_designer_mcp_servers_for_testing()
         GetMcpTool.clear_shared_mcp_tool_descriptions_for_testing()
         self.fetch_log: list[str] = []
         self.headers_log: dict[str, dict | None] = {}
+        self.allowed_tools_log: dict[str, list[str] | None] = {}
         self.listings: dict[str, str] = {server: f"tools of {server}" for server in MCP_SERVERS}
 
     def _patched_fetches(self):
         """Stub the per-server fetch; a server absent from self.listings fails."""
         fetch_log = self.fetch_log
         headers_log = self.headers_log
+        allowed_tools_log = self.allowed_tools_log
         listings = self.listings
 
         async def fake_fetch(
-            server: str, _fetch_timeout: float | None, headers: dict | None = None
+            server: str,
+            _fetch_timeout: float | None,
+            headers: dict | None = None,
+            allowed_tools: list[str] | None = None,
         ) -> tuple[str, str | None]:
             fetch_log.append(server)
             headers_log[server] = headers
+            allowed_tools_log[server] = allowed_tools
             return server, listings.get(server)
 
         return mock.patch.object(GetMcpTool, "_fetch_tool_descriptions", new=fake_fetch)
 
-    def _patched_servers(self, servers: list[str] | None = None):
-        """Pin the servers half so these tests never read the real config file."""
-        pinned = MCP_SERVERS if servers is None else servers
-        loaded = McpServersLoad(list(pinned), True)
-        return mock.patch.object(GetMcpTool._shared_mcp_servers_cache, "get", new=mock.Mock(return_value=loaded))
+    @contextlib.contextmanager
+    def _patched_servers(
+        self, servers: dict[str, list[str]] | None = None, runtime_servers: list[str] | None = None
+    ) -> Iterator[None]:
+        """
+        Pin both server lists so these tests never read the real config files.
+
+        :param servers: The designer's servers and their "tools" lists; every MCP_SERVERS entry, with all of its
+                tools, when None.
+        :param runtime_servers: The servers mcp_info.hocon configures; the designer's servers when None.
+        :return: A context manager that keeps both lists pinned while it is open.
+        """
+        designer: dict[str, list[str]] = {}
+        if servers is None:
+            for server in MCP_SERVERS:
+                designer[server] = []
+        else:
+            designer = dict(servers)
+        runtime: list[str] = list(designer.keys()) if runtime_servers is None else list(runtime_servers)
+        designer_patch: Any = mock.patch.object(
+            GetMcpTool._shared_designer_mcp_servers_cache, "get", new=mock.Mock(return_value=designer)
+        )
+        runtime_patch: Any = mock.patch.object(
+            GetMcpTool._shared_mcp_servers_cache, "get", new=mock.Mock(return_value=McpServersLoad(runtime, True))
+        )
+        with designer_patch, runtime_patch:
+            yield
+
+    def test_each_server_is_fetched_with_its_tools_list(self) -> None:
+        """
+        The listing asks each server for the tools its entry in the designer's list names, and for all of them (an
+        empty list) when the entry names none.
+        """
+        servers: dict[str, list[str]] = {
+            MCP_SERVERS[0]: [],
+            MCP_SERVERS[1]: ["search"],
+        }
+
+        with mock.patch.dict(os.environ, {TTL_ENV: "100000"}), self._patched_servers(servers), self._patched_fetches():
+            asyncio.run(GetMcpTool.get_mcp_tool_descriptions())
+
+        self.assertEqual(self.allowed_tools_log.get(MCP_SERVERS[0]), [])
+        self.assertEqual(self.allowed_tools_log.get(MCP_SERVERS[1]), ["search"])
+
+    def test_a_server_only_mcp_info_lists_is_not_offered(self) -> None:
+        """
+        A server that mcp_info.hocon configures but the designer's list leaves out is neither listed nor fetched with
+        the client's header.
+        """
+        runtime_only: str = "https://runtime-only.example/mcp"
+        self.listings[runtime_only] = "tools of the runtime-only server"
+        tool: GetMcpTool = GetMcpTool.__new__(GetMcpTool)
+        sly_data: dict[str, Any] = {"http_headers": {runtime_only: {"Authorization": "Bearer fake"}}}
+
+        with (
+            mock.patch.dict(os.environ, {TTL_ENV: "100000"}),
+            self._patched_servers(runtime_servers=MCP_SERVERS + [runtime_only]),
+            self._patched_fetches(),
+        ):
+            rendered: str = asyncio.run(tool.async_invoke(args={}, sly_data=sly_data))
+
+        self.assertNotIn(runtime_only, self.fetch_log)
+        self.assertNotIn(runtime_only, rendered)
+        self.assertIn(MCP_SERVERS[0], rendered)
+
+    def test_a_client_server_on_the_designer_list_keeps_its_tools_list(self) -> None:
+        """
+        A server the client sends a header for is fetched with its tools list from the designer's list, or with
+        neuro-san's default (None) when the designer's list does not name it.
+        """
+        listed_client: str = "https://listed-client.example/mcp"
+        self.listings[listed_client] = "tools of the listed client server"
+        self.listings[CLIENT_URL] = f"tools of {CLIENT_URL}"
+        tool: GetMcpTool = GetMcpTool.__new__(GetMcpTool)
+        servers: dict[str, list[str]] = {
+            MCP_SERVERS[0]: [],
+            listed_client: ["search"],
+        }
+        sly_data: dict[str, Any] = {
+            "http_headers": {
+                listed_client: {"Authorization": "Bearer fake"},
+                CLIENT_URL: {"Authorization": "Bearer fake"},
+            }
+        }
+
+        with (
+            mock.patch.dict(os.environ, {TTL_ENV: "100000"}),
+            self._patched_servers(servers, runtime_servers=[MCP_SERVERS[0]]),
+            self._patched_fetches(),
+        ):
+            asyncio.run(tool.async_invoke(args={}, sly_data=sly_data))
+
+        self.assertEqual(self.headers_log.get(listed_client), {"Authorization": "Bearer fake"})
+        self.assertEqual(self.allowed_tools_log.get(listed_client), ["search"])
+        self.assertIn(CLIENT_URL, self.fetch_log)
+        self.assertIsNone(self.allowed_tools_log.get(CLIENT_URL))
 
     def test_concurrent_callers_share_one_fetch_and_warm_reads_are_free(self):
         """A cold burst fetches each server once; warm reads fetch nothing."""
@@ -390,7 +602,7 @@ class TestGetMcpToolDescriptions(TestCase):
 
     def test_no_configured_servers_publishes_empty_even_when_frozen(self):
         """An empty server list is a fact, not a failure — publish it."""
-        with mock.patch.dict(os.environ, {TTL_ENV: "0"}), self._patched_servers([]), self._patched_fetches():
+        with mock.patch.dict(os.environ, {TTL_ENV: "0"}), self._patched_servers({}), self._patched_fetches():
             self.assertEqual(asyncio.run(GetMcpTool.get_mcp_tool_descriptions()), {})
             self.assertEqual(asyncio.run(GetMcpTool.get_mcp_tool_descriptions()), {})
         self.assertEqual(self.fetch_log, [])
@@ -532,7 +744,9 @@ class TestFetchToolDescriptions(TestCase):
     def test_a_server_exceeding_the_cap_degrades_to_a_failure(self):
         """A hung server is cut off at the cap and reported as failed."""
 
-        async def never_answers(_server: str, headers: dict | None = None) -> list:  # pylint: disable=unused-argument
+        async def never_answers(  # pylint: disable=unused-argument
+            _server: str, headers: dict | None = None, allowed_tools: list[str] | None = None
+        ) -> list:
             await asyncio.sleep(10)
             return []
 
@@ -546,7 +760,7 @@ class TestFetchToolDescriptions(TestCase):
         """A tool with no description must fail this server, not the whole load."""
 
         async def returns_a_broken_tool(  # pylint: disable=unused-argument
-            _server: str, headers: dict | None = None
+            _server: str, headers: dict | None = None, allowed_tools: list[str] | None = None
         ) -> list:
             return [mock.Mock(description=None)]
 
@@ -559,7 +773,7 @@ class TestFetchToolDescriptions(TestCase):
         """A healthy server's tool descriptions flatten into one string."""
 
         async def returns_two_tools(  # pylint: disable=unused-argument
-            _server: str, headers: dict | None = None
+            _server: str, headers: dict | None = None, allowed_tools: list[str] | None = None
         ) -> list:
             return [mock.Mock(description="alpha"), mock.Mock(description="beta")]
 
@@ -572,7 +786,9 @@ class TestFetchToolDescriptions(TestCase):
         """The per-server fetch passes its headers through to get_mcp_tools."""
         seen: dict[str, dict | None] = {}
 
-        async def records_headers(server: str, headers: dict | None = None) -> list:
+        async def records_headers(  # pylint: disable=unused-argument
+            server: str, headers: dict | None = None, allowed_tools: list[str] | None = None
+        ) -> list:
             seen[server] = headers
             return [mock.Mock(description="alpha")]
 
@@ -585,6 +801,17 @@ class TestFetchToolDescriptions(TestCase):
 
         self.assertEqual(seen["https://auth.example"], {"Authorization": "Bearer tok"})
 
+    def test_the_tools_list_is_forwarded_to_the_adapter(self) -> None:
+        """
+        The per-server fetch passes its tools list through to get_mcp_tools.
+        """
+        get_mcp_tools: mock.AsyncMock = mock.AsyncMock(return_value=[mock.Mock(description="alpha")])
+
+        with self._patched_adapter(get_mcp_tools):
+            asyncio.run(GetMcpTool._fetch_tool_descriptions("https://good.example", 5.0, allowed_tools=["search"]))
+
+        get_mcp_tools.assert_awaited_once_with("https://good.example", allowed_tools=["search"], headers=None)
+
     def test_exception_group_leaves_surface_in_the_failure_log(self):
         """The drop-path warning must show the buried cause (e.g. a 401),
         not anyio's opaque 'unhandled errors in a TaskGroup' text (the leaf
@@ -594,7 +821,9 @@ class TestFetchToolDescriptions(TestCase):
             [ExceptionGroup("inner", [ValueError("401 Unauthorized for url 'https://auth.example'")]), KeyError("k")],
         )
 
-        async def raises_the_group(_server: str, headers: dict | None = None) -> list:
+        async def raises_the_group(
+            _server: str, headers: dict | None = None, allowed_tools: list[str] | None = None
+        ) -> list:
             raise nested
 
         with self._patched_adapter(raises_the_group), self.assertLogs(level="WARNING") as captured:
@@ -609,7 +838,9 @@ class TestFetchToolDescriptions(TestCase):
         """A value-bearing error (mimicking h11) must not put the token in the log."""
         token = "Bearer FAKE-SECRET-xyz\n"
 
-        async def raises_with_value(_server: str, headers: dict | None = None) -> list:
+        async def raises_with_value(
+            _server: str, headers: dict | None = None, allowed_tools: list[str] | None = None
+        ) -> list:
             # h11 renders an illegal header value as its bytes repr.
             raise ValueError(f"Illegal header value {token.encode()!r}")
 

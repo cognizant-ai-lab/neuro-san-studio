@@ -22,6 +22,9 @@
 #         }, # Optional: if the server requires authentication
 #         "tools": ["tool_1", "tool_2"]  # Optional: list of specific tools to load from this server. Load all tools if not specified.
 #     },
+#
+# The agent network designer offers the servers in agent_network_designer_mcp_info.hocon
+# (AGENT_NETWORK_DESIGNER_MCP_INFO_FILE), not the ones in this file.
 
 {
     # Wolfram Cloud MCP — connects to Wolfram's computational engine and Wolfram|Alpha
@@ -37,15 +40,15 @@
     # Free, no authentication required. Private repos require Devin's paid tier.
     # Docs: https://docs.devin.ai/work-with-devin/deepwiki-mcp
     "https://mcp.deepwiki.com/mcp": {
-        "tools": ["read_wiki_structure", "ask_question"]
+        "tools": ["read_wiki_structure", "ask_wiki_question"]
     },
 
     # You.com MCP — free tier (anonymous, no API key required).
-    # Exposes only the `you-search` tool. The full toolset (you-search, you-contents,
-    # you-research) requires the authenticated/paid tier — see the commented section below.
+    # Exposes `you-search` (web search) and `you-discover` (a search for AI agents, MCP servers and skills).
+    # you-contents and you-research require the authenticated/paid tier — see the commented section below.
     # Docs: https://docs.you.com/build-with-agents/mcp-server
     "https://api.you.com/mcp?profile=free": {
-        "tools": ["you-search"]
+        "tools": ["you-search", "you-discover"]
     },
 
     # Firecrawl MCP — web search that returns the cleaned Markdown of each result page, plus scrape and parse.
@@ -164,7 +167,7 @@
     # },
 
     # You.com MCP — paid tier (authenticated, requires API key).
-    # Adds you-contents and you-research on top of you-search (the free tier above only exposes you-search).
+    # Adds you-contents and you-research on top of you-search (the free tier above has you-search and you-discover).
     # Get an API key with $100 in free credits (no credit card required) at https://you.com/platform
     # Set the YDC_API_KEY environment variable, then uncomment this section to enable.
     # "https://api.you.com/mcp": {

@@ -20,7 +20,7 @@
 #     web_fetch's packages (aiohttp, beautifulsoup4, pypdf) ship in requirements.txt.
 #
 # Why these two tools together: the free you.com tier exposes only the `you-search`
-# tool — search result snippets, no page content (the you-contents and you-research
+# and `you-discover` search tools — result snippets, no page content (the you-contents and you-research
 # tools require the authenticated tier; see the `you_search` agent network). The
 # `web_fetch` toolbox tool fills that gap: the agent searches to FIND sources, then
 # fetches the promising URLs to actually READ them.

@@ -87,7 +87,7 @@ class TestAgentNetworkStructureValidationMiddleware(IsolatedAsyncioTestCase):
         )
         # The middleware adds to the list it gets, so each call returns a new one.
         self.mcp_servers: AsyncMock = self._start(
-            mock.patch.object(GetMcpTool, "get_mcp_servers", new=AsyncMock(side_effect=self._mcp_server_list))
+            mock.patch.object(GetMcpTool, "get_designer_mcp_servers", new=AsyncMock(side_effect=self._mcp_server_list))
         )
         self.toolbox_info: AsyncMock = self._start(
             mock.patch.object(GetToolbox, "get_toolbox_info", new=AsyncMock(return_value=TOOLBOX_INFO))
@@ -107,7 +107,7 @@ class TestAgentNetworkStructureValidationMiddleware(IsolatedAsyncioTestCase):
     @staticmethod
     def _mcp_server_list() -> list[str]:
         """
-        Answer a call to the stubbed get_mcp_servers.
+        Answer a call to the stubbed get_designer_mcp_servers.
 
         :return: A new list holding the one configured MCP server
         """

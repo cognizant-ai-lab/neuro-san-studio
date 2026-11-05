@@ -182,7 +182,8 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self._start(
             mock.patch.object(GetMcpTool, "get_mcp_servers_load", new=AsyncMock(return_value=McpServersLoad([], True)))
         )
-        self._start(mock.patch.object(GetMcpTool, "get_mcp_servers", new=AsyncMock(return_value=[])))
+        # Structure validation adds to the list it gets, so each call returns a new one.
+        self._start(mock.patch.object(GetMcpTool, "get_designer_mcp_servers", new=AsyncMock(side_effect=list)))
         self._start(mock.patch.object(GetToolbox, "get_toolbox_info", new=AsyncMock(return_value={})))
 
     def _start(self, patcher: Any) -> None:

@@ -1,0 +1,49 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# MCP servers the agent network designer offers when it designs a network. Set
+# AGENT_NETWORK_DESIGNER_MCP_INFO_FILE to use another list.
+#
+# An optional "tools" list limits which of a server's tools the designer shows; without one it shows them all.
+# Saved networks keep only the server URL, so they run with the tools that mcp_info.hocon lists for it. Show no
+# tool here that mcp_info.hocon leaves out.
+# This file holds no keys. Leave out servers that need the client's key: the designer offers them whenever the
+# client sends a key, and a listed one would also be tried without a key, which fails and is logged.
+#
+# Add only servers that need no API key, because this list also serves the multi-user Docker image. No two servers
+# here do the same job. Firecrawl is left out because You.com covers web search and the toolbox's web_fetch reads
+# pages.
+
+{
+    # Wolfram Cloud: symbolic math, scientific computation and curated facts.
+    "https://agenttools.wolfram.com/mcp": {},
+
+    # DeepWiki: questions about public GitHub repositories.
+    "https://mcp.deepwiki.com/mcp": {
+        "tools": ["read_wiki_structure", "ask_wiki_question"]
+    },
+
+    # You.com free tier: web search, and a search for AI agents, MCP servers and skills.
+    "https://api.you.com/mcp?profile=free": {},
+
+    # World Clock Pro: current time, time zone conversion and daylight saving time.
+    "https://worldclock.pro/mcp": {},
+
+    # FXMacroData keyless tier: US macroeconomic data and release calendars. Its other tools need an API key.
+    "https://mcp.fxmacrodata.com": {
+        "tools": ["latest_announcements", "indicator_query", "release_calendar", "press_releases", "market_sessions"]
+    }
+}
