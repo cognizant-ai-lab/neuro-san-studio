@@ -31,6 +31,16 @@
       - [Using llmman](#using-llmman)
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
+    - [vLLM](#vllm)
+    - [OpenRouter](#openrouter)
+    - [LiteLLM](#litellm)
+      - [LiteLLM Proxy](#litellm-proxy)
+      - [LiteLLM Python SDK](#litellm-python-sdk)
+    - [Otari](#otari)
+      - [Otari with the `openai` class](#otari-with-the-openai-class)
+      - [Otari with `ChatOtari`](#otari-with-chatotari)
+      - [Otari with the `anthropic` class](#otari-with-the-anthropic-class)
+      - [Otari with local models](#otari-with-local-models)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -826,6 +836,297 @@ in the `llm_config` section of an agent network hocon file:
 ```
 
 Here you can get a Mistral API [key](https://admin.mistral.ai/).
+
+### vLLM
+
+[vLLM](https://docs.vllm.ai/en/latest/) is a high-throughput, memory-efficient open-source inference and serving engine
+for Large Language Models (LLMs). Developed initially by researchers at UC Berkeley, it is designed to drastically
+improve the speed and reduce the memory overhead of running LLMs in production environments.
+
+vLLM provides an OpenAI-compatible API that Neuro-SAN can use as an LLM provider. Start vLLM separately from the Neuro-SAN
+server, and make sure its API address is reachable from the machine or container running Neuro-SAN. We can leverage the
+`openai` class to call the vLLM endpoint.
+
+#### 1. Start vLLM
+
+Please check the vLLM's docs for installing vLLM and install it for your particular environment. You can install VLLM
+by following the instructions [here](https://docs.vllm.ai/en/stable/getting_started/installation/).
+Once installed, you can serve the model like so:
+
+```bash
+vllm serve Qwen/Qwen3.8-27B \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --language-model-only \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_xml \
+  --default-chat-template-kwargs '{"enable_thinking": false}'
+```
+
+In the above launch command, the `--language-model-only` option disables multimodal inputs, even if the model supports
+them. This is appropriate here because typical agent networks do not require multimodal inputs.
+
+Neuro-SAN needs `--enable-auto-tool-choice` for the agent network to function.
+Automatic tool selection lets the model choose when to call tools. This also needs a matching parser. The parser must
+match the model and its expected tool-call format. For example, use `qwen3_xml` for Qwen and `openai` for GPT-OSS.
+
+For models that support a thinking toggle, `enable_thinking: false` disables thinking by default. Else, the agent network
+maybe slower to respond. The above launch parameters may vary according to your model, please modify them as required.
+
+Once the model loads, you can check that vLLM is responding with:
+
+```bash
+curl http://127.0.0.1:8000/v1/models
+```
+
+#### Configure Neuro-SAN
+
+Set the agent’s [llm_config.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/config/llm_config.hocon)
+to use the vLLM endpoint. The model_name should match the model served by vLLM:
+
+```hocon
+"llm_config": {
+    "class": "openai",
+    "model_name": "Qwen/Qwen3.8-27B",
+    "openai_api_base": "http://127.0.0.1:8000/v1",
+    "openai_api_key": "not-needed",
+    "use_responses_api": false
+}
+```
+
+The address `127.0.0.1` works when vLLM and Neuro-SAN run on the same host. If they run in separate containers or on different
+machines, use an address reachable from the Neuro-SAN server instead.
+
+Once vLLM is ready, start or restart Neuro-SAN to load the configuration, then test the agent in Neuro-SAN Studio.
+
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai/) provides access to models from multiple providers through one API. Neuro-SAN uses
+LangChain's OpenRouter integration, which is an optional dependency. Install it in the same Python environment that
+runs the Neuro-SAN server:
+
+```bash
+pip install -U langchain-openrouter
+```
+
+Create an API key in [OpenRouter](https://openrouter.ai/settings/keys), then set it in the server environment or in
+your `.env` file. Do not put the key in HOCON:
+
+```bash
+export OPENROUTER_API_KEY="your-api-key"
+```
+
+Choose a model from the [OpenRouter model catalog](https://openrouter.ai/models). Set `class` to `openrouter` and
+`model_name` to the model's ID, typically in `provider/model` format:
+
+```hocon
+"llm_config": {
+    "class": "openrouter",
+    "model_name": "inclusionai/ling-3.1-flash",
+}
+```
+
+> Neuro-SAN may not have pricing information for every OpenRouter model. If it is unavailable, you may see this
+> message. Model use is unaffected, but cost reporting may be incomplete:
+> `No price info found for model inclusionai/ling-3.1-flash in llm info.`
+
+OpenRouter also provides the `openrouter/free` model ID, which routes requests to an available
+free model. The selected model can vary, so response quality, latency, and tool-calling support
+may differ between requests. Since Neuro-SAN agents rely on tool calls, check that the model
+you choose supports them and is currently available in the catalog. The neuro-san repo has
+explicit support for OpenRouter. An example agent network with openrouter can be found
+[here](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/registries/music_nerd_pro_llm_openrouter.hocon).
+
+For integration details and supported configuration options, see the
+[LangChain OpenRouter documentation](https://docs.langchain.com/oss/python/integrations/chat/openrouter).
+
+### LiteLLM
+
+[LiteLLM](https://github.com/BerriAI/litellm) gives one OpenAI-style API for more than 100 LLM providers. Neuro-SAN can
+use it in two ways:
+
+- **LiteLLM Proxy**: a gateway server you run yourself. It holds the provider keys and adds virtual keys, budgets and
+  spend tracking. Neuro-SAN reaches it through the `openai` class.
+- **LiteLLM Python SDK**: `ChatLiteLLM` runs inside the Neuro-SAN server and calls each provider directly with that
+  provider's own key. There is no gateway and no LiteLLM key.
+
+#### LiteLLM Proxy
+
+Start the proxy as described in the [LiteLLM Proxy documentation](https://docs.litellm.ai/docs/simple_proxy). Each
+entry in its [config file](https://docs.litellm.ai/docs/proxy/configs) maps a name you choose to a provider model:
+
+```yaml
+model_list:
+  - model_name: team-claude
+    litellm_params:
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+```
+
+Then point the `openai` class at the proxy and give it a LiteLLM key:
+
+```hocon
+"llm_config": {
+    "class": "openai",
+    "model_name": "team-claude",
+    "openai_api_base": "http://localhost:4000/v1",
+    "openai_api_key": ${LITELLM_API_KEY}
+}
+```
+
+- `model_name` is a `model_name` from the proxy's `model_list`. Do not reuse a model name or alias from the
+  [default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon):
+  Neuro-SAN replaces those with the provider's model ID before it sends the request. For example, a proxy entry named
+  `claude-haiku` receives `claude-haiku-5-5` and rejects it.
+- `openai_api_key` holds a LiteLLM [virtual key](https://docs.litellm.ai/docs/proxy/virtual_keys) or the master key,
+  not an OpenAI key. Use the required `${LITELLM_API_KEY}` form: if `openai_api_key` is unset, the `openai` class sends
+  `OPENAI_API_KEY` to the proxy instead.
+- Requests go to the proxy's Responses API by default. To use Chat Completions with a non-OpenAI model, set both
+  `"use_responses_api": false` and `"store": null`. Otherwise the proxy rejects the `store` field that Neuro-SAN sends
+  by default.
+- Neuro-SAN has no prices for proxy model names. It logs `No price info found for model team-claude in llm info.` and
+  reports a token cost of 0. The proxy tracks the real spend.
+
+The proxy can also serve local models, for example from [Ollama](#ollama). Add an entry under `model_list` with
+LiteLLM's `ollama_chat` provider and the Ollama address, then use its `model_name` as above:
+
+```yaml
+  - model_name: local-gemma
+    litellm_params:
+      model: ollama_chat/gemma4:e4b
+      api_base: http://localhost:11434
+```
+
+#### LiteLLM Python SDK
+
+Install LangChain's LiteLLM integration in the same Python environment that runs the Neuro-SAN server:
+
+```bash
+pip install "langchain-litellm==0.11.1" "litellm==1.102.4"
+```
+
+These versions are pinned because Neuro-SAN 0.7.12 requires MCP below 2.0. `langchain-litellm` 0.11.2 cannot be
+installed next to it, and with `litellm` 1.103.0 or later every call fails with
+`ImportError: cannot import name 'CacheableResult' from 'mcp.types'`. `litellm` 1.102.4 is affected by
+[GHSA-w4c7-34wj-hqm8](https://github.com/BerriAI/litellm/security/advisories/GHSA-w4c7-34wj-hqm8), which is in the
+LiteLLM Proxy, not the SDK. If you also run a proxy, install a patched version of it separately.
+
+```hocon
+"llm_config": {
+    "class": "langchain_litellm.ChatLiteLLM",
+    "model_name": "anthropic/claude-haiku-4-5"
+}
+```
+
+`model_name` uses LiteLLM's `provider/model` form; see its
+[supported providers](https://docs.litellm.ai/docs/providers). Set the provider's own key in the server environment,
+here `ANTHROPIC_API_KEY`. Neuro-SAN passes the `llm_config` keys straight to `ChatLiteLLM`, so the defaults of its
+built-in classes do not apply. For a local Ollama model, set `"model_name": "ollama_chat/gemma4:e4b"` and
+`"api_base": "http://localhost:11434"`; no key is needed. For other options, see the
+[LangChain LiteLLM documentation](https://docs.langchain.com/oss/python/integrations/chat/litellm).
+
+### Otari
+
+[Otari](https://github.com/mozilla-ai/otari) is an open-source LLM gateway from Mozilla.ai. It serves OpenAI- and
+Anthropic-style APIs for more than 40 providers and adds API keys, budgets and usage tracking. Use the hosted service
+at [otari.ai](https://otari.ai), or run it yourself with the
+[self-hosted quickstart](https://github.com/mozilla-ai/otari/blob/main/docs/self-hosted-quickstart.md).
+
+Otari takes a model as `provider:model`, such as `anthropic:claude-haiku-4-5` on a gateway that has an Anthropic key,
+or as a catalog ID `vendor/model`, such as `z-ai/glm-4.7-flash`, for which it picks the provider itself; see
+[Model format](https://github.com/mozilla-ai/otari/blob/main/docs/models.md#model-format). The hosted service and a
+self-hosted gateway serve different models, so check the list on your gateway's Models page. The examples below use
+`z-ai/glm-4.7-flash`, which the hosted service serves.
+
+Requests use an Otari API key: hosted keys start with `otk_` and self-hosted keys with `tk-`. Set it in the server
+environment or your `.env` file as `OTARI_API_KEY`.
+
+The base URL depends on the class:
+
+| Otari       | `openai` class and `ChatOtari` | `anthropic` class           |
+|:------------|:-------------------------------|:----------------------------|
+| Hosted      | `https://api.otari.ai/api/v1`  | `https://api.otari.ai/api`  |
+| Self-hosted | `http://localhost:8000/api/v1` | `http://localhost:8000/api` |
+
+#### Otari with the `openai` class
+
+```hocon
+"llm_config": {
+    "class": "openai",
+    "model_name": "z-ai/glm-4.7-flash",
+    "openai_api_base": "https://api.otari.ai/api/v1",
+    "openai_api_key": ${OTARI_API_KEY}
+}
+```
+
+Otari serves both the Responses API, which is the default, and Chat Completions (`"use_responses_api": false`) for
+every provider. Use the required `${OTARI_API_KEY}` form: if `openai_api_key` is unset, the `openai` class sends
+`OPENAI_API_KEY` to Otari instead.
+
+#### Otari with `ChatOtari`
+
+[langchain-otari](https://pypi.org/project/langchain-otari/) provides `ChatOtari`, a `ChatOpenAI` that reads
+`OTARI_API_KEY` and `OTARI_BASE_URL` from the environment. Install it in the Neuro-SAN server's environment:
+
+```bash
+pip install "langchain-otari==0.1.0"
+```
+
+```hocon
+"llm_config": {
+    "class": "langchain_otari.ChatOtari",
+    "model_name": "z-ai/glm-4.7-flash"
+}
+```
+
+Without `OTARI_BASE_URL` it calls the hosted service. For a self-hosted gateway, set
+`OTARI_BASE_URL=http://localhost:8000/api/v1`. It refuses to start without `OTARI_API_KEY` rather than send
+`OPENAI_API_KEY`. Neuro-SAN passes the `llm_config` keys straight to `ChatOtari`, so the `openai` class defaults do not
+apply: LangChain picks the endpoint, which is Chat Completions for most models. See
+[Use with LangChain](https://github.com/mozilla-ai/otari/blob/main/docs/use-with-langchain.md) for more.
+
+#### Otari with the `anthropic` class
+
+```hocon
+"llm_config": {
+    "class": "anthropic",
+    "model_name": "z-ai/glm-4.7-flash",
+    "anthropic_api_url": "https://api.otari.ai/api",
+    "anthropic_api_key": ${OTARI_API_KEY}
+}
+```
+
+This sends Anthropic Messages requests to Otari. Leave `/v1` off `anthropic_api_url`, because the Anthropic client adds
+`/v1/messages` itself. Use the required `${OTARI_API_KEY}` form: if `anthropic_api_key` is unset, the `anthropic` class
+sends `ANTHROPIC_API_KEY` to Otari instead.
+
+#### Otari with local models
+
+A self-hosted Otari can also serve local models, for example from [Ollama](#ollama). Add Ollama to Otari's
+`config.yml` with a model list and a zero price:
+
+```yaml
+providers:
+  ollama:
+    api_base: "http://host.docker.internal:11434"
+    models: [gemma4:e4b]
+pricing:
+  "ollama:gemma4:e4b":
+    input_price_per_million: 0
+    output_price_per_million: 0
+```
+
+Then set `"model_name": "ollama:gemma4:e4b"` in any of the three `llm_config` blocks above, with the self-hosted base
+URL.
+
+- By default, Otari refuses a model that has no price, so give each local model one, even zero.
+- Keep the `models` list. Without it, Otari moves the entry to a hosted provider at startup and no longer reads its
+  price from `config.yml`.
+- `host.docker.internal` lets the Otari container reach Ollama on the host machine.
+
+If you only need local models, Neuro-SAN's own [`ollama` class](#ollama) works without a gateway.
 
 ### Configuring Default Models with Environment Variables
 
@@ -2091,6 +2392,10 @@ Please select the execution option that best aligns with the level of validation
     ```
 
 ## Improving agent networks
+
+Use [Agent Network Consultant](examples/agent_network_consultant.md) to generate and run fixtures, diagnose failures,
+and apply targeted repairs from the `ns consultant` command. Its guide covers nsflow integration and every output
+location.
 
 <!-- pyml disable line-length -->
 

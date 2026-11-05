@@ -37,9 +37,8 @@ class LocalImportWalker:
 
     Following imports statically — rather than copying each entry point's whole containing
     package — keeps the closure precise in both directions. Whole-package copying is too coarse
-    (``coded_tools/basic/`` holds tools for a dozen unrelated networks) and too narrow (the
-    designer's helpers cross packages: ``coded_tools/agent_network_test_generator/*.py`` all
-    import ``coded_tools.agent_network_editor.and_logger``).
+    (``coded_tools/basic/`` holds tools for a dozen unrelated networks) and too narrow (a tool's
+    helpers can live in another package, or under the other root).
     """
 
     def __init__(self, roots: Dict[str, str]):
@@ -67,7 +66,7 @@ class LocalImportWalker:
 
         :param relative_paths: Root-prefixed paths as produced by
             ``DependencyAnalyzer.resolve_coded_tool_path``, e.g.
-            ``"coded_tools/agent_network_editor/add_agent.py"``. Directory entries (a coded
+            ``"coded_tools/basic/accountant.py"``. Directory entries (a coded
             tool referenced as a package) are kept as-is and scanned for imports.
         :return: The same path shape, input order first and discovered modules appended,
             de-duplicated. Breadth-first so a network's own entry points stay ahead of their

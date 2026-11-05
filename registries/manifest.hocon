@@ -67,6 +67,9 @@
     #
     "agent_network_test_generator.hocon": true,
 
+    # Installed for direct `ns consultant` sessions, but disabled in the server manifest by default.
+    "agent_network_consultant.hocon": false,
+
     # This agent network performs the following actions:
     # 1. Calls "agent_network_designer" as an external agent to generate a .hocon configuration file.
     # 2. Uses the "agent_network_html_generator" tool (from the toolbox) to create an HTML visualization of the network.

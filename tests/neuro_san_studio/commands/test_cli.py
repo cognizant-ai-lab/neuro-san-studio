@@ -16,13 +16,22 @@
 
 """Tests for the Typer CLI dispatcher and `main()` entry point."""
 
+import json
 import os
+import subprocess
 import sys
+from functools import partial
 from pathlib import Path
+from typing import Any
+from unittest.mock import Mock
 
 import pytest
+from click import unstyle
 from pytest import MonkeyPatch
+from typer.testing import CliRunner
 
+from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
+from neuro_san_studio.agent_network_consultant.network_test_environment import NetworkTestEnvironment
 from neuro_san_studio.commands import cli as cli_module
 from neuro_san_studio.commands import import_networks as import_networks_module
 from neuro_san_studio.commands import init as init_module
@@ -63,6 +72,23 @@ class TestMainEntryPoint:
 
         monkeypatch.setattr(cli_module, "NeuroSanRunner", FakeRunner)
         return call_order
+
+    @staticmethod
+    def _capture_consultant_payload(
+        payloads: list[dict[str, Any]],
+        command: list[str],
+        **_kwargs: Any,
+    ) -> subprocess.CompletedProcess[bytes]:
+        """
+        Capture the private worker payload while its temporary file still exists.
+
+        :param payloads: The deserialized payloads captured by the test.
+        :param command: The Consultant worker command.
+        :param _kwargs: The subprocess keyword arguments accepted by the patched boundary.
+        :return: A successful completed-process result.
+        """
+        payloads.append(json.loads(Path(command[-1]).read_text(encoding="utf-8")))
+        return subprocess.CompletedProcess(args=command, returncode=0)
 
     def test_main_with_no_args_shows_help(self, monkeypatch: MonkeyPatch) -> None:
         """Bare `neuro-san-studio` should show help and exit cleanly without starting the server."""
@@ -224,6 +250,197 @@ class TestMainEntryPoint:
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 1
+
+    def test_main_with_consultant_forwards_typed_options(self, monkeypatch: MonkeyPatch) -> None:
+        """The Consultant command should pass every typed option to an isolated worker process."""
+        child_environment = {"CHILD_ENVIRONMENT": "configured"}
+        create = Mock(return_value=child_environment)
+        owned_thinking_directory = Mock(return_value="/tmp/consultant-thinking")
+        cleanup = Mock()
+        payloads: list[dict[str, Any]] = []
+        run = Mock(side_effect=partial(self._capture_consultant_payload, payloads))
+        monkeypatch.setattr(NetworkTestEnvironment, "create", create)
+        monkeypatch.setattr(NetworkTestEnvironment, "owned_thinking_directory", owned_thinking_directory)
+        monkeypatch.setattr(NetworkTestEnvironment, "cleanup_owned_thinking_directory", cleanup)
+        monkeypatch.setattr(cli_module.subprocess, "run", run)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "neuro-san-studio",
+                "consultant",
+                "--hocon-file",
+                "basic/example.hocon",
+                "--direction",
+                "Preserve behavior",
+                "--test-level",
+                "max",
+                "--test-guidance",
+                "routing",
+                "--force-generate",
+                "--ungrounded",
+                "continue",
+                "--only-fixtures",
+                "first.hocon",
+                "second.hocon",
+                "--max-iterations",
+                "4",
+                "--success-ratio",
+                "2/3",
+            ],
+        )
+
+        main()
+
+        create.assert_called_once_with()
+        run.assert_called_once()
+        cleanup.assert_called_once_with("/tmp/consultant-thinking")
+        command = run.call_args.args[0]
+        payload = payloads[0]
+        received_options = ConsultantOptions(**payload.get("options", {}))
+        assert command[:3] == [
+            sys.executable,
+            "-m",
+            "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator",
+        ]
+        assert command[-1].endswith(".json")
+        assert "Preserve behavior" not in command[-1]
+        assert run.call_args.kwargs == {"env": child_environment, "check": False}
+        assert payload.get("owned_thinking_directory") == "/tmp/consultant-thinking"
+        assert received_options == ConsultantOptions(
+            hocon_file="basic/example.hocon",
+            direction="Preserve behavior",
+            test_level="max",
+            test_guidance="routing",
+            force_generate=True,
+            ungrounded="continue",
+            only_fixtures=["first.hocon", "second.hocon"],
+            max_iterations=4,
+            success_ratio="2/3",
+        )
+
+    def test_consultant_rejects_invalid_options_before_creating_environment(
+        self,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        """Translate Consultant option validation failures without creating child-process state."""
+        create = Mock()
+        monkeypatch.setattr(NetworkTestEnvironment, "create", create)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "consultant"])
+
+        result = CliRunner().invoke(cli_module.NeuroSanStudioCli.app, ["consultant"])
+
+        create.assert_not_called()
+        assert result.exit_code == 2
+        assert "--use-case" in unstyle(result.stderr)
+
+    def test_main_with_consultant_rejects_unscoped_extra_arguments(
+        self,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        """Reject extra fixture names unless they follow the explicit fixture-selection option."""
+        run_consultant = Mock()
+        monkeypatch.setattr(cli_module.NeuroSanStudioCli, "_run_consultant", run_consultant)
+        result = CliRunner().invoke(
+            cli_module.NeuroSanStudioCli.app,
+            ["consultant", "--hocon-file", "basic/example.hocon", "first.hocon"],
+        )
+
+        run_consultant.assert_not_called()
+        assert result.exit_code == 2
+        assert "Unexpected argument" in result.stderr
+
+    def test_consultant_rejects_a_noninteger_iteration_limit_through_real_parser(self) -> None:
+        """Exercise Typer's actual Consultant option parser without replacing any command boundary."""
+        result = CliRunner().invoke(
+            cli_module.NeuroSanStudioCli.app,
+            [
+                "consultant",
+                "--hocon-file",
+                "basic/example.hocon",
+                "--max-iterations",
+                "not-an-integer",
+            ],
+        )
+
+        assert result.exit_code == 2
+        assert "not-an-integer" in result.stderr
+
+    def test_consultant_cleans_owned_thinking_directory_when_worker_start_fails(
+        self,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        """Remove temporary thinking data if the Consultant worker process cannot start."""
+        thinking_directory = "/tmp/consultant-thinking"
+        cleanup = Mock()
+        monkeypatch.setattr(NetworkTestEnvironment, "create", Mock(return_value={"CHILD": "environment"}))
+        monkeypatch.setattr(
+            NetworkTestEnvironment,
+            "owned_thinking_directory",
+            Mock(return_value=thinking_directory),
+        )
+        monkeypatch.setattr(NetworkTestEnvironment, "cleanup_owned_thinking_directory", cleanup)
+        monkeypatch.setattr(cli_module.subprocess, "run", Mock(side_effect=OSError("worker start failed")))
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["neuro-san-studio", "consultant", "--hocon-file", "basic/example.hocon"],
+        )
+
+        with pytest.raises(OSError, match="worker start failed"):
+            main()
+
+        cleanup.assert_called_once_with(thinking_directory)
+
+    def test_consultant_propagates_worker_exit_code(self, monkeypatch: MonkeyPatch) -> None:
+        """Return a non-zero Consultant worker status to the invoking shell."""
+        monkeypatch.setattr(NetworkTestEnvironment, "create", Mock(return_value={"CHILD": "environment"}))
+        monkeypatch.setattr(
+            NetworkTestEnvironment,
+            "owned_thinking_directory",
+            Mock(return_value="/tmp/consultant-thinking"),
+        )
+        monkeypatch.setattr(NetworkTestEnvironment, "cleanup_owned_thinking_directory", Mock())
+        monkeypatch.setattr(
+            cli_module.subprocess,
+            "run",
+            Mock(return_value=subprocess.CompletedProcess(args=[], returncode=7)),
+        )
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["neuro-san-studio", "consultant", "--hocon-file", "basic/example.hocon"],
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 7
+
+    def test_consultant_normalizes_worker_signal_exit_code(self, monkeypatch: MonkeyPatch) -> None:
+        """Translate a POSIX worker signal status into its conventional shell exit code."""
+        monkeypatch.setattr(NetworkTestEnvironment, "create", Mock(return_value={"CHILD": "environment"}))
+        monkeypatch.setattr(
+            NetworkTestEnvironment,
+            "owned_thinking_directory",
+            Mock(return_value="/tmp/consultant-thinking"),
+        )
+        monkeypatch.setattr(NetworkTestEnvironment, "cleanup_owned_thinking_directory", Mock())
+        monkeypatch.setattr(
+            cli_module.subprocess,
+            "run",
+            Mock(return_value=subprocess.CompletedProcess(args=[], returncode=-15)),
+        )
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["neuro-san-studio", "consultant", "--hocon-file", "basic/example.hocon"],
+        )
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 143
 
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""
