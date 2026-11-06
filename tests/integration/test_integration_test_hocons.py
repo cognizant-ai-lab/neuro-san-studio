@@ -27,7 +27,9 @@ import pytest
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from parameterized import parameterized
 
+from coded_tools.basic.coffee_finder_advanced.order_api import OrderAPI
 from tests.utils.fail_fast_param_mixin import FailFastParamMixin
+from tests.utils.memory_test_fixture import MemoryTestFixture
 
 
 class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
@@ -106,14 +108,23 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
     @parameterized.expand(
         DynamicHoconUnitTests.from_hocon_list(
             [
-                # These can be in any order.
-                # Ideally more basic functionality will come first.
-                # Barring that, try to stick to alphabetical order.
-                "basic/coffee_finder_advanced/coffee_what_time_sly_data_1am.hocon",
-                "basic/coffee_finder_advanced/coffee_where_sly_data_1am.hocon",
-                "basic/coffee_finder_advanced/coffee_where_sly_data_6am.hocon",
-                "basic/coffee_finder_advanced/coffee_where_sly_data_8am.hocon",
-                # List more hocon files as they become available here.
+                # Memory-irrelevant smoke tests (no sidecars).
+                "basic/coffee_finder_advanced/time_query_1am.hocon",
+                "basic/coffee_finder_advanced/where_open_at_1am.hocon",
+                "basic/coffee_finder_advanced/where_open_at_6am.hocon",
+                "basic/coffee_finder_advanced/where_open_at_8am.hocon",
+                # Memory-sensitive cases (each owns its initial / expected sidecars).
+                "basic/coffee_finder_advanced/reorder_without_memory.hocon",
+                "basic/coffee_finder_advanced/order_saves_preference.hocon",
+                "basic/coffee_finder_advanced/reorder_from_memory.hocon",
+                "basic/coffee_finder_advanced/reorder_with_shop_override.hocon",
+                "basic/coffee_finder_advanced/reorder_partial_name_rejected.hocon",
+                "basic/coffee_finder_advanced/reorder_usual_by_time_of_day.hocon",
+                "basic/coffee_finder_advanced/forget_user_preferences.hocon",
+                "basic/coffee_finder_advanced/update_existing_preference.hocon",
+                "basic/coffee_finder_advanced/list_stored_memory.hocon",
+                "basic/coffee_finder_advanced/memory_summarization_triggered.hocon",
+                "basic/coffee_finder_advanced/order_id_increments_per_shop.hocon",
             ]
         ),
         skip_on_empty=True,
@@ -130,39 +141,23 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
         :param test_name: The name of a single test.
         :param test_hocon: The hocon file of a single data-driven test case.
         """
-        # Call the guts of the dynamic test driver.
-        # This will expand the test_hocon file name from the expanded list to
-        # include the file basis implied by the __file__ and path_to_basis above.
-        self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
-
-    # ------------------------------------------------------------
-    # FAIL-FAST GROUP KEY (base test method name)
-    # ------------------------------------------------------------
-    @parameterized.expand(
-        DynamicHoconUnitTests.from_hocon_list(
-            [
-                # These can be in any order.
-                # Ideally more basic functionality will come first.
-                # Barring that, try to stick to alphabetical order.
-                "basic/coffee_finder_advanced/coffee_continue_0_order_sly_data_1am_negative_test.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_1_order_sly_data_1am.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_2_reorder_sly_data_1am.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_3_reorder_sly_data_8am_new_location.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_4_reorder_sly_data_8am_from_last_order.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_5_reorder_sly_data_8am_from_1st_order.hocon",
-                "basic/coffee_finder_advanced/"
-                "coffee_continue_reorder_sly_data_8am_negative_test_multi_orders_exist.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_1am_negative_test_partial_name.hocon",
-                # List more hocon files as they become available here.
-            ]
-        ),
-        skip_on_empty=True,
-    )
-    @pytest.mark.integration
-    @pytest.mark.integration_basic
-    @pytest.mark.integration_basic_coffee_finder_advanced_e2e
-    def test_hocon_industry_coffee_finder_advanced_e2e(self, test_name: str, test_hocon: str):
-        self.run_hocon_group_fail_fast_case(test_name, test_hocon)
+        # Reset per-shop order-id counters so ids don't accumulate across cases.
+        OrderAPI.reset_order_ids()
+        try:
+            test_hocon_path: str = self.DYNAMIC.fixture_basis.get_file_in_basis(test_hocon)
+            # Seeds memory from <hocon>.initial_memory.json on enter, clears it on exit.
+            fixture: MemoryTestFixture = MemoryTestFixture(
+                agent_network="CoffeeFinder",
+                agent_name="UserPreferences",
+                test_hocon_path=test_hocon_path,
+            )
+            with fixture:
+                self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+                # Asserts live memory matches <hocon>.expected_memory.json if present.
+                fixture.assert_matches_expected(self)
+        finally:
+            # Reset again in case the test failed mid-run.
+            OrderAPI.reset_order_ids()
 
     @parameterized.expand(
         DynamicHoconUnitTests.from_hocon_list(

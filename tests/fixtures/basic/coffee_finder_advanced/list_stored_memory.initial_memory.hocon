@@ -1,0 +1,7 @@
+# Initial memory seed: pre-populates the persistent-memory file before the test runs.
+# Format: { "<topic>": "<newline-separated facts>" }
+{
+  "pixel_smith": "Ordered black coffee from Joe's Gas Station at 1 am.\nOrdered black coffee from Joe's Gas Station at 2 am.\nOrdered black coffee from Joe's Gas Station at 3 am.",
+  "mike": "Ordered cappuccino from Henry's Fast Food at 7 am.\nOrdered cappuccino from Henry's Fast Food at 8 am.",
+  "john": "Asked for green tea; declined coffee.\nAsked for green tea; declined coffee."
+}
