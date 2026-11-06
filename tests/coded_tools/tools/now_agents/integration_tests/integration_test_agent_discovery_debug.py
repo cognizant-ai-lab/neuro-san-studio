@@ -21,6 +21,7 @@ import sys
 import traceback
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
 
 from coded_tools.tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents
@@ -31,13 +32,11 @@ from coded_tools.tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetA
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# Load environment
 env_path = project_root / ".env"
-load_dotenv(env_path)
 
 
-def test_agents_with_debug():
-    """Test ServiceNow agents discovery with debugging information."""
+def test_agents_with_debug() -> bool:
+    """Test agent discovery with debug output and report whether agents were found."""
     print("Testing ServiceNow Agents Discovery with Debug Info")
     print("=" * 55)
 
@@ -64,13 +63,17 @@ def test_agents_with_debug():
         if isinstance(result, dict):
             if "error" in result:
                 print("ERROR in response:", result["error"])
+                return False
             if "result" in result:
                 print("AGENTS FOUND:", len(result["result"]) if isinstance(result["result"], list) else "Not a list")
+                return isinstance(result.get("result"), list) and bool(result.get("result"))
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except requests.RequestException as e:
         print(f"EXCEPTION: {e}")
         traceback.print_exc()
+    return False
 
 
 if __name__ == "__main__":
-    test_agents_with_debug()
+    load_dotenv(env_path)
+    sys.exit(0 if test_agents_with_debug() else 1)
