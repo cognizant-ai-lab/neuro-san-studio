@@ -16,6 +16,11 @@
 
 """
 Factory that builds a concrete ``TopicStore`` from a raw HOCON ``storage`` dict.
+
+Note: The file-system backends (``json_file``, ``markdown_file``) store data on
+the server's local disk and are intended for single-developer / demo use only.
+They do not scale to multi-user deployments.  A distributed persistence layer
+(e.g. S3) should replace them before any shared-server rollout.
 """
 
 import logging
@@ -36,6 +41,10 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
 
     DEFAULT_BACKEND: ClassVar[str] = "json_file"
     DEFAULT_FOLDER_NAME: ClassVar[str] = "memory"
+    # When sly_data["test_mode"] is true, file-based backends write under
+    # this subfolder of the configured folder_name so test runs do not collide
+    # with real persisted memory.
+    TEST_MODE_SUBFOLDER: ClassVar[str] = "test"
 
     # Anchor HOCON folder names to the repository root (the parent of the
     # ``middleware/`` package) so memory always lands inside the project
@@ -81,7 +90,10 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         """
         data: dict[str, Any] = config or {}
         backend: str = str(data.get("backend") or cls.DEFAULT_BACKEND).strip().lower()
-        folder_name: str = cls._resolve_folder(str(data.get("folder_name") or cls.DEFAULT_FOLDER_NAME))
+        raw_folder: str = str(data.get("folder_name") or cls.DEFAULT_FOLDER_NAME)
+        if sly_data and sly_data.get("test_mode"):
+            raw_folder = str(Path(raw_folder) / cls.TEST_MODE_SUBFOLDER)
+        folder_name: str = cls._resolve_folder(raw_folder)
         file_name: str | None = data.get("file_name")
 
         cls._logger.info("Creating memory store backend: %s (folder_name=%s)", backend, folder_name)
