@@ -1,6 +1,7 @@
 # Localhost and local development URLs
 http://localhost
 http://127.0.0.1
+http://host.docker.internal
 
 # Private network addresses
 http://192.168.
@@ -34,6 +35,7 @@ https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
 https://api.anthropic.com/
 https://api.smith.langchain.com/
 https://api.salesforce.com
+https://api.otari.ai/
 
 # Ignores Jinja2 "{{.*}}" template pattern
 file://.*%7B%7B.*%7D%7D
