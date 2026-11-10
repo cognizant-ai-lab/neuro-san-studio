@@ -40,8 +40,8 @@ from typing import Iterable
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
-# Exit codes. neuro-san-studio's main() treats code 2 as a clean "help" exit,
-# so we normalize to a binary contract: 0 = ok, 1 = problem.
+# Exit codes. Click uses code 2 for usage errors, so we normalize to a binary
+# contract: 0 = ok, 1 = problem.
 EXIT_OK = 0
 EXIT_ERROR = 1
 

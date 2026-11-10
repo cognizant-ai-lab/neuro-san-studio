@@ -90,17 +90,32 @@ class TestMainEntryPoint:
         payloads.append(json.loads(Path(command[-1]).read_text(encoding="utf-8")))
         return subprocess.CompletedProcess(args=command, returncode=0)
 
-    def test_main_with_no_args_shows_help(self, monkeypatch: MonkeyPatch) -> None:
-        """Bare `neuro-san-studio` should show help and exit cleanly without starting the server."""
+    @pytest.mark.parametrize("argv", [["neuro-san-studio"], ["neuro-san-studio", "chat"]])
+    def test_main_with_no_args_shows_help(self, monkeypatch: MonkeyPatch, argv: list[str]) -> None:
+        """A command with no_args_is_help, called without arguments, shows help and exits cleanly."""
         call_order = self._install_fake_runner(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
-        # typer <0.26 exits 0 after printing help (swallowed by main()); typer >=0.26
-        # raises NoArgsIsHelpError -> SystemExit(2). Both are clean help-display outcomes.
-        try:
-            main()
-        except SystemExit as exc:
-            assert exc.code in (0, 2)
+        monkeypatch.setattr(sys, "argv", argv)
+        # Help exits 0 with click before 8.2, and 2 while handling NoArgsIsHelpError with
+        # click 8.2 or later, or with typer 0.26 or later. main() returns normally for both.
+        main()
         assert not call_order
+
+    @pytest.mark.parametrize(
+        "args",
+        [
+            ["validate"],
+            ["validate", "x.hocon", "--no-such-option"],
+            ["no-such-command"],
+        ],
+    )
+    def test_main_exits_with_code_2_on_a_usage_error(self, monkeypatch: MonkeyPatch, args: list[str]) -> None:
+        """A missing argument, an unknown option or an unknown command reaches the shell as exit code 2."""
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", *args])
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 2
 
     def test_main_with_run_subcommand_runs_server(self, monkeypatch: MonkeyPatch) -> None:
         """Explicit `neuro-san-studio run` should start the server."""
@@ -392,7 +407,9 @@ class TestMainEntryPoint:
 
         cleanup.assert_called_once_with(thinking_directory)
 
-    def test_consultant_propagates_worker_exit_code(self, monkeypatch: MonkeyPatch) -> None:
+    # 2 is also click's usage-error code, so it must reach the shell like any other status.
+    @pytest.mark.parametrize("returncode", [2, 7])
+    def test_consultant_propagates_worker_exit_code(self, monkeypatch: MonkeyPatch, returncode: int) -> None:
         """Return a non-zero Consultant worker status to the invoking shell."""
         monkeypatch.setattr(NetworkTestEnvironment, "create", Mock(return_value={"CHILD": "environment"}))
         monkeypatch.setattr(
@@ -404,7 +421,7 @@ class TestMainEntryPoint:
         monkeypatch.setattr(
             cli_module.subprocess,
             "run",
-            Mock(return_value=subprocess.CompletedProcess(args=[], returncode=7)),
+            Mock(return_value=subprocess.CompletedProcess(args=[], returncode=returncode)),
         )
         monkeypatch.setattr(
             sys,
@@ -415,7 +432,7 @@ class TestMainEntryPoint:
         with pytest.raises(SystemExit) as exc_info:
             main()
 
-        assert exc_info.value.code == 7
+        assert exc_info.value.code == returncode
 
     def test_consultant_normalizes_worker_signal_exit_code(self, monkeypatch: MonkeyPatch) -> None:
         """Translate a POSIX worker signal status into its conventional shell exit code."""

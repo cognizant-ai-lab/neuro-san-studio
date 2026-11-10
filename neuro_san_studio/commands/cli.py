@@ -579,16 +579,33 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             ).run()
         )
 
+    @staticmethod
+    def is_clean_exit(exc: SystemExit) -> bool:
+        """
+        Tell whether a SystemExit from the app is a success or only a help screen.
+
+        A command with no_args_is_help that gets no arguments shows its help. Since click 8.2 it
+        then exits with 2 while handling NoArgsIsHelpError, so that error is the exit's __context__.
+        Click uses 2 for usage errors too, so 2 alone is not enough. typer 0.26 and later raise the
+        error from their own private copy of click, so the class is matched by name, as typer's
+        rich_utils does.
+
+        :param exc: The SystemExit raised by the app.
+        :return: True for a success exit or a help screen shown for missing arguments.
+        """
+        if exc.code in (None, 0):
+            return True
+        return exc.code == 2 and type(exc.__context__).__name__ == "NoArgsIsHelpError"
+
 
 def main() -> None:
     """Entry point for the `neuro-san-studio` console script."""
-    # Typer/click exit with SystemExit(0) on success and SystemExit(2) for
-    # no-args-is-help; let clean exits return normally so main() can be
-    # driven from tests and embedded callers.
+    # Clean exits return normally so main() can be driven from tests and embedded callers.
+    # Any other exit code, such as 2 for a usage error, reaches the shell.
     try:
         NeuroSanStudioCli.app()
     except SystemExit as exc:
-        if exc.code not in (None, 0, 2):
+        if not NeuroSanStudioCli.is_clean_exit(exc):
             raise
 
 
