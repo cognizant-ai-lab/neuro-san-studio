@@ -74,6 +74,7 @@ Here are a few examples ordered by level of complexity.
     - [Agent Network Designer](#agent-network-designer)
     - [Agent Network Architect](#agent-network-architect)
     - [Copy Cat](#copy-cat)
+    - [Decision Prescriptor](#decision-prescriptor)
     - [CRUSE Theme Agent](#cruse-theme-agent)
     - [CRUSE Widget Agent](#cruse-widget-agent)
     - [CRUSE](#cruse)
@@ -670,6 +671,15 @@ app and serves as a good example of how to run an agent network on an agent netw
 validations.
 
 **Tags:** `AAOSA`, `app`
+
+### Decision Prescriptor
+
+[Decision Prescriptor](examples/experimental/decision_prescriptor.md) is a multi-agent decision optimizer
+implementing Evolutionary Surrogate-assisted Prescription. It fits a ridge-regression surrogate from historical
+records, evolves neural prescriptor policies against it with NSGA-II, and returns a Pareto front of strategies
+where no option beats every other on everything at once, rendered as a self-contained HTML report.
+
+**Tags:** `decision-optimization`, `pareto`, `evolutionary`, `tool`, `visualization`
 
 ### MDAP Decomposer (MAKER example)
 
