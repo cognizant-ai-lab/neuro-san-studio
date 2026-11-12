@@ -62,6 +62,8 @@
         "public": false
     },
 
+    "simulink_mbd_verifier.hocon": true,
+
     #
     # Agent network test generator
     #
