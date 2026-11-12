@@ -31,7 +31,6 @@ from unittest import TestCase
 from unittest import mock
 
 import pytest
-
 from neuro_san.interfaces.activation_capsule import ActivationCapsule
 
 from neuro_san_studio.agent_network_designer.common.shared_process_cache import SharedProcessCache
