@@ -1007,7 +1007,7 @@ Install LangChain's LiteLLM integration in the same Python environment that runs
 pip install "langchain-litellm==0.11.1" "litellm==1.102.4"
 ```
 
-These versions are pinned because Neuro-SAN 0.7.23 requires MCP below 2.0. `langchain-litellm` 0.11.2 cannot be
+These versions are pinned because the current Neuro-SAN requires MCP below 2.0. `langchain-litellm` 0.11.2 cannot be
 installed next to it, and with `litellm` 1.103.0 or later every call fails with
 `ImportError: cannot import name 'CacheableResult' from 'mcp.types'`. `litellm` 1.102.4 is affected by
 [GHSA-w4c7-34wj-hqm8](https://github.com/BerriAI/litellm/security/advisories/GHSA-w4c7-34wj-hqm8), which is in the

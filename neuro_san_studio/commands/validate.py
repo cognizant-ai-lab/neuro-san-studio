@@ -34,10 +34,8 @@ later manifests override earlier ones entry by entry. Explicit
 ``--external-agents`` are added on top. A manifest that cannot be read produces
 a warning, not a failure.
 
-Studio also always passes ``--registry-dir`` to the library. The library derives
-its own default from ``AGENT_MANIFEST_FILE`` only, so it would miss ``--manifest``.
-The fallback is the first manifest's project root, which is what the library
-intends for a single manifest, else the current directory.
+Studio also always passes ``--registry-dir``, because the library would derive it
+from ``AGENT_MANIFEST_FILE`` alone and miss ``--manifest``.
 
 Because the actual validation lives in the library, any future improvement there
 (for example, gracefully handling non-agent-network files) is picked up here
@@ -136,11 +134,8 @@ class ValidateCommand:  # pylint: disable=too-few-public-methods
     def _registry_dir(self, manifest_files: List[str]) -> str:
         """Return the registry directory to hand to HoconValidatorCli.
 
-        ``--registry-dir`` wins. Otherwise the project root of the first manifest, the directory
-        containing its ``registries`` folder, which is what the library derives for a single
-        ``AGENT_MANIFEST_FILE``. Otherwise the current directory, the library's own last resort.
-        It is always passed explicitly because the library derives its default from
-        ``AGENT_MANIFEST_FILE`` only and would miss ``--manifest``.
+        ``--registry-dir`` wins, then the first manifest's project root (the directory that holds
+        its ``registries`` folder), then the current directory.
         """
         if self.registry_dir:
             return self.registry_dir
