@@ -266,32 +266,32 @@ The module includes a complete test suite with 100% code coverage:
 
 **Structure**:
 ```
-tests/coded_tools/tools/now_agents/
-├── unit_tests/                              # Fast, mocked tests (100% coverage)
-│   ├── test_unit_agent_discovery_mocked.py
-│   ├── test_unit_message_sending_mocked.py  
-│   └── test_unit_message_retrieval_mocked.py
-├── integration_tests/                       # Real API tests  
-│   ├── test_integration_servicenow_connectivity.py
-│   ├── test_integration_agent_discovery_simple.py
-│   ├── test_integration_full_workflow_e2e.py
-│   └── debug_servicenow_credentials.py
+tests/coded_tools/tools/now_agents/           # Fast, mocked unit tests (100% coverage)
+├── test_nowagent_api_get_agents.py
+├── test_nowagent_api_send_message.py
+├── test_nowagent_api_retrieve_message.py
 └── README.md                               # Complete testing guide
+
+tests/integration/now_agents/                 # Real API tests
+├── integration_test_servicenow_connectivity.py
+├── integration_test_agent_discovery_simple.py
+├── integration_test_full_workflow_e2e.py
+└── debug_servicenow_credentials.py
 ```
 
 ### Quick Test Commands
 ```bash
 # Run all unit tests (fast, no credentials needed)
-python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v
+python -m pytest tests/coded_tools/tools/now_agents/ -v
 
 # Test ServiceNow connectivity (no auth required)  
-python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
+python tests/integration/now_agents/integration_test_servicenow_connectivity.py
 
 # Test agent discovery (requires credentials)
-python tests/coded_tools/tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py
+python tests/integration/now_agents/integration_test_agent_discovery_simple.py
 
 # Full end-to-end workflow test
-python tests/coded_tools/tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py
+python tests/integration/now_agents/integration_test_full_workflow_e2e.py
 ```
 
 ### Test Results Summary
@@ -346,7 +346,7 @@ Error: Status 401/403 - Authentication failed
 1. Verify ServiceNow credentials are correct and active
 2. Check user has required permissions (`sn_aia_agent.read`, etc.)
 3. Ensure API access is enabled for the user
-4. Test credentials with: `python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py`
+4. Test credentials with: `python tests/integration/now_agents/debug_servicenow_credentials.py`
 
 ### No Agents Found
 ```
@@ -365,7 +365,7 @@ Error: Connection timeout or network error
 **Solutions**:  
 1. Verify ServiceNow instance URL is accessible
 2. Check network connectivity and firewall rules
-3. Test basic connectivity: `python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py`
+3. Test basic connectivity: `python tests/integration/now_agents/integration_test_servicenow_connectivity.py`
 
 ### Empty Agent Responses
 ```
