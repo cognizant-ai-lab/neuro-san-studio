@@ -364,7 +364,7 @@ class TestMainEntryPoint:
         )
 
         assert result.exit_code == 2
-        assert "not-an-integer" in result.stderr
+        assert "Invalid value for '--max-iterations'" in result.stderr
 
     def test_consultant_cleans_owned_thinking_directory_when_worker_start_fails(
         self,
