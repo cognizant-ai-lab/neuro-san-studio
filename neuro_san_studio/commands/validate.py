@@ -21,7 +21,7 @@ neuro-san library's ``HoconValidatorCli`` (the tool also exposed as
 ``python -m neuro_san.client.hocon_validator_cli``). For the structure, studio
 stays a thin wrapper: it marshals the command options into the arguments that
 ``HoconValidatorCli`` expects, runs it, and normalizes the exit code to studio's
-0/1 convention (studio's ``main()`` reserves exit code 2 for clean help exits).
+0/1 convention (click uses exit code 2 for usage errors).
 
 Studio adds two things. The first is manifest discovery. ``HoconValidatorCli`` only
 accepts ``/external_agent`` tool references that are listed in
@@ -68,8 +68,8 @@ from neuro_san_studio.discovery.manifest_project_root import ManifestProjectRoot
 from neuro_san_studio.discovery.manifest_read_error import ManifestReadError
 from neuro_san_studio.discovery.served_network_lister import ServedNetworkLister
 
-# Exit codes. neuro-san-studio's main() treats code 2 as a clean "help" exit,
-# so (like check-config) we normalize to a binary contract: 0 = valid, 1 = problem.
+# Exit codes. Click uses code 2 for usage errors, so (like check-config) we
+# normalize to a binary contract: 0 = valid, 1 = problem.
 EXIT_OK = 0
 EXIT_ERROR = 1
 

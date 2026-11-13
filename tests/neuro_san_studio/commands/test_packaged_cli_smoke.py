@@ -288,9 +288,10 @@ def test_served_networks_validate(packaged_project: PackagedProject) -> None:
     fails to validate, or is missing from the wheel, and it accepts `/agent_name` references
     to the other networks the manifest serves, so each served entry gets checked directly.
 
-    The exit code alone is not enough: `ns` exits 0 on a usage error too, so the validator's
-    own verdict has to be in the output. So does the class check's: it loads each coded tool
-    and middleware class the way the server would, with the project's own copies first.
+    The exit code alone is not enough: `ns validate` exits 0 when it skips the class check, so
+    the validator's verdict and the class check's both have to be in the output. The class check
+    loads each coded tool and middleware class the way the server would, with the project's own
+    copies first.
     """
     for network in packaged_project.served_networks():
         result = packaged_project.run("validate", f"registries/{network}.hocon")
