@@ -546,8 +546,8 @@ To use Gemini models:
 ```
 
 > ⚠️ For Gemini 3.0+ models, it is recommended to set `temperature` to `1.0`. Using `0.7` may lead to infinite loops,
-degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid
-falling back to the default of `0.7`.
+degraded reasoning performance, and failures on complex tasks. If you leave `temperature` out, neuro-san sends none
+and the model uses its own default.
 
 You can get a Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
 
@@ -644,7 +644,7 @@ and the request is billed to the server's GCP project instead.
 llm_config: {
     class: "gemini"
     model_name: "gemini-3.5-flash"
-    temperature: 1.0   # recommended for Gemini 3.0+; 0.7 (the default) can cause loops and degraded reasoning
+    temperature: 1.0   # recommended for Gemini 3.0+; 0.7 can cause loops and degraded reasoning
 }
 ```
 
@@ -1007,7 +1007,7 @@ Install LangChain's LiteLLM integration in the same Python environment that runs
 pip install "langchain-litellm==0.11.1" "litellm==1.102.4"
 ```
 
-These versions are pinned because Neuro-SAN 0.7.12 requires MCP below 2.0. `langchain-litellm` 0.11.2 cannot be
+These versions are pinned because Neuro-SAN 0.7.23 requires MCP below 2.0. `langchain-litellm` 0.11.2 cannot be
 installed next to it, and with `litellm` 1.103.0 or later every call fails with
 `ImportError: cannot import name 'CacheableResult' from 'mcp.types'`. `litellm` 1.102.4 is affected by
 [GHSA-w4c7-34wj-hqm8](https://github.com/BerriAI/litellm/security/advisories/GHSA-w4c7-34wj-hqm8), which is in the

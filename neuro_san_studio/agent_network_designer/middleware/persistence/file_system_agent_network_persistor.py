@@ -76,12 +76,15 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
         The env var is an os.pathsep-separated list (like PATH), matching how neuro-san's
         RegistryManifestRestorer parses the same variable. Empty entries — from a stray
-        leading or doubled separator, or an empty env var (which splits to [""]) — are
-        skipped because the neuro-san server likewise skips them and serves the remaining
-        manifests. Entries are deliberately NOT stripped of whitespace: the server does not
-        strip either, so padded values fail consistently on both sides instead of silently
-        diverging. AgentNetworkDefinitionMiddleware shares this helper so loads and saves
-        agree on file location.
+        leading or doubled separator — are skipped because the neuro-san server likewise
+        skips them and serves the remaining manifests. An empty env var gives no entry, so
+        callers fall back to the repo defaults. `ns run` and `ns chat` replace an empty env
+        var with registries/manifest.hocon; a neuro-san server started another way treats it
+        as unset and serves neuro-san's bundled manifest. Entries are deliberately NOT
+        stripped of whitespace: the server does not strip either, so padded values fail
+        consistently on both sides instead of silently diverging.
+        AgentNetworkDefinitionMiddleware shares this helper so loads and saves agree on file
+        location.
 
         :return: The first non-empty manifest path, or "" when no such entry exists.
         """

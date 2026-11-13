@@ -34,11 +34,10 @@ later manifests override earlier ones entry by entry. Explicit
 ``--external-agents`` are added on top. A manifest that cannot be read produces
 a warning, not a failure.
 
-Studio also always passes ``--registry-dir`` to the library. Left unset, the
-library derives it from the raw ``AGENT_MANIFEST_FILE`` string, which is a
-nonexistent path when that string is an ``os.pathsep`` list (neuro-san issue
-#1370). The fallback is the first manifest's project root, which is what the
-library intends for a single manifest, else the current directory.
+Studio also always passes ``--registry-dir`` to the library. The library derives
+its own default from ``AGENT_MANIFEST_FILE`` only, so it would miss ``--manifest``.
+The fallback is the first manifest's project root, which is what the library
+intends for a single manifest, else the current directory.
 
 Because the actual validation lives in the library, any future improvement there
 (for example, gracefully handling non-agent-network files) is picked up here
@@ -140,8 +139,8 @@ class ValidateCommand:  # pylint: disable=too-few-public-methods
         ``--registry-dir`` wins. Otherwise the project root of the first manifest, the directory
         containing its ``registries`` folder, which is what the library derives for a single
         ``AGENT_MANIFEST_FILE``. Otherwise the current directory, the library's own last resort.
-        It is always passed explicitly because the library's derivation breaks on an
-        ``os.pathsep`` list (neuro-san issue #1370).
+        It is always passed explicitly because the library derives its default from
+        ``AGENT_MANIFEST_FILE`` only and would miss ``--manifest``.
         """
         if self.registry_dir:
             return self.registry_dir
