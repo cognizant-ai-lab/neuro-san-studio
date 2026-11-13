@@ -291,7 +291,7 @@ class GetExternalNetwork(CodedTool):
         return list(await GetExternalNetwork._shared_external_network_names_cache.aget())
 
     @staticmethod
-    async def get_external_networks(activation_capsule: ActivationCapsule) -> dict[str, str]:
+    async def get_external_networks(activation_capsule: ActivationCapsule | None) -> dict[str, str]:
         """
         Return the {/<name>: front-man-description} mapping shown to the designer LLM.
 
