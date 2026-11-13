@@ -16,8 +16,6 @@
 
 """Test helper: a callable that mirrors ``TopicSummarizer.should_summarize``."""
 
-from __future__ import annotations
-
 
 class ShouldSummarize:  # pylint: disable=too-few-public-methods
     """Callable wrapping the ``max_topic_size`` threshold used in tests.
@@ -31,4 +29,4 @@ class ShouldSummarize:  # pylint: disable=too-few-public-methods
 
     def __call__(self, content: str) -> bool:
         """Return ``True`` when ``content`` exceeds the configured threshold."""
-        return self._threshold > 0 and len(content) > self._threshold
+        return 0 < self._threshold < len(content)

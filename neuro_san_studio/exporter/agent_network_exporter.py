@@ -155,7 +155,6 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
                 continue
             self._add_file(zf, sub_full, f"registries/{sub_rel}", added, result)
 
-    # pylint: disable-next=too-many-arguments,too-many-positional-arguments
     def _add_shared_includes(
         self,
         zf: zipfile.ZipFile,
@@ -177,7 +176,6 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
             self._add_file(zf, inc_full, f"registries/{inc_rel}", added, result)
             result.shared_includes.append(inc_rel)
 
-    # pylint: disable-next=too-many-arguments,too-many-positional-arguments
     def _add_file(self, zf: zipfile.ZipFile, source: str, arcname: str, added: Set[str], result: ExportResult) -> None:
         """Write one file under arcname, skipping duplicates and recording the addition."""
         if arcname in added:
@@ -201,6 +199,13 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
                     src = os.path.join(root, name)
                     arc = os.path.relpath(src, self.project_dir)
                     self._add_file(zf, src, arc, added, result)
+            # Mirror the importer's _copy_parent_inits, which starts a directory dependency's
+            # package chain at the directory itself. The dir's own __init__.py is bundled by
+            # the walk above; this delivers the ancestors' — without them the receiver gets a
+            # namespace portion whose __init__ re-exports and side effects silently vanish,
+            # and the zip path extracts verbatim with no chain of its own to repair it.
+            # Passing `full` starts the walk at the directory's parent.
+            self._add_parent_inits(zf, full, added, result)
             return
         result.warnings.append(f"Dependency not found: {dep_path}")
 

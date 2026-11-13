@@ -16,12 +16,21 @@
 
 """Tests for ImportCommand argument handling, and its manifest wiring."""
 
+import contextlib
+import io
+import tempfile
+import unittest
 from pathlib import Path
+from typing import Optional
+from typing import Tuple
+from unittest import mock
 
 import pytest
 
 from neuro_san_studio.commands.import_networks import ImportCommand
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
+from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+from neuro_san_studio.importer.import_result import ImportResult
 
 
 @pytest.fixture(name="networks_by_group")
@@ -201,3 +210,71 @@ class TestImportRegistersManifestEntries:  # pylint: disable=too-few-public-meth
         manifest = (target_dir / "registries" / "manifest.hocon").read_text()
         assert "basic/lead.hocon" in manifest
         assert "helper.hocon" in manifest
+
+
+class TestImportOneFile(unittest.TestCase):
+    """`_import_one_file` must tell the user, per file, when a HOCON was not imported.
+
+    The batch summary de-duplicates within-batch skips, so for a bare `.hocon` whose target
+    already exists this per-file line is the only signal that the file's content did not land.
+    """
+
+    @staticmethod
+    def _run_import(target: Path, source: Path) -> Tuple[str, Optional[ImportResult]]:
+        """
+        Drive `_import_one_file` against a target project and capture what it prints.
+
+        The interactive confirmation is bypassed so the test exercises the import path itself
+        rather than terminal detection.
+
+        :param target: The project directory the file is imported into.
+        :param source: The local .hocon file being imported.
+        :return: The captured stdout and the ImportResult the command produced.
+        """
+        command: ImportCommand = ImportCommand(force=False)
+        command.target_dir = str(target)
+        importer: AgentNetworkImporter = AgentNetworkImporter(source_dir=str(target), target_dir=str(target))
+        buffer: io.StringIO = io.StringIO()
+        with mock.patch.object(ImportCommand, "_confirm_from_file", return_value=True):
+            with contextlib.redirect_stdout(buffer):
+                result: Optional[ImportResult] = command._import_one_file(str(source), importer)  # pylint: disable=protected-access
+        return buffer.getvalue(), result
+
+    def test_existing_hocon_is_announced_per_file_with_force_hint(self) -> None:
+        """
+        A .hocon whose registries/<basename> already exists prints the skip notice and stays untouched.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            target: Path = Path(tmp) / "project"
+            existing: Path = target / "registries" / "foo.hocon"
+            existing.parent.mkdir(parents=True)
+            existing.write_text("DO NOT OVERWRITE\n", encoding="utf-8")
+            source: Path = Path(tmp) / "incoming" / "foo.hocon"
+            source.parent.mkdir(parents=True)
+            source.write_text('{ "tools": [] }\n', encoding="utf-8")
+
+            output, result = self._run_import(target, source)
+
+            self.assertIsNotNone(result)
+            self.assertIn("foo.hocon", result.skipped_files)
+            self.assertIn("foo.hocon already exists in the project", output)
+            self.assertIn("--force", output)
+            self.assertEqual(existing.read_text(encoding="utf-8"), "DO NOT OVERWRITE\n")
+
+    def test_fresh_hocon_lands_without_a_skip_notice(self) -> None:
+        """
+        A .hocon with no collision is copied and the per-file skip line is not printed.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            target: Path = Path(tmp) / "project"
+            target.mkdir()
+            source: Path = Path(tmp) / "incoming" / "foo.hocon"
+            source.parent.mkdir(parents=True)
+            source.write_text('{ "tools": [] }\n', encoding="utf-8")
+
+            output, result = self._run_import(target, source)
+
+            self.assertIsNotNone(result)
+            self.assertIn("foo.hocon", result.copied_files)
+            self.assertNotIn("already exists", output)
+            self.assertTrue((target / "registries" / "foo.hocon").is_file())

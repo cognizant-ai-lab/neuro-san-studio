@@ -120,7 +120,7 @@ class ProjectEnvironment:
 
         Same three-tier precedence as resolve_toolbox_info_file, against
         AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE. This is a curated subset, not the runtime
-        toolbox: coded_tools/agent_network_editor/get_toolbox.py reads it to tell the designer
+        toolbox: neuro_san_studio/agent_network_designer/tools/get_toolbox.py reads it to tell the designer
         LLM which tools exist. It defaults to a path relative to the current directory, which
         only resolves for an in-repo run; exporting the resolved path here means a scaffolded
         project gets the real palette instead of an empty list and a recurring warning.

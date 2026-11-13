@@ -58,7 +58,8 @@ You generate example queries that the created agent network can handle.
 
 Ensure the queries align with the agents' capabilities.
 Provide a diverse range of queries to illustrate the network's functions.
-The queries should show how multiple sub networks might contribute to a consolidated response from the top agent.
+The queries should show how multiple sub networks might contribute to a consolidated response from the front man.
+The front man is the agent that receives the user's request and answers the user.
 Try to keep the queries simple and natural.
 Make some of the examples transactional. If not stated, return no more than 3-4 examples.
 
@@ -77,7 +78,7 @@ Always respond with "The sample queries have been set." when successful.
             "structure_formats": "json",
             "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
                         "sly_data": true
                     }
@@ -86,7 +87,7 @@ Always respond with "The sample queries have been set." when successful.
         },
         {
             "name": "set_sample_queries_tool",
-            "class": "coded_tools.agent_network_query_generator.set_sample_queries.SetSampleQueries",
+            "class": "neuro_san_studio.agent_network_designer.tools.set_sample_queries.SetSampleQueries",
             "function": {
                 "description": "Set the sample queries for the agent network.",
                 "parameters": {

@@ -14,9 +14,6 @@
 #
 # END COPYRIGHT
 
-# To use this agent network, start by installing the required package:
-#     pip install pymupdf >= 1.25.5
-
 {
     include "registries/expertise_scoping_instructions.hocon",
 

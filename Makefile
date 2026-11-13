@@ -82,7 +82,26 @@ lint-check: lint-check-source lint-check-tests
 lint: format lint-check
 
 test-unit: venv-guard ## Run unit tests with coverage, without lint
-	python -m pytest tests/ --verbose --cov=coded_tools --cov=neuro_san_studio -m "not integration"
+	python -m pytest tests/ --verbose --cov=coded_tools --cov=neuro_san_studio -m "not integration and not smoke"
+
+test-smoke: venv-guard ## Run the packaged-install smoke tests (builds a wheel, installs it)
+	python -m pytest tests/ --verbose -m "smoke"
+
+# The Agent Network Designer and the networks it calls.
+DESIGNER_NETWORKS := agent_network_designer agent_network_editor agent_network_instructions_editor \
+	agent_network_query_generator tools/internet_info_gatherer
+
+# ns validate exits 0 on a usage error, so each run must also print the class check's own verdict.
+validate-designer-networks: venv-guard ## Validate the designer networks and load their coded tool and middleware classes
+	@for network in $(DESIGNER_NETWORKS); do \
+		echo "Validating registries/$$network.hocon"; \
+		output=$$(python -m neuro_san_studio validate registries/$$network.hocon 2>&1); status=$$?; \
+		echo "$$output"; \
+		if [ $$status -ne 0 ] || ! echo "$$output" | grep --quiet "Class check passed"; then \
+			echo "Validation failed for registries/$$network.hocon"; \
+			exit 1; \
+		fi; \
+	done
 
 test: lint test-unit ## Run lint, then tests with coverage
 
@@ -91,7 +110,7 @@ test-integration: install
 	export PYTHONPATH=`pwd` && \
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
-	pytest -s -m "integration" --timer-top-n 100
+	pytest -s -m "integration" --durations=100
 
 # Test the Agent Network Designer (AND)
 test-designer: install
@@ -109,7 +128,7 @@ test-designer: install
 	export PYTHONPATH=`pwd` && \
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
-	pytest --capture=no --verbose -m "integration_agent_network_designer" --timer-top-n 100
+	pytest --capture=no --verbose -m "integration_agent_network_designer" --durations=100
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
