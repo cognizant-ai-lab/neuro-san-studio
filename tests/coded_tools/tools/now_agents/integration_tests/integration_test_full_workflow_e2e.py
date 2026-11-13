@@ -24,6 +24,7 @@ It validates connectivity, agent discovery, and basic interaction functionality.
 
 import os
 import sys
+import traceback
 from pathlib import Path
 
 import requests
@@ -135,8 +136,9 @@ def test_agent_discovery():
         print(f"Result: {result}")
         return []
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except requests.RequestException as e:
         print(f"ERROR: Agent discovery failed: {str(e)}")
+        traceback.print_exc()
         return []
 
 
@@ -201,13 +203,14 @@ def test_single_agent_interaction(agents):  # pylint: disable=too-many-locals
         print(f"Result: {send_result}")
         return False
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except requests.RequestException as e:
         print(f"ERROR: Agent interaction test failed: {str(e)}")
+        traceback.print_exc()
         return False
 
 
-def main():
-    """Run all tests"""
+def main() -> int:
+    """Run all tests and return a nonzero status if any validation fails."""
     print("ServiceNow Agents Integration Test Suite")
     print("=" * 50)
 
@@ -257,7 +260,8 @@ def main():
     print("- Current integration supports single interaction only")
     print("- Multi-turn conversations will fail until A2A version is implemented")
     print("- Test failures in interaction may be expected given these limitations")
+    return 0 if all(test_results.values()) else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
