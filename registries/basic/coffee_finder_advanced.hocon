@@ -163,7 +163,7 @@ Always return the API generated order ID, shop, customer name and order details 
         function = {
             description = "Manages user preferences and order history."
         }
-        instructions = ${instruction_prefix} """
+        instructions = """
 Topic = user's name, lower-cased and underscore-separated.
 All facts about a user live under their topic. 'read' to retrieve, 'append' to record.
 
