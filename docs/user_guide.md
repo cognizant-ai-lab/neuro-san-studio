@@ -1085,7 +1085,7 @@ Without `OTARI_BASE_URL` it calls the hosted service. For a self-hosted gateway,
 `OTARI_BASE_URL=http://localhost:8000/api/v1`. It refuses to start without `OTARI_API_KEY` rather than send
 `OPENAI_API_KEY`. Neuro-SAN passes the `llm_config` keys straight to `ChatOtari`, so the `openai` class defaults do not
 apply: LangChain picks the endpoint, which is Chat Completions for most models. See
-[Use with LangChain](https://github.com/mozilla-ai/otari/blob/main/docs/use-with-langchain.md) for more.
+[Use with LangChain](https://github.com/mozilla-ai/otari/blob/main/docs/langchain.md) for more.
 
 #### Otari with the `anthropic` class
 
