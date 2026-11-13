@@ -43,7 +43,7 @@
         # Use a stable, non-preview model name - avoid aliases like "gemini-3-flash" which may
         # resolve to a preview variant with different Vertex AI availability.
         "model_name": "gemini-3.5-flash",
-        # Gemini 3+ models should explicitly set temperature to 1.0; the 0.7 default can cause
+        # Gemini 3+ models should set temperature to 1.0; lower values such as 0.7 can cause
         # infinite loops, degraded reasoning, and failures on complex tasks (see docs/user_guide.md).
         "temperature": 1.0,
     }

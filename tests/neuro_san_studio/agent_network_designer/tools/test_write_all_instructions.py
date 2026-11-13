@@ -17,23 +17,29 @@
 Policy tests for WriteAllInstructions' non-LLM half: how the dispatch list is
 deduplicated, how a writer's JSON answer is extracted and written into the
 agent_network_definition, and which malformed answers degrade to per-agent
-errors. The LLM fan-out half needs a live framework and is exercised by the
-network itself.
+errors. The fan-out is tested with a stub ActivationCapsule; the writer LLM
+itself is exercised by the network.
 
 Skipped (not failed) in environments whose neuro-san predates the imports
 write_all_instructions needs, so the suite still collects everywhere.
 """
 
 from typing import Any
+from unittest import IsolatedAsyncioTestCase
 from unittest import TestCase
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+from unittest.mock import call
 
 import pytest
 
 pytest.importorskip("neuro_san_studio.agent_network_designer.tools.write_all_instructions")
 
-# The import must stay below importorskip so old environments skip cleanly,
+# The imports must stay below importorskip so old environments skip cleanly,
 # and the tests reach the class's protected helpers by design.
 # pylint: disable=wrong-import-position,protected-access
+from neuro_san.interfaces.activation_capsule import ActivationCapsule  # noqa: E402
+
 from neuro_san_studio.agent_network_designer.tools.write_all_instructions import WriteAllInstructions  # noqa: E402
 
 AGENT_NETWORK_DEFINITION = "agent_network_definition"
@@ -184,3 +190,66 @@ class TestDedupAgents(TestCase):
         """Malformed entries are kept (uniquely keyed) so each fails per-entry downstream, not vanish here."""
         agents = ["oops", {"agent_name": "a"}, "oops", {"change_request": "no name"}, {}]
         self.assertEqual(WriteAllInstructions._dedup_agents(agents), agents)
+
+
+class TestAsyncInvoke(IsolatedAsyncioTestCase):
+    """The writer fan-out through the ActivationCapsule in the tool args."""
+
+    async def test_writer_is_called_through_the_activation_capsule(self) -> None:
+        """Each agent's writer call goes through the capsule's use_tool(), and its answer is applied."""
+        capsule: MagicMock = MagicMock(spec=ActivationCapsule)
+        answer: str = '{"instructions": "run the store", "description": "manages the store"}'
+        capsule.use_tool = AsyncMock(return_value=answer)
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_DEFINITION: {
+                "store_manager": {
+                    "instructions": "",
+                    "description": "",
+                },
+            },
+        }
+        args: dict[str, Any] = {
+            "agents": [
+                {
+                    "agent_name": "store_manager",
+                    "change_request": "keep it short",
+                },
+            ],
+            "agent_network_description": "a store",
+            "tools": {"instructions_writer": "my_writer"},
+            "activation_capsule": capsule,
+        }
+        expected_tool_args: dict[str, str] = {
+            "agent_name": "store_manager",
+            "agent_network_description": "a store",
+            "change_request": "keep it short",
+        }
+
+        result: str = await WriteAllInstructions().async_invoke(args, sly_data)
+
+        self.assertEqual(result, "Instructions/description have been set for all 1 agents.")
+        self.assertEqual(capsule.use_tool.await_args_list, [call("my_writer", expected_tool_args, sly_data=sly_data)])
+        agent: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION).get("store_manager")
+        self.assertEqual(agent.get("instructions"), "run the store")
+        self.assertEqual(agent.get("description"), "manages the store")
+
+    async def test_missing_activation_capsule_is_an_error(self) -> None:
+        """Without an ActivationCapsule no writer can be called, so an error comes back."""
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_DEFINITION: {
+                "store_manager": {
+                    "instructions": "",
+                },
+            },
+        }
+        args: dict[str, Any] = {
+            "agents": [
+                {
+                    "agent_name": "store_manager",
+                },
+            ],
+        }
+
+        result: str = await WriteAllInstructions().async_invoke(args, sly_data)
+
+        self.assertEqual(result, "Error: No activation_capsule in args; cannot call the instructions writer.")

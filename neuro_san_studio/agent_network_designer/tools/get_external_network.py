@@ -21,8 +21,9 @@ from functools import partial
 from typing import Any
 
 from leaf_common.config.config_filter_chain import ConfigFilterChain
+from neuro_san.interfaces.activation_capsule import ActivationCapsule
+from neuro_san.interfaces.async_agent_session import AsyncAgentSession
 from neuro_san.interfaces.coded_tool import CodedTool
-from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 from neuro_san.internals.graph.persistence.manifest_dict_config_filter import ManifestDictConfigFilter
 from neuro_san.internals.graph.persistence.manifest_key_config_filter import ManifestKeyConfigFilter
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
@@ -38,15 +39,13 @@ DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest_and.hocon")
 logger = AndLogger(logging.getLogger(__name__))
 
 
-# pylint: disable=too-many-ancestors
-class GetExternalNetwork(BranchActivation, CodedTool):
+class GetExternalNetwork(CodedTool):
     """
     CodedTool which exposes the external networks available to the designer LLM.
 
-    Inherits from BranchActivation (in addition to CodedTool) so the framework injects
-    `run_context` into the instance. From there we reach the InvocationContext's
-    `AsyncAgentSessionFactory` and use it to make a `session.function({})` call per
-    external network — the same routing mechanism `CallAgent` uses to invoke other agents.
+    Uses the ActivationCapsule the framework passes in through the "activation_capsule"
+    arg to create an `AsyncAgentSession` per external network and make a
+    `session.function({})` call on it.
     The framework picks direct (in-process) or http (loopback) under the hood, so this
     works uniformly in both deployment modes without needing to reach the server's
     internal `AgentNetworkStorage` directly. The fetched mapping is published to a
@@ -55,7 +54,7 @@ class GetExternalNetwork(BranchActivation, CodedTool):
     invocation.
 
     The static helper `get_external_network_names()` serves callers that have no
-    run_context (e.g. middleware classes).
+    ActivationCapsule (e.g. middleware classes).
     """
 
     @staticmethod
@@ -232,8 +231,8 @@ class GetExternalNetwork(BranchActivation, CodedTool):
     # user request re-fetched every description: one session.function({})
     # call per external network which, in http mode, is a loopback round trip
     # processed by the same event loop that is serving the request.
-    # Constructed WITHOUT a loader: the fetch needs the framework session
-    # factory, which only a live run_context can reach, so get_external_networks()
+    # Constructed WITHOUT a loader: the fetch needs sessions, which only a
+    # live invocation's ActivationCapsule can create, so get_external_networks()
     # fills the cache in-context via aget_or_fill(). Shares
     # _manifest_fingerprint with the names cache above so names and
     # descriptions go stale and refresh together — descriptions live in each
@@ -278,7 +277,7 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         Get the list of external network names from the **designer manifest** only.
 
         Used by callers (e.g. middleware) that need to validate external network references
-        but do not have access to a run_context. Reads only the manifest HOCON, not
+        but do not have access to an ActivationCapsule. Reads only the manifest HOCON, not
         each external network's HOCON — and at most once per process per
         manifest-update period (or manifest edit), off the event loop,
         shared by concurrent cold callers.
@@ -291,7 +290,8 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         """
         return list(await GetExternalNetwork._shared_external_network_names_cache.aget())
 
-    async def get_external_networks(self) -> dict[str, str]:
+    @staticmethod
+    async def get_external_networks(activation_capsule: ActivationCapsule | None) -> dict[str, str]:
         """
         Return the {/<name>: front-man-description} mapping shown to the designer LLM.
 
@@ -300,27 +300,29 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         `AsyncAgentSession` to that agent and call its `function({})` endpoint to get
         the front-man's function spec (the same JSON-schema-ish structure the LLM sees
         when wiring tools). The session is created via
-        `invocation_context.get_async_session_factory().create_session()` — the same
-        hook `CallAgent` uses, and the framework decides whether to dispatch
-        in-process (direct mode) or via loopback HTTP (server mode) based on the
-        factory's `use_direct` setting. Caching the result process-wide is what keeps
-        that fan-out — one `function` call per external network, per editor invocation, i.e.
-        per user request — off the server's event loop in http mode.
+        `activation_capsule.create_session()`, and the framework decides whether to
+        dispatch in-process (direct mode) or via loopback HTTP (server mode).
+        Caching the result process-wide is what keeps that fan-out — one `function`
+        call per external network, per editor invocation, i.e. per user request — off
+        the server's event loop in http mode.
 
+        :param activation_capsule: The ActivationCapsule of the current invocation,
+                used to create the sessions. May be None, in which case only a warm
+                cache can be served.
         :return: dict mapping "/<network_name>" -> front-man's function.description.
                 Networks that fail to respond, return no front man, or have an empty
                 description are still included with an empty-string value so the LLM
                 at least sees the name — unless EVERY description came back empty,
                 the signature of a fetch outage, in which case nothing is published
                 and this call returns an empty dict (the next call retries). Also an
-                empty dict if no names or no run_context. The returned dict is a
+                empty dict if no names or no ActivationCapsule. The returned dict is a
                 copy, so callers may mutate it without corrupting the shared cache.
         """
         use_shared_cache: bool = GetExternalNetwork._shared_descriptions_cache_enabled()
         if use_shared_cache:
-            # Besides skipping the factory resolution below on warm calls,
-            # this peek is what serves warm reads to callers WITHOUT a
-            # run_context (e.g. tests instantiating the tool directly): such
+            # Besides skipping the session creation below on warm calls,
+            # this peek is what serves warm reads to callers WITHOUT an
+            # ActivationCapsule (e.g. tests calling this method directly): such
             # callers degrade to an empty dict only when the cache is
             # actually cold. aget_or_fill() peeks again on the miss path;
             # that duplication is deliberate.
@@ -328,22 +330,17 @@ class GetExternalNetwork(BranchActivation, CodedTool):
             if cached is not None:
                 return dict(cached)
 
-        # Resolve the session factory BEFORE entering the shared fill.
-        # `run_context` is injected by BranchActivation.__init__; if this CodedTool is
-        # ever instantiated outside that flow (e.g. tests bypassing __init__), this
-        # call degrades to a per-call empty dict — crucially WITHOUT publishing that
-        # emptiness into the process-wide cache, where it would blank out every other
-        # conversation's view of the available external networks. None-checks rather than a
-        # broad `except AttributeError`, which would also mask a genuine
-        # AttributeError raised INSIDE the neuro-san accessors (e.g. version skew).
-        run_context = getattr(self, "run_context", None)
-        invocation_context = run_context.get_invocation_context() if run_context is not None else None
-        factory = invocation_context.get_async_session_factory() if invocation_context is not None else None
-        if factory is None:
-            logger.warning("No invocation context / session factory available; returning no external networks.")
+        # Check for the capsule BEFORE entering the shared fill.
+        # The framework passes an ActivationCapsule in the CodedTool's args; if this
+        # method is ever called without one, this call degrades to a per-call empty
+        # dict — crucially WITHOUT publishing that emptiness into the process-wide
+        # cache, where it would blank out every other conversation's view of the
+        # available external networks.
+        if activation_capsule is None:
+            logger.warning("No activation_capsule available; returning no external networks.")
             return {}
 
-        filler = partial(GetExternalNetwork._fill_external_network_descriptions, factory, invocation_context)
+        filler = partial(GetExternalNetwork._fill_external_network_descriptions, activation_capsule)
         external_networks: dict[str, str]
         try:
             if use_shared_cache:
@@ -365,19 +362,18 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         return dict(external_networks)
 
     @staticmethod
-    async def _fill_external_network_descriptions(factory: Any, invocation_context: Any) -> dict[str, str]:
+    async def _fill_external_network_descriptions(activation_capsule: ActivationCapsule) -> dict[str, str]:
         """
         Filler for the shared descriptions cache: builds the complete mapping on
         the event loop inside SharedProcessCache.aget_or_fill(), once per refresh
         period, shared by every concurrent cold caller on the loop.
 
-        Whichever invocation reaches the cold cache first supplies the factory and
-        invocation_context the fill runs under; invocations are interchangeable for
-        this purpose because every factory routes `function({})` to the same server
+        Whichever invocation reaches the cold cache first supplies the
+        ActivationCapsule the fill runs under; invocations are interchangeable for
+        this purpose because every capsule routes `function({})` to the same server
         state.
 
-        :param factory: The `AsyncAgentSessionFactory` of the filling invocation.
-        :param invocation_context: That invocation's `InvocationContext`.
+        :param activation_capsule: The ActivationCapsule of the filling invocation.
         :return: dict mapping "/<network_name>" -> description. An empty mapping
                 from an empty manifest IS returned, and therefore published: like
                 the names cache, it heals when the fingerprint changes — and the
@@ -393,9 +389,7 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         names: list[str] = await GetExternalNetwork.get_external_network_names()
         if not names:
             return {}
-        descriptions: dict[str, str] = await GetExternalNetwork._collect_via_sessions(
-            names, factory, invocation_context
-        )
+        descriptions: dict[str, str] = await GetExternalNetwork._collect_via_sessions(names, activation_capsule)
         if descriptions and not any(descriptions.values()):
             raise RuntimeError(
                 f"all {len(descriptions)} external network description fetches came back empty; "
@@ -404,26 +398,19 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         return descriptions
 
     @staticmethod
-    async def _collect_via_sessions(
-        names: list[str],
-        factory: Any,
-        invocation_context: Any,
-    ) -> dict[str, str]:
+    async def _collect_via_sessions(names: list[str], activation_capsule: ActivationCapsule) -> dict[str, str]:
         """Query each network's `function` endpoint to get its front-man description.
 
         Dispatches one `session.function({})` call per name concurrently via
-        `asyncio.gather`. Each call routes through `factory.create_session()` — the
-        same mechanism `CallAgent` uses — which transparently picks in-process direct
-        or loopback HTTP. Per-call cost is dominated by:
+        `asyncio.gather`. Each session comes from `activation_capsule.create_session()`,
+        which transparently picks in-process direct or loopback HTTP.
+        Per-call cost is dominated by:
           - direct mode: a single dict lookup on the live AgentNetwork.
           - http mode: a loopback HTTP round-trip to this same server's
             `/api/v1/<name>/function` endpoint.
 
         :param names: Curated list of "/<network_name>" strings from the designer manifest.
-        :param factory: The `AsyncAgentSessionFactory` from the invocation context.
-                Typed as Any to avoid hard-coupling to the concrete factory class.
-        :param invocation_context: The current `InvocationContext`; passed through to the
-                session so it can carry metadata/port/etc.
+        :param activation_capsule: The ActivationCapsule used to create the sessions.
         :return: Dict mapping "/<network_name>" -> description string. Networks whose
                 session creation fails, whose `function({})` raises, or whose response
                 lacks a usable description are kept with an empty-string value
@@ -433,7 +420,7 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         # per-task setup or instrumentation is easy to add later without restructuring.
         tasks: list[Any] = []
         for name in names:
-            tasks.append(GetExternalNetwork._fetch_description(name, factory, invocation_context))
+            tasks.append(GetExternalNetwork._fetch_description(name, activation_capsule))
 
         # gather() fires all calls in parallel. In http mode the server processes them
         # on a single event loop so they effectively serialise behind it, but the work
@@ -454,13 +441,9 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         return external_networks
 
     @staticmethod
-    async def _fetch_description(
-        name: str,
-        factory: Any,
-        invocation_context: Any,
-    ) -> tuple[str, str]:
+    async def _fetch_description(name: str, activation_capsule: ActivationCapsule) -> tuple[str, str]:
         """
-        Fetch one external network's front-man description via the framework session factory.
+        Fetch one external network's front-man description via a session from the ActivationCapsule.
 
         `session.function({})` returns the front-man's tool spec; the format is
         ``{"function": {"description": "...", "parameters": {...}, ...}}``. In direct
@@ -471,10 +454,9 @@ class GetExternalNetwork(BranchActivation, CodedTool):
         mode-agnostic.
 
         :param name: The external network name in "/<network_name>" form. Passed straight to
-                `factory.create_session()` as the agent URL.
-        :param factory: The `AsyncAgentSessionFactory` that decides direct vs http routing.
-        :param invocation_context: The current `InvocationContext`, threaded into the
-                session for metadata / port / etc.
+                `activation_capsule.create_session()` as the agent reference.
+        :param activation_capsule: The ActivationCapsule that creates the session, deciding
+                direct vs http routing. The capsule owns the session and closes it.
         :return: (name, description) tuple. `description` is the empty string when the
                 session can't be created, the call raises, or the response doesn't carry
                 a usable description. Errors are logged at warning level. We always
@@ -482,14 +464,11 @@ class GetExternalNetwork(BranchActivation, CodedTool):
                 out the rest of the gathered batch.
         """
         # We don't want one slow/broken external network to take out the whole list, so we
-        # catch broadly here. Could be a parse error in that network's hocon, a network
+        # catch broadly here. Could be a malformed name the capsule can't create a
+        # session for (ValueError), a parse error in that network's hocon, a network
         # timeout in http mode, or a transient server issue. Log and skip.
         try:
-            session = factory.create_session(name, invocation_context)
-            if session is None:
-                # Factory couldn't resolve the URL — most likely a malformed name or a
-                # host the parser doesn't recognise. Skip rather than fail loudly.
-                return name, ""
+            session: AsyncAgentSession = await activation_capsule.create_session(name)
             result = await session.function({})
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.warning("Failed to fetch function spec for %s: %s", name, exc)
@@ -513,7 +492,8 @@ class GetExternalNetwork(BranchActivation, CodedTool):
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    None
+                    "activation_capsule" the ActivationCapsule supplied by the framework
+                        for creating sessions to the external networks.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -534,4 +514,4 @@ class GetExternalNetwork(BranchActivation, CodedTool):
             otherwise:
                 an empty dictionary.
         """
-        return await self.get_external_networks()
+        return await GetExternalNetwork.get_external_networks(args.get("activation_capsule"))

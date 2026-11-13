@@ -159,7 +159,8 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
             value: dict[str, Any] = {}
             self.copy_keys_not_found(connectivity_entry, value)
 
-            # Don't include agents starting with "/", "http://", or "https://" since those are external agents.
+            # Don't include agents starting with "/", "http://", "https://" or "file://"
+            # since those are external agents.
             if not UrlNetworkValidator.is_url_or_path(name):
                 result_dict[name] = value
 

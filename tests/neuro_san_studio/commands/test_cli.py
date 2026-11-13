@@ -376,10 +376,12 @@ class TestMainEntryPoint:
                 "--max-iterations",
                 "not-an-integer",
             ],
+            # Typer boxes the error with Rich, which wraps it at the terminal width.
+            env={"COLUMNS": "200"},
         )
 
         assert result.exit_code == 2
-        assert "--max-iterations" in unstyle(result.stderr)
+        assert "Invalid value for '--max-iterations'" in unstyle(result.stderr)
 
     def test_consultant_cleans_owned_thinking_directory_when_worker_start_fails(
         self,
