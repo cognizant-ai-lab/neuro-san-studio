@@ -36,9 +36,11 @@ Here are a few examples ordered by level of complexity.
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
     - [Internet Info Gatherer](#internet-info-gatherer)
+    - [FXMacroData](#fxmacrodata)
     - [Gmail Assistant](#gmail-assistant)
     - [Google Workspace Assistant](#google-workspace-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
+    - [Agent Network Consultant](#agent-network-consultant)
     - [Agentforce](#agentforce)
     - [Agentspace](#agentspace)
     - [MCP BMI STREAMABLE HTTP](#mcp-bmi-streamable-http)
@@ -308,6 +310,15 @@ It needs no API keys or OAuth — the free search tier and the local fetch tool 
 
 **Tags:** `tool`, `MCP`, `toolbox`, `web`
 
+### FXMacroData
+
+[FXMacroData](examples/tools/fxmacrodata.md) is a single-agent system that answers questions about official
+macroeconomic data for FX analysis: latest indicator values, indicator history, upcoming release dates, central-bank
+press releases and FX market session times. It connects to the hosted FXMacroData MCP server, which works without an
+API key for US data; an optional key adds 21 more currencies, full history and real-time releases.
+
+**Tags:** `tool`, `MCP`, `FXMacroData`
+
 ### Gmail Assistant
 
 [Gmail Assistant](examples/tools/gmail.md) is a conversational agent that helps users manage their Gmail inbox using natural
@@ -332,6 +343,13 @@ system by generating an interactive HTML graph and opening it in Chrome. It help
 and roles of agents within the network.
 
 **Tags:** `tool`, `HTML`
+
+### Agent Network Consultant
+
+[Agent Network Consultant](examples/agent_network_consultant.md) generates and runs fixtures for an agent network,
+diagnoses failures, and applies targeted repairs while preserving the network's intended behavior.
+
+**Tags:** `tool`
 
 ### Agentforce
 

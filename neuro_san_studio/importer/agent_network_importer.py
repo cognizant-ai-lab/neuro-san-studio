@@ -185,7 +185,6 @@ class AgentNetworkImporter:
             return
         self._copy_file_or_dir(source, target, relative_path, result, force=force)
 
-    # pylint: disable-next=too-many-arguments
     def _copy_under(
         self, dep_path: str, prefix: str, roots: ImportRoots, result: ImportResult, *, force: bool = False
     ) -> None:

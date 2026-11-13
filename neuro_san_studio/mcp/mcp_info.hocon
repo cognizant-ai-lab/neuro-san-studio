@@ -89,6 +89,28 @@
         "tools": ["get_current_time", "convert_time", "time_by_coordinates", "get_dst_transitions", "search_cities"]
     },
 
+    # FXMacroData MCP — official macroeconomic data from central banks and statistical agencies for 22 currencies:
+    # latest values, indicator history, release calendars and central-bank press releases.
+    # Keyless: no API key required, US data only. USD announcements cover the most recent 90 days and each release
+    # becomes readable 15 minutes after publication; the USD release calendar, Federal Reserve press releases and
+    # FX market sessions also work keyless. Fair use is 100 requests per day without a key.
+    # Optional: set FXMACRODATA_API_KEY and uncomment http_headers below. The key unlocks the other 21 currencies,
+    # full history and real-time releases through the same tools. Keyless and keyed share the same URL, so this is
+    # one entry rather than two. Leave the header commented out without a real key: the server rejects an invalid
+    # Bearer value instead of falling back to keyless access.
+    # The "tools" list below controls which tools the agent sees, with or without a key. It is limited to tools
+    # that answer keyless. With a key, add names such as forex, cot_data or commodities, or remove the "tools" key
+    # entirely to load every tool the server exposes (neuro-san only filters when the list is non-empty).
+    # Docs: https://fxmacrodata.com/documentation
+    "https://mcp.fxmacrodata.com": {
+        # "http_headers": {
+        #    # FXMACRODATA_API_KEY is an environment variable that should contain a valid FXMacroData API key.
+        #    # "${...}" syntax will substitute the value of the environment variable at runtime.
+        #     "Authorization": "Bearer "${FXMACRODATA_API_KEY}
+        # },
+        "tools": ["latest_announcements", "indicator_query", "release_calendar", "press_releases", "market_sessions"]
+    },
+
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {

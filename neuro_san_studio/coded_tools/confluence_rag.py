@@ -222,7 +222,6 @@ class ConfluenceRag(CodedTool, BaseRag):
 
         return pages
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def _page_to_document(
         self,
         confluence: Any,

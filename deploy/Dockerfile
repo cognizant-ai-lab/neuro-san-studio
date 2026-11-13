@@ -104,7 +104,7 @@ COPY --from=builder /install /usr/local
 #       The config directory where the LLM configuration lives is mandatory
 #       The Agent Network Designer relies on:
 #       - its own toolbox in ./neuro_san_studio/toolbox
-#       - ./middleware for validation of designed networks
+#       - its own code, including the validation of designed networks, in ./neuro_san_studio
 COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
@@ -420,6 +420,23 @@ ENV LEAF_LOG_SENSITIVE="false"
 # to the "<module>.<ClassName>" form relative to AGENT_TOOL_PATH.
 ENV AGENT_TOOL_PATH_ONLY="false"
 
+# Url schemes for which an agent network file named by a tool reference may be fetched,
+# separated by commas or whitespace.  Supported schemes are "http", "https" and "file"
+# (a bare url path with no scheme counts as "file").  Empty (the default) turns fetching off entirely.  See
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/external_agents.md#agent-network-file-references
+ENV AGENT_FETCHABLE_TOOL_SCHEMES=""
+
+# Limits the number of agents considered from external servers' listings
+# to avoid exorbitantly long loops in handling them.  Negative values or
+# 0 (the default) means the number of agents listed is unlimited.
+ENV AGENT_MAX_AGENTS_FROM_EXTERNAL_SERVER="0"
+
+# With the default value of "false", any AGENT_* configuration can be read as an override
+# to default policy at runtime from the environment.  When this is "true", the environment
+# is only read once at startup, and AGENT_* configuration values will not
+# be read from the environment henceforth.
+ENV AGENT_LOCKDOWN_ENV="false"
+
 #
 # Authorization
 #
@@ -513,8 +530,9 @@ ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
 ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 
 # Toolbox info file providing available tools for the Agent Network Designer to choose from.
-# Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
-ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+# This multi-user image uses its own file, which offers no tool that reads the server's files or uses its API
+# keys. Without this line the designer would use the local file, agent_network_designer_toolbox_info.hocon.
+ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="${APP_SOURCE}/neuro_san_studio/toolbox/agent_network_designer_toolbox_info_multiuser.hocon"
 
 # Time in seconds that the Agent Network Designer's cached MCP tool listings are served before
 # being re-fetched from the MCP servers. Positive values are clamped to at least twice the
