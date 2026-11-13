@@ -345,6 +345,13 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         self.assertFalse(self._call_validate_bool({}))
         self.assertTrue(self._call_validate_bool({}, default=True))
 
+    def test_validate_bool_none_returns_default(self) -> None:
+        """
+        Tests that a None value, which is how neuro-san sends a left-out optional argument, returns the default.
+        """
+        self.assertFalse(self._call_validate_bool({"test_flag": None}))
+        self.assertTrue(self._call_validate_bool({"test_flag": None}, default=True))
+
     def test_validate_bool_non_bool_raises_invalid_input(self):
         """Tests that non-boolean values raise invalid_input (including truthy strings and ints)."""
         for bad in ["true", "yes", 1, 0, [], {}]:

@@ -17,6 +17,7 @@
 import asyncio
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -93,6 +94,24 @@ class TestReadFile(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result["end_line"], 2)
         self.assertIn("read_at", result)
         self.assertEqual(result["path"], str(path.resolve()))
+
+    def test_async_invoke_none_optional_args_use_defaults(self) -> None:
+        """
+        Tests that optional arguments sent as None, as neuro-san does when the LLM leaves them out, read the
+        whole file.
+        """
+        path: Path = self._write("a.txt", "hello\nworld\n")
+        args: dict[str, Any] = {
+            "file_path": str(path),
+            "start_line": None,
+            "end_line": None,
+            "max_content_chars": None,
+            "allowed_paths": [str(self.tmp_root)],
+        }
+        result: dict[str, Any] = asyncio.run(self.tool.async_invoke(args, self.sly_data))
+        self.assertEqual(result.get("content"), "hello\nworld\n")
+        self.assertEqual(result.get("start_line"), 1)
+        self.assertEqual(result.get("end_line"), 2)
 
     def test_async_invoke_none_sly_data_tolerated(self):
         """Tests that sly_data=None does not fail a successful read (history is best-effort bookkeeping)."""
@@ -408,6 +427,21 @@ class TestReadFile(TestCase):  # pylint: disable=too-many-public-methods
         """Tests that omitting both keys returns (1, None)."""
         self.assertEqual(self._call_validate_line_range({}), (1, None))
 
+    def test_validate_line_range_none_values_use_defaults(self) -> None:
+        """
+        Tests that None for both keys, which is how neuro-san sends left-out optional arguments, returns (1, None).
+        """
+        self.assertEqual(self._call_validate_line_range({"start_line": None, "end_line": None}), (1, None))
+
+    def test_validate_line_range_none_start_keeps_given_end(self) -> None:
+        """
+        Tests that a None start_line becomes 1 while a given end_line is kept and still checked.
+        """
+        self.assertEqual(self._call_validate_line_range({"start_line": None, "end_line": 5}), (1, 5))
+        with self.assertRaises(ValueError) as ctx:
+            self._call_validate_line_range({"start_line": None, "end_line": 0})
+        self.assertIn("invalid_input", str(ctx.exception))
+
     def test_validate_line_range_explicit_values_returned(self):
         """Tests that explicit valid start_line and end_line are returned as-is."""
         self.assertEqual(self._call_validate_line_range({"start_line": 2, "end_line": 5}), (2, 5))
@@ -451,6 +485,12 @@ class TestReadFile(TestCase):  # pylint: disable=too-many-public-methods
     def test_validate_max_content_chars_default_value_used_when_absent(self):
         """Tests that the default MAX_CHARS value is returned when max_content_chars is absent."""
         self.assertEqual(self._call_validate_max_content_chars({}), MAX_CHARS)
+
+    def test_validate_max_content_chars_none_uses_default(self) -> None:
+        """
+        Tests that a None max_content_chars, which is how neuro-san sends a left-out argument, returns MAX_CHARS.
+        """
+        self.assertEqual(self._call_validate_max_content_chars({"max_content_chars": None}), MAX_CHARS)
 
     def test_validate_max_content_chars_valid_positive_int(self):
         """Tests that a valid positive integer is accepted and returned as-is."""
