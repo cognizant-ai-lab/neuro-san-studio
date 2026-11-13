@@ -31,6 +31,7 @@ from unittest import TestCase
 from unittest import mock
 
 import pytest
+from neuro_san.interfaces.activation_capsule import ActivationCapsule
 
 from neuro_san_studio.agent_network_designer.common.shared_process_cache import SharedProcessCache
 
@@ -55,18 +56,19 @@ class TestGetExternalNetwork(TestCase):
         self.fetch_log: list[str] = []
         self.descriptions: dict[str, str] = {"/alpha": "does alpha", "/beta": "does beta"}
 
-    def _make_tool(self) -> GetExternalNetwork:
+    def _make_capsule(self) -> mock.Mock:
         """
-        Build a GetExternalNetwork (bypassing the framework-only __init__) whose
-        run_context chain yields a stub session factory serving
-        self.descriptions and recording each fetch in self.fetch_log.
+        Build a stub ActivationCapsule whose create_session() yields sessions
+        serving self.descriptions and recording each fetch in self.fetch_log.
 
-        :return: A GetExternalNetwork whose session factory serves self.descriptions.
+        :return: A stub ActivationCapsule whose sessions serve self.descriptions.
         """
         fetch_log = self.fetch_log
         descriptions = self.descriptions
 
-        def create_session(name: str, _invocation_context) -> mock.Mock:
+        # Nested defs: these close over this test's fetch log and descriptions,
+        # standing in for the session factory the capsule normally wraps.
+        async def create_session(name: str) -> mock.Mock:
             async def function(_args) -> dict:
                 fetch_log.append(name)
                 return {"function": {"description": descriptions.get(name, "")}}
@@ -75,13 +77,15 @@ class TestGetExternalNetwork(TestCase):
             session.function = function
             return session
 
-        factory = mock.Mock()
-        factory.create_session = create_session
+        capsule = mock.Mock(spec=ActivationCapsule)
+        capsule.create_session = create_session
+        return capsule
 
-        tool: GetExternalNetwork = GetExternalNetwork.__new__(GetExternalNetwork)
-        tool.run_context = mock.Mock()
-        tool.run_context.get_invocation_context.return_value.get_async_session_factory.return_value = factory
-        return tool
+    async def _get(self) -> dict[str, str]:
+        """
+        :return: The external networks as seen by an invocation with a stub ActivationCapsule.
+        """
+        return await GetExternalNetwork.get_external_networks(self._make_capsule())
 
     @staticmethod
     def _patched_names():
@@ -98,9 +102,9 @@ class TestGetExternalNetwork(TestCase):
         async def run() -> list[dict[str, str]]:
             calls: list[Any] = []
             for _ in range(10):
-                calls.append(self._make_tool().get_external_networks())
+                calls.append(self._get())
             burst: list[dict[str, str]] = await asyncio.gather(*calls)
-            warm: dict[str, str] = await self._make_tool().get_external_networks()
+            warm: dict[str, str] = await self._get()
             return burst + [warm]
 
         with self._patched_names():
@@ -112,12 +116,11 @@ class TestGetExternalNetwork(TestCase):
         self.assertEqual(sorted(self.fetch_log), sorted(EXTERNAL_NETWORK_NAMES))
 
     def test_context_less_caller_degrades_without_publishing(self):
-        """A caller without run_context gets {} per-call, never poisoning the cache."""
-        bare: GetExternalNetwork = GetExternalNetwork.__new__(GetExternalNetwork)
+        """A caller without an ActivationCapsule gets {} per-call, never poisoning the cache."""
 
         async def run() -> tuple[dict[str, str], dict[str, str]]:
-            empty: dict[str, str] = await bare.get_external_networks()
-            filled: dict[str, str] = await self._make_tool().get_external_networks()
+            empty: dict[str, str] = await GetExternalNetwork.get_external_networks(None)
+            filled: dict[str, str] = await self._get()
             return empty, filled
 
         with self._patched_names():
@@ -131,9 +134,8 @@ class TestGetExternalNetwork(TestCase):
         """The pre-fill peek serves warm reads even to context-less callers."""
 
         async def run() -> dict[str, str]:
-            await self._make_tool().get_external_networks()
-            bare: GetExternalNetwork = GetExternalNetwork.__new__(GetExternalNetwork)
-            return await bare.get_external_networks()
+            await self._get()
+            return await GetExternalNetwork.get_external_networks(None)
 
         with self._patched_names():
             self.assertEqual(asyncio.run(run()), self.descriptions)
@@ -144,7 +146,7 @@ class TestGetExternalNetwork(TestCase):
         self.descriptions.clear()
 
         async def run() -> dict[str, str]:
-            return await self._make_tool().get_external_networks()
+            return await self._get()
 
         with self._patched_names():
             self.assertEqual(asyncio.run(run()), {})
@@ -158,7 +160,7 @@ class TestGetExternalNetwork(TestCase):
         self.descriptions["/beta"] = ""
 
         async def run() -> dict[str, str]:
-            return await self._make_tool().get_external_networks()
+            return await self._get()
 
         with self._patched_names():
             first = asyncio.run(run())
@@ -173,9 +175,9 @@ class TestGetExternalNetwork(TestCase):
         """Mutating a returned mapping must not corrupt the shared value."""
 
         async def run() -> dict[str, str]:
-            first: dict[str, str] = await self._make_tool().get_external_networks()
+            first: dict[str, str] = await self._get()
             first["/tampered"] = "oops"
-            return await self._make_tool().get_external_networks()
+            return await self._get()
 
         with self._patched_names():
             second = asyncio.run(run())
@@ -186,8 +188,8 @@ class TestGetExternalNetwork(TestCase):
         """With AGENT_AUTHORIZER set, every invocation fetches under its own identity."""
 
         async def run() -> None:
-            await self._make_tool().get_external_networks()
-            await self._make_tool().get_external_networks()
+            await self._get()
+            await self._get()
 
         with self._patched_names(), mock.patch.dict(os.environ, {"AGENT_AUTHORIZER": "some.authorizer.Class"}):
             asyncio.run(run())
@@ -199,3 +201,29 @@ class TestGetExternalNetwork(TestCase):
         # pylint: disable-next=protected-access
         cache: SharedProcessCache[dict[str, str]] = GetExternalNetwork._shared_external_network_descriptions_cache
         self.assertIsNone(cache.peek())
+
+    def test_session_creation_failure_degrades_to_an_empty_description(self):
+        """A name the capsule cannot create a session for keeps an empty description."""
+        capsule: mock.Mock = self._make_capsule()
+        create_session = capsule.create_session
+
+        async def failing_create_session(name: str) -> mock.Mock:
+            if name == "/beta":
+                raise ValueError(f"Unable to create a session for external agent {name}.")
+            return await create_session(name)
+
+        capsule.create_session = failing_create_session
+
+        with self._patched_names():
+            result: dict[str, str] = asyncio.run(GetExternalNetwork.get_external_networks(capsule))
+
+        self.assertEqual(result, {"/alpha": "does alpha", "/beta": ""})
+
+    def test_async_invoke_uses_the_activation_capsule_from_args(self):
+        """async_invoke() fetches through the ActivationCapsule the framework puts in args."""
+        args: dict[str, Any] = {"activation_capsule": self._make_capsule()}
+
+        with self._patched_names():
+            result: dict[str, Any] = asyncio.run(GetExternalNetwork().async_invoke(args, {}))
+
+        self.assertEqual(result, self.descriptions)

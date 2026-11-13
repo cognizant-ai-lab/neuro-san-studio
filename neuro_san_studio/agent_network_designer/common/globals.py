@@ -91,8 +91,8 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #    Expiry:  the same fingerprint as the external network names above (they
     #             share _manifest_fingerprint), so names and descriptions go
     #             stale and refresh together. Unlike the other caches it has
-    #             no loader: descriptions can only be fetched through a live
-    #             run_context's session factory, so the first
+    #             no loader: descriptions can only be fetched through sessions
+    #             from a live invocation's ActivationCapsule, so the first
     #             get_external_networks() call of each refresh period fills the
     #             cache in-context (SharedProcessCache.aget_or_fill). A fill
     #             whose fetches ALL failed raises instead of publishing —

@@ -18,7 +18,7 @@ import json
 import logging
 from typing import Any
 
-from neuro_san.internals.graph.activations.branch_activation import BranchActivation
+from neuro_san.interfaces.activation_capsule import ActivationCapsule
 
 from neuro_san_studio.coded_tools.agent_caller import AgentCaller
 from neuro_san_studio.coded_tools.solver_parsing import SolverParsing
@@ -26,21 +26,21 @@ from neuro_san_studio.coded_tools.solver_parsing import SolverParsing
 
 class CodedToolAgentCaller(AgentCaller):
     """
-    AgentCaller implementation that uses a BranchActivation from a CodedTool for calling an agent
+    AgentCaller implementation that uses the ActivationCapsule handed to a CodedTool for calling an agent
     """
 
-    def __init__(self, branch_activation: BranchActivation, parsing: SolverParsing = None, name: str = None):
+    def __init__(self, activation_capsule: ActivationCapsule, parsing: SolverParsing = None, name: str = None):
         """
         Constructor
 
-        :param branch_activation: The BranchActivation (CodedTool) used to call the agents.
-                                  This ends up being the reference back to the CodedTool
-                                  that is also derived from BranchActivation that wants to do
-                                  the calling out to an agent internal to the network.
+        :param activation_capsule: The ActivationCapsule used to call the agents.
+                                  This is what the framework hands to a CodedTool via the
+                                  "activation_capsule" key of its args so it can call out
+                                  to an agent internal to the network.
         :param parsing: The SolverParsing instance to use (if any) to extract the final answer
         :param name: The name of the agent
         """
-        self.branch_activation: BranchActivation = branch_activation
+        self.activation_capsule: ActivationCapsule = activation_capsule
         self.solver_parsing: SolverParsing = parsing
         self.name: str = name
 
@@ -70,7 +70,7 @@ class CodedToolAgentCaller(AgentCaller):
         # Call my agent.
         # This is the magic hook back into the neuro-san framework that allows us to
         # invoke another agent (within the same network or not) from within a CodedTool.
-        resp: str = await self.branch_activation.use_tool(use_name, tool_args, sly_data=sly_data)
+        resp: str = await self.activation_capsule.use_tool(use_name, tool_args, sly_data=sly_data)
 
         logging.debug("call_agent(%s): received %s chars", use_name, len(resp))
         if self.solver_parsing is not None:

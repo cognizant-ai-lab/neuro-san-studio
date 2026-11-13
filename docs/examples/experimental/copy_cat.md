@@ -124,9 +124,9 @@ This agent is a CodedTool that performs the required work of:
 3. Creating the temporary network via the ReservationUtil.wait_for_one() helper method.
 4. Assmebling the sly_data response per the convention described above.
 5. Optionally calling the temporary network with input the front man's parsing of the request
-   In order to do this successfully, the CodedTool must derive from both BranchActivation and CodedTool
-   to gain access to the use_reservation() method.  This is not strictly required if you are only
-   creating new temporary networks and not calling them.
+   In order to do this, the CodedTool calls the use_reservation() method on the ActivationCapsule
+   that the framework passes in via the "activation_capsule" key of its args.  This is not needed
+   if you are only creating new temporary networks and not calling them.
 
 #### Tool Arguments and Parameters
 
