@@ -98,7 +98,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
 
     AND_PROMPT = (
         'Create a network called "basic_helpdesk" with exactly 3 agents '
-        "and no toolbox, subnetwork, or MCP tools. "
+        "and no toolbox, external network, or MCP tools. "
         'Structure: "helpdesk_manager" is the frontman (top-level agent). '
         "It delegates to 2 leaf agents. "
         '"technical_support" handles technical troubleshooting inquiries '

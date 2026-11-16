@@ -81,8 +81,7 @@ class EventHandler:
                     self.network_handler.setup_new_network(msg_ctx, command)
             else:
                 say(text="Please @mention me with a network name", thread_ts=thread_ctx.conversation_thread)
-        # pylint: disable=broad-exception-caught
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error in handle_message: {e}", exc_info=True)
 
     def handle_app_mention(self, event: dict[str, Any], say: Say, logger: Any) -> None:
@@ -113,8 +112,7 @@ class EventHandler:
             else:
                 command = CommandParser.parse(cleaned_text, logger)
                 self.network_handler.setup_new_network(msg_ctx, command)
-        # pylint: disable=broad-exception-caught
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error in handle_app_mention: {e}", exc_info=True)
             say(text=f"Error: {e}", thread_ts=event.get("thread_ts") or event.get("ts"))
 

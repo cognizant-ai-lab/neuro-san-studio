@@ -14,25 +14,25 @@
 #
 # END COPYRIGHT
 
+from logging import getLogger
 from typing import Any
 from typing import Dict
 
+from neuro_san.interfaces.activation_capsule import ActivationCapsule
 from neuro_san.interfaces.coded_tool import CodedTool
-from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
 from coded_tools.experimental.mdap_decomposer.neuro_san_solver import NeuroSanSolver
 from neuro_san_studio.coded_tools.coded_tool_agent_caller import CodedToolAgentCaller
 from neuro_san_studio.coded_tools.solver_parsing import SolverParsing
 
 
-# pylint: disable=too-many-ancestors
-class DecompositionSolver(BranchActivation, CodedTool):
+class DecompositionSolver(CodedTool):
     """
     A CodedTool implementation that uses the NeuroSanSolver to break down
     a problem into smaller subproblems inspired by the MAKER algorithm.
 
-    Note that we are also doubly-inheriting from BranchActivation to get access to
-    the ability to call agents from a CodedTool via its use_tool() method.
+    Agents are called from this CodedTool via the use_tool() method of the
+    ActivationCapsule the framework passes in through the "activation_capsule" arg.
     This happens inside the CodedToolAgentCaller heavily used by this class.
 
     Upon activation by the agent hierarchy, a CodedTool will have either its
@@ -107,6 +107,12 @@ class DecompositionSolver(BranchActivation, CodedTool):
                 adding the data is not invoke()-ed more than once.
         :return: A return value that goes into the chat stream.
         """
+        activation_capsule: ActivationCapsule = args.get("activation_capsule")
+        if activation_capsule is None:
+            getLogger(self.__class__.__name__).error(
+                "No activation_capsule in args; cannot call the decomposition agents."
+            )
+            return "No activation_capsule available to call the decomposition agents."
 
         # Create the solver and use some of the arguments to configure it
         solver = NeuroSanSolver(
@@ -119,14 +125,18 @@ class DecompositionSolver(BranchActivation, CodedTool):
         tools: Dict[str, str] = {}
         tools = args.get("tools", tools)
 
-        # Set up the AgentCallers to use this CodedTool as a basis for calling the agents.
+        # Set up the AgentCallers to use the framework's ActivationCapsule for calling the agents.
         parsing = SolverParsing()
         composition_discriminator_caller = CodedToolAgentCaller(
-            self, parsing, name=tools.get("composition_discriminator")
+            activation_capsule, parsing, name=tools.get("composition_discriminator")
         )
-        decomposer_caller = CodedToolAgentCaller(self, parsing=None, name=tools.get("decomposer"))
-        problem_solver_caller = CodedToolAgentCaller(self, parsing=None, name=tools.get("problem_solver"))
-        solution_discriminator_caller = CodedToolAgentCaller(self, parsing, name=tools.get("solution_discriminator"))
+        decomposer_caller = CodedToolAgentCaller(activation_capsule, parsing=None, name=tools.get("decomposer"))
+        problem_solver_caller = CodedToolAgentCaller(
+            activation_capsule, parsing=None, name=tools.get("problem_solver")
+        )
+        solution_discriminator_caller = CodedToolAgentCaller(
+            activation_capsule, parsing, name=tools.get("solution_discriminator")
+        )
         solver.set_callers(
             composition_discriminator_caller,
             decomposer_caller,

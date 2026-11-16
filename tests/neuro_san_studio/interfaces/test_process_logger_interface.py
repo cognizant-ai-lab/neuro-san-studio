@@ -32,7 +32,7 @@ class TestProcessLoggerInterface:
     def test_concrete_subclass_must_implement_method(self):
         """Test that a subclass without attach_process_logger raises TypeError."""
 
-        class IncompleteLogger(ProcessLoggerInterface):  # pylint: disable=too-few-public-methods
+        class IncompleteLogger(ProcessLoggerInterface):  # pylint: disable=too-few-public-methods,abstract-method
             """Intentionally incomplete subclass for testing."""
 
         with pytest.raises(TypeError):

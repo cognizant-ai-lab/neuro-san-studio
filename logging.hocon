@@ -84,6 +84,15 @@
                 "console"
             ],
             "propagate": false
+        },
+
+        # Turn on debug logging for the Agent Network Designer's coded tools too
+        "neuro_san_studio.agent_network_designer.tools": {
+            "level": "DEBUG",
+            "handlers": [
+                "console"
+            ],
+            "propagate": false
         }
     },
 

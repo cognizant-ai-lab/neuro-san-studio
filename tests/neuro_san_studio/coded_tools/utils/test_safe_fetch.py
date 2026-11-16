@@ -21,6 +21,8 @@
 import asyncio
 import traceback
 from collections.abc import AsyncIterator
+from collections.abc import Awaitable
+from collections.abc import Callable
 from collections.abc import Mapping
 from functools import partial
 from io import BytesIO
@@ -33,16 +35,21 @@ from unittest.mock import patch
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
 from aiohttp import ClientSession
+from aiohttp import ClientTimeout
 from aiohttp import DummyCookieJar
 from aiohttp import TCPConnector
+from aiohttp import web
 from multidict import CIMultiDict
 from pypdf import PdfWriter
+from yarl import URL
 
 from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
 from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
+from neuro_san_studio.coded_tools.utils.safe_fetch import DOWNLOAD_TIMEOUT_SECONDS
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_REDIRECTS
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_RESPONSE_BYTES
+from neuro_san_studio.coded_tools.utils.safe_fetch import TIMEOUT_SECONDS
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 from neuro_san_studio.coded_tools.utils.url_policy import UrlPolicy
 
@@ -1719,3 +1726,237 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(SafeFetch.is_text_content_type("application/rss+xml"))
         self.assertTrue(SafeFetch.is_text_content_type("application/atom+xml"))
         self.assertTrue(SafeFetch.is_text_content_type("application/xhtml+xml"))
+
+    # ------------------------------------------------------------------
+    # Time limits: a real loopback server, since a mocked session starts no timers.
+    # The tests patch validate_hostname_safety so the loopback address passes validate_url.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _open_session_timeout() -> ClientTimeout:
+        """
+        Open a real SafeFetch session, read its aiohttp timeout settings, and close it.
+
+        :return: The session's ClientTimeout.
+        """
+        session = SafeFetch.open_session()
+        try:
+            return session.timeout
+        finally:
+            await session.close()
+
+    def test_open_session_bounds_reads_and_backstops_the_total(self) -> None:
+        """Tests that the session limits pauses between reads and sets aiohttp's total above both limits."""
+        timeout: ClientTimeout = asyncio.run(self._open_session_timeout())
+        self.assertEqual(timeout.sock_read, TIMEOUT_SECONDS)
+        self.assertEqual(timeout.total, 2 * (TIMEOUT_SECONDS + DOWNLOAD_TIMEOUT_SECONDS))
+
+    def test_raise_translated_says_timed_out_for_a_timeout(self) -> None:
+        """Tests that a timeout is reported as "Timed out fetching", with its reason and a redacted URL."""
+        with self.assertRaises(ClientError) as ctx:
+            SafeFetch._raise_translated(  # pylint: disable=protected-access
+                asyncio.TimeoutError("no response headers within 15 s"), "http://example.com/x?sig=secret"
+            )
+        self.assertEqual(
+            str(ctx.exception),
+            "url_not_accessible: Timed out fetching 'http://example.com/x?[redacted]': "
+            "TimeoutError: no response headers within 15 s",
+        )
+
+    @staticmethod
+    async def _fetch_from_local_server(
+        routes: list[tuple[str, Any]], fetcher: Callable[[str, ClientSession], Awaitable[Any]]
+    ) -> Any:
+        """
+        Serve the given routes on a loopback port, fetch "/" through a real SafeFetch session, then stop the server.
+
+        :param routes: (path, handler) pairs registered as GET routes.
+        :param fetcher: The SafeFetch network method to call with (url, session), e.g. SafeFetch.fetch_raw.
+        :return: What the fetcher returned.
+        :raises aiohttp.ClientError: as the fetcher raises it; the calling test inspects it.
+        """
+        app: web.Application = web.Application()
+        for path, handler in routes:
+            app.router.add_get(path, handler)
+        # handler_cancellation stops a handler once the client hangs up, so a scenario whose fetch
+        # times out does not keep the server sleeping until shutdown_timeout.
+        runner: web.AppRunner = web.AppRunner(app, handler_cancellation=True, shutdown_timeout=1.0)
+        await runner.setup()
+        try:
+            site: web.TCPSite = web.TCPSite(runner, "127.0.0.1", 0)
+            await site.start()
+            port: int = runner.addresses[0][1]
+            # Built from parts so this module holds no schemed URL literal for the link checker to try.
+            url: str = str(URL.build(scheme="http", host="127.0.0.1", port=port, path="/"))
+            async with SafeFetch.open_session() as session:
+                return await fetcher(url, session)
+        finally:
+            await runner.cleanup()
+
+    @staticmethod
+    async def _drip_body(
+        chunks: int,
+        gap_seconds: float,
+        request: web.Request,
+        *,
+        content_type: str = "text/plain",
+        prefix: bytes = b"",
+    ) -> web.StreamResponse:
+        """
+        Send the headers and an optional prefix at once, then the body as 1 KB chunks with a pause before each one.
+
+        :param chunks: How many 1 KB chunks to send.
+        :param gap_seconds: The pause before each chunk.
+        :param request: The incoming request; it stays the last positional parameter so that
+                        partial() can bind chunks and gap_seconds for the route.
+        :param content_type: The Content-Type header to declare.
+        :param prefix: Bytes sent right after the headers, before the first pause (a PDF header, say).
+        :return: The streamed response.
+        """
+        response: web.StreamResponse = web.StreamResponse(headers={"Content-Type": content_type})
+        await response.prepare(request)
+        if prefix:
+            await response.write(prefix)
+        for _ in range(chunks):
+            await asyncio.sleep(gap_seconds)
+            await response.write(b"x" * 1024)
+        await response.write_eof()
+        return response
+
+    @staticmethod
+    async def _stalled_body(stall_seconds: float, request: web.Request) -> web.StreamResponse:
+        """
+        Send the headers and a first 1 KB chunk at once, go silent, then send a second chunk.
+
+        :param stall_seconds: How long to stay silent between the two chunks.
+        :param request: The incoming request.
+        :return: The streamed response.
+        """
+        response: web.StreamResponse = web.StreamResponse(headers={"Content-Type": "text/plain"})
+        await response.prepare(request)
+        await response.write(b"x" * 1024)
+        await asyncio.sleep(stall_seconds)
+        await response.write(b"y" * 1024)
+        await response.write_eof()
+        return response
+
+    @staticmethod
+    async def _answer_after(delay_seconds: float, text: str, _request: web.Request) -> web.Response:
+        """
+        Wait, then answer 200 with a short text body; the headers are not sent before the wait ends.
+
+        :param delay_seconds: How long to wait before answering.
+        :param text: The response body.
+        :param _request: The incoming request (unused).
+        :return: The response.
+        """
+        await asyncio.sleep(delay_seconds)
+        return web.Response(text=text)
+
+    @staticmethod
+    async def _redirect_after(delay_seconds: float, location: str, _request: web.Request) -> web.Response:
+        """
+        Wait, then answer 302 pointing at location.
+
+        :param delay_seconds: How long to wait before answering.
+        :param location: The Location header value (a path on the same server).
+        :param _request: The incoming request (unused).
+        :return: The redirect response.
+        """
+        await asyncio.sleep(delay_seconds)
+        return web.Response(status=302, headers={"Location": location})
+
+    def test_steady_body_longer_than_the_request_limit_is_returned(self) -> None:
+        """Tests that a 1.2 s body still arriving steadily after a 0.5 s TIMEOUT_SECONDS is read to the end."""
+        routes: list[tuple[str, Any]] = [("/", partial(TestSafeFetch._drip_body, 12, 0.1))]
+        with (
+            patch(f"{MODULE}.TIMEOUT_SECONDS", 0.5),
+            patch(f"{MODULE}.DOWNLOAD_TIMEOUT_SECONDS", 3.0),
+            patch.object(UrlPolicy, "validate_hostname_safety"),
+        ):
+            body: str = asyncio.run(self._fetch_from_local_server(routes, SafeFetch.fetch_raw))
+        self.assertEqual(body, "x" * 12 * 1024)
+
+    def test_steady_pdf_longer_than_the_request_limit_is_downloaded(self) -> None:
+        """Tests that download_pdf_bytes also reads a slow PDF to the end within the download window."""
+        routes: list[tuple[str, Any]] = [
+            (
+                "/",
+                partial(TestSafeFetch._drip_body, 12, 0.1, content_type="application/pdf", prefix=b"%PDF-1.4\n"),
+            )
+        ]
+        with (
+            patch(f"{MODULE}.TIMEOUT_SECONDS", 0.5),
+            patch(f"{MODULE}.DOWNLOAD_TIMEOUT_SECONDS", 3.0),
+            patch.object(UrlPolicy, "validate_hostname_safety"),
+        ):
+            data: bytes = asyncio.run(self._fetch_from_local_server(routes, SafeFetch.download_pdf_bytes))
+        self.assertTrue(data.startswith(b"%PDF-1.4\n"))
+        self.assertEqual(len(data), len(b"%PDF-1.4\n") + 12 * 1024)
+
+    def test_body_still_arriving_when_the_download_window_closes_times_out(self) -> None:
+        """Tests that a body still arriving when the download window closes fails, naming that limit.
+
+        Each 0.1 s gap beats the per-read limit, so only the download window can stop this 4 s body.
+        """
+        routes: list[tuple[str, Any]] = [("/", partial(TestSafeFetch._drip_body, 40, 0.1))]
+        with (
+            patch(f"{MODULE}.TIMEOUT_SECONDS", 0.5),
+            patch(f"{MODULE}.DOWNLOAD_TIMEOUT_SECONDS", 1.0),
+            patch.object(UrlPolicy, "validate_hostname_safety"),
+        ):
+            with self.assertRaises(ClientError) as ctx:
+                asyncio.run(self._fetch_from_local_server(routes, SafeFetch.fetch_raw))
+        message: str = str(ctx.exception)
+        self.assertTrue(message.startswith("url_not_accessible: Timed out fetching '"), message)
+        self.assertIn("TimeoutError: the body did not finish downloading within 1.0 s of its headers", message)
+
+    def test_headers_later_than_the_request_limit_time_out(self) -> None:
+        """Tests that a server sending no headers within TIMEOUT_SECONDS fails, naming that limit.
+
+        The wider 3 s download window must not apply before the headers arrive.
+        """
+        routes: list[tuple[str, Any]] = [("/", partial(TestSafeFetch._answer_after, 2.0, "late"))]
+        with (
+            patch(f"{MODULE}.TIMEOUT_SECONDS", 0.5),
+            patch(f"{MODULE}.DOWNLOAD_TIMEOUT_SECONDS", 3.0),
+            patch.object(UrlPolicy, "validate_hostname_safety"),
+        ):
+            with self.assertRaises(ClientError) as ctx:
+                asyncio.run(self._fetch_from_local_server(routes, SafeFetch.fetch_raw))
+        message: str = str(ctx.exception)
+        self.assertTrue(message.startswith("url_not_accessible: Timed out fetching '"), message)
+        self.assertIn("TimeoutError: no response headers within 0.5 s", message)
+
+    def test_stalled_body_times_out_at_the_read_limit(self) -> None:
+        """Tests that a body going silent for longer than TIMEOUT_SECONDS fails, even inside the download window.
+
+        Without the per-read limit, this 2 s stall would end inside the 3 s window and the fetch would succeed.
+        """
+        routes: list[tuple[str, Any]] = [("/", partial(TestSafeFetch._stalled_body, 2.0))]
+        with (
+            patch(f"{MODULE}.TIMEOUT_SECONDS", 0.5),
+            patch(f"{MODULE}.DOWNLOAD_TIMEOUT_SECONDS", 3.0),
+            patch.object(UrlPolicy, "validate_hostname_safety"),
+        ):
+            with self.assertRaises(ClientError) as ctx:
+                asyncio.run(self._fetch_from_local_server(routes, SafeFetch.fetch_raw))
+        message: str = str(ctx.exception)
+        self.assertTrue(message.startswith("url_not_accessible: Timed out fetching '"), message)
+        # aiohttp's read timeout message. The class name differs between aiohttp versions.
+        self.assertIn("Timeout on reading data from socket", message)
+
+    def test_each_redirect_hop_gets_its_own_request_limit(self) -> None:
+        """Tests that TIMEOUT_SECONDS applies per hop: three 0.2 s hops succeed under a 0.5 s limit."""
+        routes: list[tuple[str, Any]] = [
+            ("/", partial(TestSafeFetch._redirect_after, 0.2, "/second")),
+            ("/second", partial(TestSafeFetch._redirect_after, 0.2, "/third")),
+            ("/third", partial(TestSafeFetch._answer_after, 0.2, "arrived")),
+        ]
+        with (
+            patch(f"{MODULE}.TIMEOUT_SECONDS", 0.5),
+            patch(f"{MODULE}.DOWNLOAD_TIMEOUT_SECONDS", 3.0),
+            patch.object(UrlPolicy, "validate_hostname_safety"),
+        ):
+            body: str = asyncio.run(self._fetch_from_local_server(routes, SafeFetch.fetch_raw))
+        self.assertEqual(body, "arrived")

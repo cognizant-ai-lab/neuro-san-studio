@@ -21,7 +21,7 @@ from typing import Union
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
 
-from coded_tools.agent_network_editor.and_logger import AndLogger
+from neuro_san_studio.agent_network_designer.common.and_logger import AndLogger
 
 
 class ReadAgentNetwork(CodedTool):

@@ -58,9 +58,9 @@
                             "type": "boolean",
                             "description": "Indicates whether to use toolbox (default: true)"
                         },
-                        "subnetwork": {
+                        "external_network": {
                             "type": "boolean",
-                            "description": "Indicates whether to use subnetworks (external agents) (default: true)"
+                            "description": "Indicates whether to use external networks (other agent networks) (default: true)"
                         },
                         "mcp_tool": {
                             "type": "boolean",
@@ -73,16 +73,16 @@
             "instructions": ${expertise_scoping_instructions} """
 You are responsible for generating and editing the structure of the agent network according to the given specifications. 
 
-**Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool` unless the corresponding flag (toolbox, subnetwork, or mcp_tool) is explicitly set to false.**  
+**Always begin by calling `get_toolbox`, `get_external_network`, and `get_mcp_tool` unless the corresponding flag (toolbox, external_network, or mcp_tool) is explicitly set to false.**  
 These calls provide the list of available tools for use in the network:
 - `get_toolbox` returns a dictionary where each key is a tool name and the value contains the tool’s information.
-- `get_subnetwork` returns a dictionary where each key is a subnetwork name and the value contains its description.
+- `get_external_network` returns a dictionary where each key is an external network name and the value contains its description.
 - `get_mcp_tool` returns a dictionary where each key is an MCP server URL and the value is the capabilities of the tools provided by that server.
 
 When adding tools to the network, follow this priority order depending on which tool flags are enabled:
-1. Subnetworks first (only if subnetwork=true):
-    - If a subnetwork is available from `get_subnetwork`, add the name of the subnetwork to the agent’s tools list.
-    - Do not create a node for subnetworks.
+1. External networks first (only if external_network=true):
+    - If an external network is available from `get_external_network`, add the name of the external network to the agent’s tools list.
+    - Do not create a node for external networks.
 2. Toolbox tools second (only if toolbox=true):
     - Add the name of tools from `get_toolbox` to the agent’s tools list.
     - Create nodes for these tools.
@@ -90,11 +90,11 @@ When adding tools to the network, follow this priority order depending on which 
     - MCP tools can be added by adding MCP server URL from `get_mcp_tool` to an agent’s tools list.
     - Do not create nodes for MCP tools.
 
-- Subnetwork names always start with "/".
+- External network names always start with "/".
 - MCP tool names always start with "http://" or "https://"".
 - Example of attaching these tools:
 "tools": ["/banking_ops", "https://example.com/mcp"]
-- Rule: Only add subnetworks and MCP tools to the tools list. Never create nodes for them.
+- Rule: Only add external networks and MCP tools to the tools list. Never create nodes for them.
 
 ### Step-by-step workflow
 - **Create mode (`mode=create`)**  
@@ -109,7 +109,7 @@ When adding tools to the network, follow this priority order depending on which 
   - Adding an agent creates the node only; you must follow up with `update_agent_in_network` to connect it to up-chain or down-chain agents.
 
 - **Updating agents**: Use `update_agent_in_network`.  
-  - This also allows you to add or change tools from `get_subnetwork` or `get_mcp_tool` in the down-chain list.
+  - This also allows you to add or change tools from `get_external_network` or `get_mcp_tool` in the down-chain list.
 
 - **Removing agents**: Use `remove_agent_from_network`.  
   - Ensure all up-chain and down-chain references to the removed agent are updated.  
@@ -121,14 +121,14 @@ Think of this as building or refining a hierarchical organizational chart. Each 
 ### Rules
 - Prefer simplicity. Use the fewest agents necessary to fulfill the requirements. Do not add agents speculatively.
 - The network must always remain a directed acyclic graph (DAG).  
-- There must be exactly one top agent after all modifications.  
-- The top agent connects only to mid-level agents, not directly to the lowest-level ones.  
+- After all modifications, there must be exactly one front man: the agent that receives the user’s request and answers the user.  
+- The front man connects only to mid-level agents, not directly to the lowest-level ones.  
 - When adding an agent, always follow up with `update_agent_in_network` to connect it properly.  
 - When removing an agent, update related up-chain and down-chain references to avoid dangling links.  
 - All agents must remain connected; no isolated agents are allowed.  
 - If an agent has **no `instructions` key**, it is treated as a **function** and cannot have `tools`.  
 - In the graph, down-chain agents are always listed under `tools`.
-- Add tools from `get_subnetwork`, `get_toolbox`, and `get_mcp_tool` if the tool’s description or name clearly matches the agent’s responsibilities or role.
+- Add tools from `get_external_network`, `get_toolbox`, and `get_mcp_tool` if the tool’s description or name clearly matches the agent’s responsibilities or role.
 
 ### Example
 [
@@ -197,20 +197,20 @@ Always respond with "Successfully created/edited the structure of the agent netw
                 "remove_agent_from_network",
                 "update_agent_in_network",
                 "get_mcp_tool",
-                "get_subnetwork",
+                "get_external_network",
                 "get_toolbox",
             ],
             # Parse any JSON in responses into the structure field of the ChatMessage.
             "structure_formats": "json",
             "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
                         "sly_data": true
                     }
                 },
                 {
-                    "class": "middleware.agent_network_designer.validation.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
+                    "class": "neuro_san_studio.agent_network_designer.middleware.validation.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
                     "args": {
                         "sly_data": true
                     }
@@ -220,7 +220,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "create_new_network",
-            "class": "coded_tools.agent_network_editor.create_network.CreateNetwork",
+            "class": "neuro_san_studio.agent_network_designer.tools.create_network.CreateNetwork",
             "function": {
                 "description": "Create a new network",
                 "parameters": {
@@ -250,7 +250,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "add_agent_to_network",
-            "class": "coded_tools.agent_network_editor.add_agent.AddAgent",
+            "class": "neuro_san_studio.agent_network_designer.tools.add_agent.AddAgent",
             "function": {
                 "description": "Adds an agent to an agent network.",
                 "parameters": {
@@ -272,7 +272,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "remove_agent_from_network",
-            "class": "coded_tools.agent_network_editor.remove_agent.RemoveAgent",
+            "class": "neuro_san_studio.agent_network_designer.tools.remove_agent.RemoveAgent",
             "function": {
                 "description": "Removes an agent and all of its edges from the agent network.",
                 "parameters": {
@@ -290,7 +290,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "update_agent_in_network",
-            "class": "coded_tools.agent_network_editor.update_agent.UpdateAgent",
+            "class": "neuro_san_studio.agent_network_designer.tools.update_agent.UpdateAgent",
             "function": {
                 "description": "Updates an existing agent's relationships.",
                 "parameters": {
@@ -313,23 +313,23 @@ Always respond with "Successfully created/edited the structure of the agent netw
 
         {
             "name": "get_mcp_tool",
-            "class": "coded_tools.agent_network_editor.get_mcp_tool.GetMcpTool",
+            "class": "neuro_san_studio.agent_network_designer.tools.get_mcp_tool.GetMcpTool",
             "function": {
                 "description": "Retrieve tools specification from specified MCP servers.",
             }
         },
 
         {
-            "name": "get_subnetwork",
-            "class": "coded_tools.agent_network_editor.get_subnetwork.GetSubnetwork",
+            "name": "get_external_network",
+            "class": "neuro_san_studio.agent_network_designer.tools.get_external_network.GetExternalNetwork",
             "function": {
-                "description": "Retrieve the definitions of all subnetworks available in the system.",
+                "description": "Retrieve the definitions of all external networks available in the system.",
             }
         }
 
         {
             "name": "get_toolbox",
-            "class": "coded_tools.agent_network_editor.get_toolbox.GetToolbox",
+            "class": "neuro_san_studio.agent_network_designer.tools.get_toolbox.GetToolbox",
             "function": {
                 "description": "Retrieve the toolbox information from the 'toolbox_info.hocon' file and return it as a dictionary.",
             }

@@ -155,7 +155,6 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
                 continue
             self._add_file(zf, sub_full, f"registries/{sub_rel}", added, result)
 
-    # pylint: disable-next=too-many-arguments,too-many-positional-arguments
     def _add_shared_includes(
         self,
         zf: zipfile.ZipFile,
@@ -177,7 +176,6 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
             self._add_file(zf, inc_full, f"registries/{inc_rel}", added, result)
             result.shared_includes.append(inc_rel)
 
-    # pylint: disable-next=too-many-arguments,too-many-positional-arguments
     def _add_file(self, zf: zipfile.ZipFile, source: str, arcname: str, added: Set[str], result: ExportResult) -> None:
         """Write one file under arcname, skipping duplicates and recording the addition."""
         if arcname in added:

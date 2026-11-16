@@ -76,9 +76,7 @@ class TestExpand:
     def test_crosses_packages_and_roots(self, tmp_path: Path) -> None:
         """A dependency may live in another package, or under the other root entirely.
 
-        Mirrors the real designer: coded_tools/agent_network_test_generator/*.py import
-        coded_tools.agent_network_editor.and_logger, and the designer middleware imports coded
-        tools. Copying each entry point's own package directory would miss both directions.
+        Copying each entry point's own package directory would miss both directions.
         """
         _write(tmp_path, "coded_tools/editor/__init__.py")
         _write(tmp_path, "coded_tools/editor/logger.py", "class Logger: pass\n")

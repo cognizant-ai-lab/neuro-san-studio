@@ -58,6 +58,7 @@ EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "agent_network_query_generator.hocon",
     "tools/internet_info_gatherer.hocon",
     "agent_network_test_generator.hocon",
+    "agent_network_consultant.hocon",
     "experimental/cruse_theme_agent.hocon",
     "experimental/cruse_widget_agent.hocon",
 ]
@@ -329,11 +330,11 @@ class TestRunFlow:
         # Every default network lands on disk...
         for network in EXPECTED_DEFAULT_NETWORKS:
             assert (tmp_path / "registries" / network).is_file(), f"{network} was not scaffolded"
-        # ...along with the coded tools and middleware they need.
-        assert (tmp_path / "coded_tools" / "agent_network_editor" / "add_agent.py").is_file()
-        assert (
-            tmp_path / "middleware" / "agent_network_designer" / "agent_network_definition_middleware.py"
-        ).is_file()
+        # ...but not the designer's own code: its networks name classes in the installed package.
+        assert not (tmp_path / "coded_tools" / "agent_network_editor").exists()
+        assert not (tmp_path / "coded_tools" / "agent_network_instructions_editor").exists()
+        assert not (tmp_path / "coded_tools" / "agent_network_query_generator").exists()
+        assert not (tmp_path / "middleware" / "agent_network_designer").exists()
 
     def test_run_skips_existing_files(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Existing target files must be left untouched and logged as [skip]."""
@@ -650,7 +651,7 @@ class TestDefaultNetworks:
     ) -> None:
         """The scaffolded manifest_and.hocon must parse cleanly through the designer's read path.
 
-        The designer's GetSubnetwork reads registries/manifest_and.hocon relative to the
+        The designer's GetExternalNetwork reads registries/manifest_and.hocon relative to the
         project root via RawManifestRestorer, and pyhocon resolves its `include` directives
         against the process CWD. A template drift — e.g. "syncing" it with the repo-level
         registries/manifest_and.hocon, which additionally includes the industry manifest that
@@ -699,6 +700,12 @@ class TestDefaultNetworks:
             "experimental/cruse_widget_agent.hocon",
         ):
             assert dict(keys[support]) == {"serve": True, "public": False}, support
+
+    def test_agent_network_consultant_is_installed_but_disabled(self, scaffolded_project: Path) -> None:
+        """Install Consultant beside Designer without enabling it in the server manifest."""
+        keys = self._manifest_keys(scaffolded_project)
+
+        assert keys.get("agent_network_consultant.hocon") is False
 
     def test_public_networks_are_plain_true(self, scaffolded_project: Path) -> None:
         """The entry points a user picks from the UI stay publicly listed."""

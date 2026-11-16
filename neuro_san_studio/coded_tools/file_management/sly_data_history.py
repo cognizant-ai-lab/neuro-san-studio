@@ -17,7 +17,7 @@
 from pathlib import Path
 from typing import Any
 
-from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+from neuro_san_studio.utils.sly_data_lock import SlyDataLock
 
 
 # pylint: disable=too-few-public-methods

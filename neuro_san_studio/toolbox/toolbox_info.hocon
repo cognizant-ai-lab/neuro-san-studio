@@ -553,7 +553,7 @@ Options are `ascending` and `descending`. Default to `descending`.
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URL to fetch. Must use http or https scheme and be at most 250 characters."
+                    "description": "The URL to fetch. Must use http or https scheme and be at most 2000 characters."
                 },
                 "allowed_domains": {
                     "type": "array",

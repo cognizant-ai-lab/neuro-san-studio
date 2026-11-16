@@ -233,7 +233,8 @@ Run `ns init` to initialize a Neuro SAN Studio project. `ns` stands for Neuro SA
 * create an `mcp` folder with a list of MCP tools
 * create a `registries` folder with a simple agent network and the
 [Agent Network Designer](#agent-network-designer), so you can start designing your own networks right away
-* create `coded_tools` and `middleware` folders with the Python code those agent networks need
+* create a `coded_tools` folder with the Python code those agent networks need
+* create an empty `middleware` folder for middleware you add later
 
 To learn more about the `ns` command run `ns --help`.
 

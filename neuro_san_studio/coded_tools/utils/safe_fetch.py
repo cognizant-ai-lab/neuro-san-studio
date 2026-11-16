@@ -15,7 +15,10 @@
 # END COPYRIGHT
 
 import os
+from asyncio import Timeout
 from asyncio import TimeoutError as AsyncTimeoutError
+from asyncio import get_running_loop
+from asyncio import timeout as asyncio_timeout
 from asyncio import to_thread
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager
@@ -51,17 +54,22 @@ from neuro_san_studio.coded_tools.utils.url_policy import UrlPolicy
 MAX_RESPONSE_BYTES: int = 50 * 1024 * 1024  # 50 MB
 # Read size per iteration when streaming a response body.
 DOWNLOAD_CHUNK_BYTES: int = 64 * 1024
+# Seconds each request, including every redirect hop, has to receive its response headers.
+# Also the longest pause allowed between two reads of a body.
 TIMEOUT_SECONDS: int = 15
+# Seconds the final body has to finish once its headers arrive: enough for MAX_RESPONSE_BYTES at
+# about 430 KB/s, yet bounded so a server dripping bytes cannot hold a fetch open forever.
+DOWNLOAD_TIMEOUT_SECONDS: int = 120
 # Maximum number of 3xx hops followed per fetch before giving up with url_not_allowed.
 # The chain MUST be bounded: a loop (A -> B -> A ...) or an arbitrarily long chain
 # would otherwise let a remote server drive an unbounded number of requests from this
 # host (a DoS vector, and a cheap way to probe our SSRF policy one hop at a time).
 # 5 is far below the ~20 browsers tolerate: http -> https, bare-host -> www and a
-# moved page fit within it with room to spare. Wall-clock cost: open_session applies
-# TIMEOUT_SECONDS per request, not per chain, so a server slow-dripping 3xx answers
-# can hold one chain for (MAX_REDIRECTS + 1) * TIMEOUT_SECONDS (90 s today), and one
-# WebFetch call runs up to three chains (HEAD probe, GET fallback, content fetch).
-# Bounded, and the price of re-validating each hop; keep it in mind before raising either.
+# moved page fit within it with room to spare. Wall-clock cost: each hop gets its own
+# TIMEOUT_SECONDS, so a server slow-dripping 3xx answers can hold one chain for
+# (MAX_REDIRECTS + 1) * TIMEOUT_SECONDS (90 s today), plus DOWNLOAD_TIMEOUT_SECONDS for the
+# final body. One WebFetch call runs up to three chains (HEAD probe, GET fallback, content fetch).
+# Bounded, and the price of re-validating each hop; keep it in mind before raising any of them.
 MAX_REDIRECTS: int = 5
 # Generic "download" media types that carry no real format information. When a server
 # declares one of these (or no Content-Type at all), is_pdf falls back to sniffing
@@ -105,6 +113,9 @@ class SafeFetch:
     oversized body. A PDF download is also sniffed for a "%PDF-" header within its
     first PDF_HEADER_WINDOW bytes and refused (not_a_pdf) before the rest is read.
 
+    Every request must receive its headers within TIMEOUT_SECONDS, and the final body must finish
+    within DOWNLOAD_TIMEOUT_SECONDS. Running out of time raises url_not_accessible.
+
     Every URL named in an error message is reduced to scheme, host and path
     (UrlPolicy.redact_for_log): redirect targets are server-controlled and routinely carry a
     bearer credential in their query string, and these messages end up in logs.
@@ -114,7 +125,7 @@ class SafeFetch:
         url_too_long             – URL exceeds MAX_URL_LENGTH characters.
         url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules,
                                     or a redirect hop fails those checks / the chain exceeds MAX_REDIRECTS.
-        url_not_accessible       – HTTP error or network failure while fetching the page.
+        url_not_accessible       – HTTP error, network failure or time limit reached while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         response_too_large       – Content-Length header or streamed body exceeds MAX_RESPONSE_BYTES.
         not_a_pdf                – PDF download has no "%PDF-" header in its first PDF_HEADER_WINDOW bytes.
@@ -140,7 +151,9 @@ class SafeFetch:
                  caller owns the session and must close it (use it as an async
                  context manager).
         """
-        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
+        # _hop_deadline enforces the header and body limits, so total is only a backstop set well above
+        # both. sock_read makes a body that stops arriving fail within TIMEOUT_SECONDS.
+        timeout = ClientTimeout(total=2 * (TIMEOUT_SECONDS + DOWNLOAD_TIMEOUT_SECONDS), sock_read=TIMEOUT_SECONDS)
         connector = TCPConnector(resolver=GlobalOnlyResolver(), use_dns_cache=False)
         # Honor the USER_AGENT environment variable, like the langchain
         # WebBaseLoader this path replaced: some sites answer 403 to aiohttp's
@@ -245,6 +258,33 @@ class SafeFetch:
 
     @staticmethod
     @asynccontextmanager
+    async def _hop_deadline() -> AsyncGenerator[Timeout, None]:
+        """
+        Give one request TIMEOUT_SECONDS to receive its headers, and name the limit that runs out.
+        The caller moves the deadline to DOWNLOAD_TIMEOUT_SECONDS once the final headers arrive.
+
+        :return: An async context manager yielding the asyncio Timeout, which the caller may reschedule.
+        :raises TimeoutError: when this deadline expires, naming the limit that ran out.
+        """
+        deadline: Timeout = asyncio_timeout(TIMEOUT_SECONDS)
+        headers_due: float | None = None
+        try:
+            async with deadline:
+                headers_due = deadline.when()
+                yield deadline
+        except AsyncTimeoutError as exc:
+            # Rename only a timeout this deadline raised. Others, like aiohttp's read timeout, pass through.
+            if not deadline.expired():
+                raise
+            # A deadline that was never moved expired before the headers arrived.
+            if deadline.when() == headers_due:
+                raise AsyncTimeoutError(f"no response headers within {TIMEOUT_SECONDS} s") from exc
+            raise AsyncTimeoutError(
+                f"the body did not finish downloading within {DOWNLOAD_TIMEOUT_SECONDS} s of its headers"
+            ) from exc
+
+    @staticmethod
+    @asynccontextmanager
     async def _open_following_redirects(
         session: ClientSession,
         method: str,
@@ -274,6 +314,8 @@ class SafeFetch:
         apply raise_for_status and the size checks to the response exactly as for a
         direct response; raise_for_status ignores 3xx (it only covers 4xx/5xx), which
         is why the redirect handling must be explicit here.
+
+        Each hop gets TIMEOUT_SECONDS for its headers, and the final body gets DOWNLOAD_TIMEOUT_SECONDS.
 
         An https -> http downgrade hop is refused. The session stores no cookies
         (open_session uses DummyCookieJar) and sends no credentials, but the URL
@@ -308,9 +350,16 @@ class SafeFetch:
         # the probe fetch a body it never reads (aiohttp keeps HEAD too).
         requester: Any = session.head if method == "HEAD" else session.get
         while True:
-            async with requester(current_url, allow_redirects=False) as response:
+            # Entered before the request, so connecting and receiving the headers both count.
+            async with (
+                SafeFetch._hop_deadline() as hop_deadline,
+                requester(current_url, allow_redirects=False) as response,
+            ):
                 status: int = response.status
                 if not SafeFetch.is_redirection(status):
+                    # The caller reads the body inside this block, in the same task, so moving the
+                    # deadline makes it bound the download.
+                    hop_deadline.reschedule(get_running_loop().time() + DOWNLOAD_TIMEOUT_SECONDS)
                     yield response, current_url
                     return
                 # Enforce the cap BEFORE looking at where the hop points: a loop
@@ -868,7 +917,7 @@ class SafeFetch:
         download_pdf_bytes: a non-2xx response becomes a ClientResponseError tagged
         too_many_requests (HTTP 429) or url_not_accessible, and any other transport
         error (connection failure, DNS failure, timeout) becomes a ClientError tagged
-        url_not_accessible.
+        url_not_accessible. A timeout says "Timed out fetching", since the server may have answered.
 
         :param exc: The caught aiohttp ClientError (possibly a ClientResponseError)
                     or asyncio timeout to translate.
@@ -909,6 +958,8 @@ class SafeFetch:
         detail: str = str(exc)
         if "://" in detail:
             detail = "[message withheld: it quotes a URL]"
+        # aiohttp's own timeout errors subclass TimeoutError, so they get this wording too.
+        failure: str = "Timed out fetching" if isinstance(exc, AsyncTimeoutError) else "Could not reach"
         raise ClientError(
-            f"url_not_accessible: Could not reach '{UrlPolicy.redact_for_log(url)}': {type(exc).__name__}: {detail}"
+            f"url_not_accessible: {failure} '{UrlPolicy.redact_for_log(url)}': {type(exc).__name__}: {detail}"
         ) from None

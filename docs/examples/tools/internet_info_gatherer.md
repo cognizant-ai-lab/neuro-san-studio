@@ -59,6 +59,10 @@ None — this network runs out of the box:
 - **Search results are empty or rate-limited**: the free you.com tier has usage limits. The paid tier via the
   `you_search` network removes them.
 - **web_fetch refuses a URL**: the target resolved to a private, loopback, or link-local address (SSRF protection),
-  the URL exceeded 250 characters, or a domain filter excluded it.
+  the URL exceeded 2000 characters, or a domain filter excluded it.
+- **web_fetch reports `Timed out fetching`**: the server sent no response headers within 15 seconds, stopped sending
+  the body for 15 seconds, or the download took longer than 120 seconds.
+- **web_fetch reports `response_too_large`**: the response is larger than 50 MB, judged by its Content-Length header
+  or by the bytes actually received.
 - **A fetched page comes back nearly empty**: some sites render content with JavaScript or block non-browser
   clients; try another source from the search results.

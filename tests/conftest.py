@@ -18,12 +18,12 @@
 # pytest discovers and loads it by name, so it cannot be renamed to something
 # more descriptive without the autouse fixture below silently ceasing to run.
 # The inventory of the process-wide globals this fixture resets lives in
-# coded_tools/agent_network_editor/globals.py.
+# neuro_san_studio/agent_network_designer/common/globals.py.
 import os
 
 import pytest
 
-from coded_tools.agent_network_editor.globals import ProcessGlobals
+from neuro_san_studio.agent_network_designer.common.globals import ProcessGlobals
 
 
 @pytest.fixture(autouse=True)
