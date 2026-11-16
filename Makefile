@@ -91,7 +91,7 @@ test-smoke: venv-guard ## Run the packaged-install smoke tests (builds a wheel, 
 DESIGNER_NETWORKS := agent_network_designer agent_network_editor agent_network_instructions_editor \
 	agent_network_query_generator tools/internet_info_gatherer
 
-# ns validate exits 0 on a usage error, so each run must also print the class check's own verdict.
+# ns validate exits 0 when it skips the class check, so each run must also print the class check's own verdict.
 validate-designer-networks: venv-guard ## Validate the designer networks and load their coded tool and middleware classes
 	@for network in $(DESIGNER_NETWORKS); do \
 		echo "Validating registries/$$network.hocon"; \
