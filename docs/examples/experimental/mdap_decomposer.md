@@ -86,18 +86,18 @@ and LLMs are not well-suited to this large-scale exact copy task.
 The DecompostionSolver tool is also home to decent examples of the 3 things needed for CodedTools
 to call back out to the agents available in the network:
 
-1. The CodedTool must derive from BranchActivation and CodedTool.
-   BranchActivation is an internal object used during the execution of a CodedTool.
+1. The CodedTool gets the ActivationCapsule that the framework passes in via the
+   "activation_capsule" key of its args. ActivationCapsule is the public interface
+   that lets a CodedTool call other agents.
 
-2. When deriving from BranchActivation, the use_tool() method becomes available for use
-   to actually call back out to other agents in the network by name. For this example,
-   use_tool() actually gets invoked from multiple CodedToolAgentCaller instances
-   used by the DecompositionSolver.
+2. The ActivationCapsule's use_tool() method is used to actually call back out to
+   other agents in the network by name. For this example, use_tool() actually gets
+   invoked from multiple CodedToolAgentCaller instances used by the DecompositionSolver.
 
 3. The agents called upon by use_tool() should be listed in the "tools" parameter of the
    decomposition_solver's args definition.  This is a dictionary mapping agent roles
    to concrete agent names within the network hocon file.  While the mapping itself
-   may or not be used so abstractly by the BranchActivation/CodedTool implementation itself,
+   may or not be used so abstractly by the CodedTool implementation itself,
    the mapping is used as a convention to allow for proper connectivity reporting for visualizing
    clients.
 

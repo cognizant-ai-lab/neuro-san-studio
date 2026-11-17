@@ -30,7 +30,7 @@ class AgentNameGuard:
     legitimately may point at external agents inside a `tools` list:
 
     1. External network and MCP references — names starting with "/", "http://",
-       or "https://" — are only legal as tool references, never as top-level nodes
+       "https://" or "file://" — are only legal as tool references, never as top-level nodes
        (where they would carry the instructions/description/tools that an external
        network or MCP server cannot have). This case is reported with an actionable message.
     2. Any remaining name must match the same pattern the framework enforces on tool

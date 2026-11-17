@@ -18,8 +18,8 @@ import asyncio
 import logging
 from typing import Any
 
+from neuro_san.interfaces.activation_capsule import ActivationCapsule
 from neuro_san.interfaces.coded_tool import CodedTool
-from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 from neuro_san.message.parsers.structure.json_structure_parser import JsonStructureParser
 
 from neuro_san_studio.agent_network_designer.common.and_logger import AndLogger
@@ -28,8 +28,7 @@ from neuro_san_studio.agent_network_designer.common.progress_handler import Prog
 from neuro_san_studio.coded_tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 
-# pylint: disable=too-many-ancestors
-class WriteAllInstructions(BranchActivation, CodedTool):
+class WriteAllInstructions(CodedTool):
     """
     CodedTool that fans out per-agent instruction writing in parallel.
 
@@ -46,8 +45,8 @@ class WriteAllInstructions(BranchActivation, CodedTool):
     no longer misroute a field to the wrong agent, because the agent_name the fields
     are applied to is pinned here rather than re-stated by the model.
 
-    Note that we doubly-inherit from BranchActivation to access the framework hook
-    `use_tool()` that lets a CodedTool call other agents (in the same network or not).
+    Other agents (in the same network or not) are called via `use_tool()` on the
+    ActivationCapsule the framework passes in through the "activation_capsule" arg.
     The actual call is wrapped via CodedToolAgentCaller.
     """
 
@@ -63,6 +62,8 @@ class WriteAllInstructions(BranchActivation, CodedTool):
               applied to every entry.
             - "tools": optional mapping with "instructions_writer" -> agent name to
               dispatch to (defaults to "instructions_writer").
+            - "activation_capsule": the ActivationCapsule supplied by the framework
+              for calling the writer agent.
         :param sly_data: Shared private data dictionary forwarded unchanged to each
             writer call (carries the `agent_network_definition` the fields are
             written into).
@@ -76,6 +77,8 @@ class WriteAllInstructions(BranchActivation, CodedTool):
             return "Error: No agents provided."
         if not sly_data.get(AGENT_NETWORK_DEFINITION):
             return "Error: No network in sly data!"
+        if args.get("activation_capsule") is None:
+            return "Error: No activation_capsule in args; cannot call the instructions writer."
 
         # Resolve the writer agent name via args.tools so hocon controls connectivity.
         tools_map: dict[str, str] = args.get("tools") or {}
@@ -151,8 +154,9 @@ class WriteAllInstructions(BranchActivation, CodedTool):
             {"agent_name": "...", "change_request": "..."}. `change_request` is
             optional and forwarded only when present.
         :param args: This tool's own args — carries the shared
-            agent_network_description (forwarded only when non-empty) and the
-            progress_reporter used for the per-agent progress report.
+            agent_network_description (forwarded only when non-empty), the
+            activation_capsule used to call the writer, and the progress_reporter
+            used for the per-agent progress report.
         :param sly_data: Shared private data forwarded to the writer call.
         :return: "" on success, or an "Error: ..." string describing the failure.
             A `ValueError` is raised if `entry` is not a dict with an `agent_name`.
@@ -169,7 +173,8 @@ class WriteAllInstructions(BranchActivation, CodedTool):
         if change_request:
             tool_args["change_request"] = change_request
 
-        caller = CodedToolAgentCaller(self, parsing=None, name=writer_name)
+        activation_capsule: ActivationCapsule = args.get("activation_capsule")
+        caller = CodedToolAgentCaller(activation_capsule, parsing=None, name=writer_name)
         response: str = await caller.call_agent(tool_args=tool_args, sly_data=sly_data)
 
         if isinstance(response, str) and response.lstrip().startswith("Error:"):

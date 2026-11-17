@@ -1,6 +1,6 @@
 # Neuro SAN
-leaf-common>=1.4.11
-neuro-san==0.7.12
+leaf-common>=1.4.13
+neuro-san==0.7.23
 nsflow==0.7.5
 
 # For config parsing
@@ -47,7 +47,8 @@ numpy>=2.1.0,<3.0
 # Neuro-SAN now requires explicit installation of langchain LLM providers' libs
 langchain-openai>=1.4.0,<2.0
 langchain-anthropic>=1.4.3,<2.0
-langchain-google-genai>=4.2.2,<5.0
+# 4.3.0 is the first release that accepts temperature=None, the default of neuro-san's gemini class.
+langchain-google-genai>=4.3.0,<5.0
 
 # The Anthropic SDK is also imported directly (anthropic_code_execution,
 # anthropic_tool, check_llm_keys), so it needs its own floor: 0.124.0 renamed

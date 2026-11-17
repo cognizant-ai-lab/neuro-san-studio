@@ -19,16 +19,15 @@ from typing import Any
 from typing import Dict
 from typing import Union
 
+from neuro_san.interfaces.activation_capsule import ActivationCapsule
 from neuro_san.interfaces.coded_tool import CodedTool
-from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
 from neuro_san_studio.coded_tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 logger = logging.getLogger(__name__)
 
 
-# pylint: disable=too-many-ancestors
-class CallAgent(BranchActivation, CodedTool):
+class CallAgent(CodedTool):
     """
     CodedTool implementation which provides a way to call an agent network.
     """
@@ -46,6 +45,8 @@ class CallAgent(BranchActivation, CodedTool):
                         An LLM agent following AAOSA must be called with a mode (e.g. "Fulfill"
                         or "Follow up") to return a structured, parseable response;
                         without a mode it replies with user-facing natural-language text.
+                    "activation_capsule" the ActivationCapsule supplied by the framework
+                        for calling other agents.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -76,6 +77,10 @@ class CallAgent(BranchActivation, CodedTool):
         if not agent_name:
             raise ValueError("Error: No 'agent_name' in args or 'selected_agent' in sly_data.")
 
+        activation_capsule: ActivationCapsule = args.get("activation_capsule")
+        if activation_capsule is None:
+            raise ValueError("Error: No 'activation_capsule' in args; cannot call an agent.")
+
         mode = args.get("mode")
         if mode:
             tool_args = {**tool_args, "mode": mode}
@@ -83,7 +88,7 @@ class CallAgent(BranchActivation, CodedTool):
         logger.debug("tool_args: %s", tool_args)
         logger.debug("agent_name: %s", agent_name)
 
-        # Set up the AgentCallers to use this CodedTool as a basis for calling the agents.
-        agent_caller = CodedToolAgentCaller(self, parsing=None, name=agent_name)
+        # Set up the AgentCaller to use the framework's ActivationCapsule for calling the agent.
+        agent_caller = CodedToolAgentCaller(activation_capsule, parsing=None, name=agent_name)
 
         return await agent_caller.call_agent(tool_args=tool_args, sly_data=sly_data)
