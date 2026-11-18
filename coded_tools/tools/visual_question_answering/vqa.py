@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
 import subprocess
@@ -210,6 +211,6 @@ class VisualQuestionAnswering(CodedTool):
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
-        Delegates to the synchronous invoke method because it's quick, non-blocking.
+        Run the subprocess in a worker thread so it does not block the event loop.
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)

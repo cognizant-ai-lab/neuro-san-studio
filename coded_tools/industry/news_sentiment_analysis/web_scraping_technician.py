@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
 import time
@@ -404,6 +405,6 @@ class WebScrapingTechnician(CodedTool):
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Delegates to the synchronous invoke method.
+        Run the synchronous invoke method in a worker thread so blocking I/O does not block the event loop.
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)

@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import json
 import logging
 import urllib.error
@@ -256,7 +257,6 @@ class WikimediaMediaSearch(CodedTool):
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
-        Async version - delegates to synchronous invoke.
-        Note: In production, you might want to use aiohttp for true async HTTP requests.
+        Run synchronous HTTP requests in a worker thread so they do not block the event loop.
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)

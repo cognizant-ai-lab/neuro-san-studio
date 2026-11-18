@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import json
 import logging
 import os
@@ -158,7 +159,7 @@ class NowAgentSendMessage(CodedTool):
         """
         Asynchronous version of the invoke method.
 
-        Currently delegates to the synchronous invoke method.
+        Runs the synchronous invoke method in a worker thread to keep the event loop responsive.
 
         Args:
             args: Dictionary containing the inquiry and agent_id parameters
@@ -170,4 +171,4 @@ class NowAgentSendMessage(CodedTool):
                   - metadata: Dict with user_id, session_id, and other session details
                   - request_id: ID of the submitted request
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)
