@@ -105,7 +105,9 @@ runs where the server would load the network:
 
 - From the project root, the folder that holds the first manifest's `registries` folder. `ns run` is started there
   and reads the project's `.env`, which can set `AGENT_TOOL_PATH`, `AGENT_TOOL_PATH_ONLY` and `PYTHONPATH`. A
-  manifest that is not in a `registries` folder has no project root, so its networks are not checked.
+  manifest that is not in a `registries` folder has no project root, so its networks are not checked. Files the
+  network includes are read from the project root too, as the server reads them, even when `--registry-dir` points
+  elsewhere.
 - For a file inside the folder of a manifest. The path under that folder is the network's name:
   `registries/basic/music_nerd.hocon` is `basic/music_nerd`. With several manifests, the first one whose folder holds
   the file gives the name.
@@ -124,4 +126,6 @@ On success the command prints `Validation passed: No errors found.` (followed by
 on its own numbered line. When a class cannot be loaded it prints `Class check failed with N error(s):` and one
 numbered line per problem, naming the agent, or saying why no coded tool could be looked up at all. With `--verbose`, a
 coded tool that cannot be found shows the server's full error, hints included. A manifest that could not be read
-produces a `Warning: ...` line on stderr before the validation result.
+produces a `Warning: ...` line on stderr before the validation result. Lint warnings, such as an unused `commondefs`
+entry or a placeholder with no replacement string, are listed right after the validation result, before the agent
+network summary, and do not change the exit code.

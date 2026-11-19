@@ -638,8 +638,8 @@ class TestValidateCommandManifestDiscovery(TestCase):
 class TestValidateCommandRegistryDir(TestCase):
     """Tests for the --registry-dir value handed to HoconValidatorCli.
 
-    It is always passed: left unset, the library derives its default from the raw AGENT_MANIFEST_FILE
-    string, which is a nonexistent path for an os.pathsep list (neuro-san issue #1370).
+    It is always passed, because the library derives its default from AGENT_MANIFEST_FILE only
+    and would miss --manifest.
     """
 
     def setUp(self) -> None:
@@ -683,7 +683,7 @@ class TestValidateCommandRegistryDir(TestCase):
         self.assertEqual(self._registry_dir_arg(ValidateCommand("agent.hocon", registry_dir="/reg")), "/reg")
 
     def test_pathsep_list_uses_first_manifest_project_root(self):
-        """A two-entry AGENT_MANIFEST_FILE yields the first manifest's project root, not the library's bogus path."""
+        """A two-entry AGENT_MANIFEST_FILE yields the first manifest's project root."""
         os.environ["AGENT_MANIFEST_FILE"] = os.pathsep.join(
             ["/p/registries/manifest.hocon", "/q/registries/overlay.hocon"]
         )

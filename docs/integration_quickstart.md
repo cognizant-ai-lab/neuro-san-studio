@@ -54,7 +54,7 @@ An agent in neuro-san is defined using a HOCON configuration file. Let's create 
 "music_nerd" agent that answers questions about music.
 
 **Note:** This example uses the `gpt-4o` model. You can substitute it with any available
-model (e.g., `gpt-3.5-turbo`, `claude-3-sonnet`, etc.). Make sure your API keys are
+model (e.g., `gpt-5.2`, `claude-sonnet`, etc.). Make sure your API keys are
 set in your environment variables.
 
 > **Tip:** If you already have a working agent and manifest, you can skip to Step 3.

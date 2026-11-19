@@ -31,14 +31,14 @@ from unittest import TestCase
 from unittest import mock
 
 import pytest
-from neuro_san.interfaces.activation_capsule import ActivationCapsule
-
-from neuro_san_studio.agent_network_designer.common.shared_process_cache import SharedProcessCache
 
 pytest.importorskip("neuro_san_studio.agent_network_designer.tools.get_external_network")
 
-# The import must stay below importorskip so old environments skip cleanly.
-# pylint: disable-next=wrong-import-position
+# The imports must stay below importorskip so old environments skip cleanly.
+# pylint: disable=wrong-import-position
+from neuro_san.interfaces.activation_capsule import ActivationCapsule  # noqa: E402
+
+from neuro_san_studio.agent_network_designer.common.shared_process_cache import SharedProcessCache  # noqa: E402
 from neuro_san_studio.agent_network_designer.tools.get_external_network import GetExternalNetwork  # noqa: E402
 
 EXTERNAL_NETWORK_NAMES: list[str] = ["/alpha", "/beta"]
@@ -207,6 +207,7 @@ class TestGetExternalNetwork(TestCase):
         capsule: mock.Mock = self._make_capsule()
         create_session = capsule.create_session
 
+        # Nested def: it wraps the stub's create_session, which closes over this test's state.
         async def failing_create_session(name: str) -> mock.Mock:
             if name == "/beta":
                 raise ValueError(f"Unable to create a session for external agent {name}.")
