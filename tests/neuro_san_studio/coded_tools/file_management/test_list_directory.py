@@ -199,6 +199,16 @@ class TestListDirectory(TestCase):
         self.assertEqual(self._names(self._invoke({})), ["visible.txt"])
         self.assertEqual(self._names(self._invoke({"include_hidden": True})), [".hidden.txt", "visible.txt"])
 
+    def test_async_invoke_none_optional_args_use_defaults(self) -> None:
+        """
+        Tests that optional arguments sent as None, as neuro-san does when the LLM leaves them out, list the
+        directory with the defaults.
+        """
+        self._make("visible.txt")
+        self._make(".hidden.txt")
+        result: dict[str, Any] = self._invoke({"include_hidden": None, "max_entries": None})
+        self.assertEqual(self._names(result), ["visible.txt"])
+
     def test_async_invoke_blocked_subtree_omitted_silently(self):
         """Tests that entries under blocked_paths vanish from the listing without any error."""
         self._make("open.txt")
@@ -546,6 +556,14 @@ class TestListDirectory(TestCase):
         """Tests that an omitted max_entries returns the default cap."""
         self.assertEqual(self.tool._validate_max_entries({}), 500)  # pylint: disable=protected-access
 
+    def test_validate_max_entries_none_uses_default(self) -> None:
+        """
+        Tests that a None max_entries, which is how neuro-san sends a left-out optional argument, returns the
+        default cap.
+        """
+        result: int = self.tool._validate_max_entries({"max_entries": None})  # pylint: disable=protected-access
+        self.assertEqual(result, 500)
+
     def test_validate_max_entries_rejects_bad_values(self):
         """Tests that zero, negative, boolean, non-int, and over-hard-cap max_entries raise invalid_input.
 
@@ -553,7 +571,7 @@ class TestListDirectory(TestCase):
         without it a single call against a huge allowed directory could build an
         unbounded response.
         """
-        for bad in [0, -1, True, "10", 1.5, None, MAX_ENTRIES + 1, 10**12]:
+        for bad in [0, -1, True, "10", 1.5, MAX_ENTRIES + 1, 10**12]:
             with self.assertRaises(ValueError) as ctx:
                 self.tool._validate_max_entries({"max_entries": bad})  # pylint: disable=protected-access
             self.assertIn("invalid_input", str(ctx.exception))

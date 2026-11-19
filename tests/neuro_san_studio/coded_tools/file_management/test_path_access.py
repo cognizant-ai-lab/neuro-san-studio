@@ -374,13 +374,19 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(PathAccess.validate_positive_int({"n": 7}, "n", 500), 7)
         self.assertEqual(PathAccess.validate_positive_int({}, "n", 500), 500)
 
+    def test_validate_positive_int_none_returns_default(self) -> None:
+        """
+        Tests that a None value, which is how neuro-san sends a left-out optional argument, returns the default.
+        """
+        self.assertEqual(PathAccess.validate_positive_int({"n": None}, "n", 500), 500)
+
     def test_validate_positive_int_rejects_bad_values(self):
-        """Tests that zero, negative, bool, float, string, and None values raise invalid_input.
+        """Tests that zero, negative, bool, float, and string values raise invalid_input.
 
         bool is rejected explicitly even though it subclasses int, so True can
         never silently pass as 1 anywhere in the tool family.
         """
-        for bad in [0, -1, True, False, "10", 1.5, None]:
+        for bad in [0, -1, True, False, "10", 1.5]:
             with self.assertRaises(ValueError) as ctx:
                 PathAccess.validate_positive_int({"n": bad}, "n", 500)
             self.assertIn("invalid_input", str(ctx.exception))
