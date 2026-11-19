@@ -16,4 +16,4 @@
 
 # By default, use the developer llm_config
 # Worth noting that includes using env var substitution is expressly forbidden by HOCON readers.
-include "byok_llm_config.hocon"
+include "developer_llm_config.hocon"
