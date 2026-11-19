@@ -36,6 +36,10 @@
                 # by the client in the llm_config.openai_api_key field of the client request's sly_data,
                 # otherwise this block of the configuration will be skipped.
                 "openai_api_key": "sly_data",
+
+                # This one is optional (see sly_data_schema below) to allow for aggregrating LLM routers
+                # that co-opt the OpenAI web API.
+                "openai_api_base": "sly_data",
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
@@ -80,6 +84,10 @@
                     "openai_api_key": {
                         "type": "string",
                         "description": "The user's OpenAI API key"
+                    },
+                    "openai_api_base": {
+                        "type": "string",
+                        "description": "An optional OpenAI endpoint URL"
                     },
                     "anthropic_api_key": {
                         "type": "string",
