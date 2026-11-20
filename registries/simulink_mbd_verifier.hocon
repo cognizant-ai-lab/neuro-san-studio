@@ -1,0 +1,112 @@
+{
+    "llm_config": {
+        "class": "ollama",
+        "model_name": "qwen2.5:7b",
+        "base_url": "http://127.0.0.1:11434",
+        "temperature": 0.0
+    },
+
+    "tools": [
+        {
+            "name": "mbd_verification_lead",
+            "function": {
+                "description": "Front-man MBD agent that coordinates Simulink model design, inspection, and verification."
+            },
+            "instructions": """
+You are an Automotive Model-Based Design (MBD) Lead.
+When the user asks to build, edit, inspect, or simulate a Simulink model:
+1. Call 'simulink_executor' ONCE with a plain text 'task' and 'skill_topic' (e.g., 'building-simulink-models').
+2. Never summarize skill documentation back to the user unless asked—always make sure 'simulink_executor' actually executes the model creation or edit in MATLAB/Simulink.
+""",
+            "tools": ["simulink_executor"]
+        },
+        {
+            "name": "simulink_executor",
+            "function": {
+                "description": "Executes Simulink Agentic Toolkit MCP tools and loads MathWorks MBD skills.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "Plain text description of the Simulink or MATLAB task to perform."
+                        },
+                        "skill_topic": {
+                            "type": "string",
+                            "description": "Name of the Simulink skill to load, e.g. 'building-simulink-models'."
+                        }
+                    },
+                    "required": ["task"]
+                }
+            },
+           "instructions": """
+You control a live MATLAB/Simulink session via 'load_simulink_skill' and 'run_simulink_mcp'.
+Never create a model literally named 'model_name'—always use the exact model name requested by the user!
+
+To create and populate a Simulink model (for example, 'ev_battery_monitor'):
+Step 1: Create and open the empty model safely using 'run_simulink_mcp':
+  tool_name: "evaluate_matlab_code"
+  tool_arguments: {
+    "code": "if ~bdIsLoaded('ev_battery_monitor'), new_system('ev_battery_monitor'); end; open_system('ev_battery_monitor');"
+  }
+Step 2: Populate and wire blocks using 'run_simulink_mcp':
+  tool_name: "model_edit"
+  tool_arguments: {
+    "model": "ev_battery_monitor",
+    "scope": "root",
+    "layout_mode": "full",
+    "operations": [
+      {"op": "add_block", "type": "Constant", "name": "SocInput", "ref": "c1", "params": {"Value": "80"}},
+      {"op": "add_block", "type": "Gain", "name": "ScaleFactor", "ref": "g1", "params": {"Gain": "0.01"}},
+      {"op": "add_block", "type": "Outport", "name": "NormalizedSoc", "ref": "o1"},
+      {"op": "connect", "target": "#c1.y1 -> #g1.u1"},
+      {"op": "connect", "target": "#g1.y1 -> #o1.u1"}
+    ]
+  }
+Step 3: After 'model_edit' returns status 'success', report the created block IDs back to the user and stop.
+""",
+            "tools": ["load_simulink_skill", "run_simulink_mcp"],
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["last_simulink_telemetry"]
+                }
+            }
+        },
+        {
+            "name": "load_simulink_skill",
+            "class": "simulink_bridge.LoadSimulinkSkill",
+            "function": {
+                "description": "Loads official MathWorks SKILL.md instructions and MCP tool schemas.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "skill_topic": {
+                            "type": "string",
+                            "description": "Skill name to load, e.g. 'building-simulink-models'."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "run_simulink_mcp",
+            "class": "simulink_bridge.SimulinkMcpBridge",
+            "function": {
+                "description": "Calls a tool on the MATLAB/Simulink MCP Server.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tool_name": {
+                            "type": "string",
+                            "description": "MCP tool name: 'evaluate_matlab_code', 'model_edit', 'model_overview', 'model_read', 'model_check', 'model_read_diagnostics', or 'list_available_tools'."
+                        },
+                        "tool_arguments": {
+                            "type": "object",
+                            "description": "Arguments dictionary for the MCP tool."
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
