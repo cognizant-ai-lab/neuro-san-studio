@@ -558,6 +558,29 @@ Neuro-San supports the following data types:
   > Neuro-San prefers `async_invoke`, and falls back to `invoke` if unavailable
 * Access LLM and user-provided arguments via `args`
 
+When `invoke` performs blocking I/O, such as synchronous HTTP requests, subprocess calls, or polling with
+`time.sleep`, run it in a worker thread from `async_invoke` so other requests can continue on the server's event loop:
+
+```python
+import asyncio
+from typing import Any
+
+from neuro_san.interfaces.coded_tool import CodedTool
+
+
+class BlockingTool(CodedTool):
+    """Base pattern for tools whose invoke method performs blocking I/O."""
+
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
+        """Run blocking work off the event loop and wait for its result."""
+        return await asyncio.to_thread(self.invoke, args, sly_data)
+```
+
+See the [advanced calculator](../coded_tools/basic/advanced_calculator/calculator_tool.py) for an existing example.
+The call passes the same `args` and `sly_data` dictionaries, waits for completion, and propagates exceptions to the caller.
+Worker threads share objects with the caller, so avoid concurrent writes to the same mutable state. Canceling the
+awaiting coroutine does not stop blocking work already running in the thread.
+
 #### Tool Path
 
 * The tool's path can be set via the environment variable:
@@ -937,7 +960,7 @@ Once configured, the middleware automatically registers three tools the agent ca
 > prefixes are rejected, which helps mitigate SSRF and data exfiltration risks but does not
 > guarantee complete protection in all scenarios.
 
-For more details, see the [Agent Skills Middleware](user_guide.md#agent-skills-middleware) section
+For more details, see the [Agent Skills](user_guide.md#agent-skills) section
 of the user guide.
 
 ---

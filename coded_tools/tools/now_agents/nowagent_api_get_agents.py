@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -134,7 +135,7 @@ class NowAgentAPIGetAgents(CodedTool):
         """
         Asynchronous version of the invoke method.
 
-        Currently delegates to the synchronous invoke method.
+        Runs the synchronous invoke method in a worker thread to keep the event loop responsive.
 
         Args:
             args: Dictionary containing the inquiry parameters
@@ -143,4 +144,4 @@ class NowAgentAPIGetAgents(CodedTool):
         Returns:
             dict: ServiceNow API response containing the list of agents with their details
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)
