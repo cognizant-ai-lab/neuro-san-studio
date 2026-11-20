@@ -171,6 +171,7 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
                 "industry/telco_network_support_test.hocon",
+                "industry/carmax_internet_search.hocon",
                 "industry/consumer_decision_assistant_comprehensive.hocon",
                 "industry/cpg_agents_test.hocon",
                 # List more hocon files as they become available here.

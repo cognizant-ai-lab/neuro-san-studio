@@ -2,7 +2,9 @@
 
 The **Consumer Decision Assistant** is a multi-agent system designed to help consumers make informed decisions across various domains including retail purchases, travel planning, financial planning, career development, lifestyle choices, and healthcare. The system operates as a consumer advocate, interacting with external B2C business agent networks while maintaining focus on the user's best interests rather than corporate objectives.
 
-**Note**: This agent network calls other external agent networks representing businesses (Macy's, CarMax, Booking, Expedia, Airbnb, LinkedIn). These downstream networks use web search capabilities with DuckDuckGo, subject to daily quota limits.
+**Note**: This agent network calls other external agent networks representing businesses (Macy's, CarMax, Booking,
+Expedia, Airbnb, LinkedIn). These downstream networks search the web through the Internet Info Gatherer agent network,
+which uses the you.com free tier and is subject to its usage limits.
 
 ---
 
@@ -159,16 +161,21 @@ The system integrates with six external B2C business agent networks:
 
 ## External Dependencies
 
-**DuckDuckGo Search API** (`/tools/ddgs_search`)
+**[Internet Info Gatherer](../tools/internet_info_gatherer.md)** (`/tools/internet_info_gatherer`)
 
-The downstream B2C business networks rely on the DuckDuckGo search API to simulate web searches and return information:
+The downstream B2C business networks rely on the Internet Info Gatherer agent network to search the web and return information:
 
-- **Networks using DuckDuckGo**: airbnb, booking, expedia, carmax, LinkedInJobSeekerSupportNetwork (5 out of 6)
-- **Network NOT using DuckDuckGo**: macys (uses internal knowledge/simulation only)
-- **Quota Limitation**: Subject to DuckDuckGo's daily search quota limits
-- **Purpose**: Simulates web searches to return URLs and business information in response to consumer queries
+- **Networks using the Internet Info Gatherer**: airbnb, booking, expedia, carmax, LinkedInJobSeekerSupportNetwork (5 out of 6)
+- **Network NOT using the Internet Info Gatherer**: macys (uses internal knowledge/simulation only)
+- **Purpose**: Searches the web to return URLs and business information in response to consumer queries
+- **Quota Limitation**: Subject to the usage limits of the you.com MCP server's free tier, which the Internet Info
+  Gatherer uses for web search
+- **Requirement**: `tools/internet_info_gatherer` must be served alongside the downstream networks. It is enabled
+  by default in [registries/tools/manifest.hocon](../../../registries/tools/manifest.hocon)
 
-**Important**: If DuckDuckGo quota limits are reached, the affected downstream networks may fail to provide search results, impacting the consumer decision assistant's ability to research options across travel, career, and automotive domains.
+**Important**: If the you.com free-tier usage limits are reached or the Internet Info Gatherer is unavailable, the
+affected downstream networks may fail to provide search results, impacting the consumer decision assistant's ability to
+research options across travel, career, and automotive domains.
 
 ---
 
