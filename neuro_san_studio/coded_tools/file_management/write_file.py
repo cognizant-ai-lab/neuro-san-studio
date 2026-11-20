@@ -28,6 +28,7 @@ from uuid import uuid4
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from neuro_san_studio.coded_tools.file_management.path_access import PathAccess
+from neuro_san_studio.coded_tools.file_management.path_not_allowed_error import PathNotAllowedError
 from neuro_san_studio.coded_tools.file_management.sly_data_history import SlyDataHistory
 
 MAX_WRITE_BYTES: int = 10 * 1024 * 1024  # 10 MB hard cap on content written to disk
@@ -296,7 +297,7 @@ class WriteFile(CodedTool):
         except OSError as exc:
             raise ValueError(f"write_error: Could not resolve parent of '{file_path}': {exc}") from exc
         if actual_parent != parent:
-            raise ValueError(
+            raise PathNotAllowedError(
                 f"path_not_allowed: parent of '{file_path}' no longer resolves to the authorized "
                 f"directory (now '{actual_parent}'); refusing to write."
             )

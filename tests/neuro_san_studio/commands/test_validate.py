@@ -475,7 +475,8 @@ class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-metho
         """
         Classes named in an included file are checked as the server reads them. The include path is
         relative to the project root, where ns run starts the server, so another copy of the included
-        file under --registry-dir changes neither the structure check nor the class check.
+        file under --registry-dir does not change the class check. The structure check does read that
+        copy, so it keeps the same tool name and differs only in its class names.
         """
         project_dir: str = self._enter_project_dir()
         other_dir: str = self._make_project_dir()
@@ -488,10 +489,10 @@ class TestValidateCommandRun(TestCase):  # pylint: disable=too-many-public-metho
             Path(project_dir, "registries", "order_tools.hocon"),
             self._order_tools_hocon("OrderLookup", "project_tool.ProjectTool", "project_middleware.ProjectMiddleware"),
         )
-        # If a check read this copy, the front man's tool would be missing and the class names would differ.
+        # If the class check read this copy, the class names in its errors would differ.
         self._write_text(
             Path(other_dir, "registries", "order_tools.hocon"),
-            self._order_tools_hocon("OtherLookup", "other_tool.OtherTool", "other_middleware.OtherMiddleware"),
+            self._order_tools_hocon("OrderLookup", "other_tool.OtherTool", "other_middleware.OtherMiddleware"),
         )
         self.mock_checker.side_effect = NetworkClassChecker
         stdout: io.StringIO = io.StringIO()
@@ -637,8 +638,8 @@ class TestValidateCommandManifestDiscovery(TestCase):
 class TestValidateCommandRegistryDir(TestCase):
     """Tests for the --registry-dir value handed to HoconValidatorCli.
 
-    It is always passed: left unset, the library derives its default from the raw AGENT_MANIFEST_FILE
-    string, which is a nonexistent path for an os.pathsep list (neuro-san issue #1370).
+    It is always passed, because the library derives its default from AGENT_MANIFEST_FILE only
+    and would miss --manifest.
     """
 
     def setUp(self) -> None:
@@ -682,7 +683,7 @@ class TestValidateCommandRegistryDir(TestCase):
         self.assertEqual(self._registry_dir_arg(ValidateCommand("agent.hocon", registry_dir="/reg")), "/reg")
 
     def test_pathsep_list_uses_first_manifest_project_root(self):
-        """A two-entry AGENT_MANIFEST_FILE yields the first manifest's project root, not the library's bogus path."""
+        """A two-entry AGENT_MANIFEST_FILE yields the first manifest's project root."""
         os.environ["AGENT_MANIFEST_FILE"] = os.pathsep.join(
             ["/p/registries/manifest.hocon", "/q/registries/overlay.hocon"]
         )

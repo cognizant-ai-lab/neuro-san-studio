@@ -132,7 +132,7 @@ class DependencyAnalyzer:
             return f"{parts[0]}/" + "/".join(parts[1:-1]) + ".py" if os.path.exists(module_file) else None
 
         # Short reference like "order_api.OrderAPI" — resolve up the context hierarchy, the way
-        # neuro-san does (abstract_class_activation._attempt_resolve): try the per-network dir
+        # neuro-san does (abstract_class_activation._attempt_resolve_under_root): try the per-network dir
         # first, then strip one trailing level at a time down to coded_tools/ root. So a tool at
         # the group level (coded_tools/basic/accountant.py) is found even when the network's
         # context_dir is basic/music_nerd_pro (issue #1147).
