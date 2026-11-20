@@ -1,0 +1,63 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+
+# The context-free follow-up, now with context: the Jev network must continue with Networking (same path) instead of asking what 'it' is.
+# Requires TYPESAFE_API_KEY. The sly_data assertions check the path the middleware recorded and the tools
+# the LLM was given on that path (jev_turn.llm_tools).
+{
+    "agent": "industry/intranet_agents_with_jev_routing",
+    "timeout_in_seconds": 600,
+    "success_ratio": "1/1",
+    "interactions": [
+        {
+            "text": """
+I can't connect to the VPN from home
+""",
+            "response": {
+                "text": {
+                    "gist": ["""
+Gives VPN troubleshooting steps or asks for details about the VPN problem.
+                             """]
+                },
+                "sly_data": {
+                    "jev_turn": {
+                        "path": { "value": "jev" },
+                        "department": { "value": "Networking" },
+                    }
+                }
+            }
+        },
+        {
+            "text": """
+It's still not working.
+""",
+            "response": {
+                "text": {
+                    "gist": ["""
+Continues troubleshooting the VPN problem: asks for the VPN client, the error message or the next check, rather than asking what 'it' refers to.
+                             """]
+                },
+                "sly_data": {
+                    "jev_turn": {
+                        "path": { "value": "same" },
+                        "department": { "value": "Networking" },
+                    }
+                }
+            }
+        },
+    ]
+}
