@@ -226,8 +226,20 @@ class ReadFile(CodedTool):
             )
 
     def _validate_line_range(self, args: dict[str, Any]) -> tuple[int, int | None]:
-        """Return (start_line, end_line). end_line is None when not specified."""
-        start: Any = args.get("start_line", 1)
+        """
+        Return the validated start and end lines of the requested range.
+
+        A missing or None start_line means line 1, and a missing or None end_line
+        means the end of the file. neuro-san passes an optional argument the LLM
+        left out as None.
+
+        :param args: The tool argument dictionary.
+        :return: A tuple of (start_line, end_line), where end_line is None when not given.
+        :raises ValueError: invalid_input when a line number is not a positive integer or end_line < start_line.
+        """
+        start: Any = args.get("start_line")
+        if start is None:
+            start = 1
         if not isinstance(start, int) or start < 1:
             raise ValueError(f"invalid_input: 'start_line' must be a positive integer, got {start!r}.")
 
