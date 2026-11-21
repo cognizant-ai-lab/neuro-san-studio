@@ -89,10 +89,23 @@ class PtoRunner:
             graph.save(self.output_dir / f"{fault}.graph.json")
             self.logger.info("=== fault: %s ===", fault)
             self.logger.info("agent said: %s", answer.strip()[:300])
+            # The end-of-turn notice is added at the end of the answer, past the 300 characters shown above.
+            notice: int = answer.find("Verification notice")
+            self.logger.info("notice shown to user: %s", answer[notice:].strip() if notice >= 0 else "no")
             for node in graph.nodes:
                 if node.get("kind") == "verification":
                     data: dict[str, Any] = node.get("data")
                     self.logger.info("verdict: %s  problems: %s", data.get("verdict"), data.get("problems"))
+                elif node.get("kind") == "turn_check":
+                    # The end-of-turn check (TurnCheckMiddleware): intent and the agent's final message.
+                    data = node.get("data")
+                    self.logger.info(
+                        "turn check: %s  (intent: %s, report: %s)  problems: %s",
+                        data.get("verdict"),
+                        data.get("intent_check"),
+                        data.get("report_check"),
+                        data.get("problems"),
+                    )
             self.logger.info("tool calls never verified: %d", len(graph.pending()))
             self.logger.info("graph intact against anchor: %s", graph.intact(anchor=AnchorLog.latest(graph.run_id)))
         self.logger.info("Graphs saved in %s", self.output_dir)

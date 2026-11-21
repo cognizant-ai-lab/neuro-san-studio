@@ -75,6 +75,15 @@ When interacting with the user, act as the single point of interaction. No need 
 Do as much as you can to answer the inquiry, relying on your down-chain agents as needed.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
             """ ${aaosa_instructions},
+            # End-of-turn check: compares what the user asked for and what the agent told them with the
+            # verified record that ProvenanceMiddleware (on AbsenceManagement) writes. Runs after every turn,
+            # so the agent cannot skip it. See turn_check_middleware.py.
+            "middleware": [
+                {
+                    "class": "task_verification.pto_provenance.turn_check_middleware.TurnCheckMiddleware",
+                    "args": {"model_name": "claude-haiku-4-5", "notify_user": true}
+                }
+            ],
             "tools": ["HR"]
         },
         {
