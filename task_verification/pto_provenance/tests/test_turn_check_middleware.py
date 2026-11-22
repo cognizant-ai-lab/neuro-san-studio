@@ -173,8 +173,8 @@ class TestTurnCheckMiddleware:
 
     def test_turn_check_records_what_the_extraction_saw_and_said(self) -> None:
         """
-        A wrong verdict must be traceable from the record alone: the extracted fields sit next to the verdict, with the
-        model, the exact text each extraction read and each call's raw reply.
+        A wrong verdict must be traceable: the extracted fields sit next to the verdict, with the model and each
+        call's raw reply. The chat text itself is not copied into the permanent graph.
         """
         _, check = self.turn(StubExtractor(self.INTENT, "success"), self.ARGS, self.DONE)
         data: dict[str, Any] = check["data"]
@@ -182,11 +182,12 @@ class TestTurnCheckMiddleware:
         assert data["claim"] == "success"
         assert data["extraction"] == {
             "model": "stub-model",
-            "intent_input": [self.USER],
             "intent_raw": '{"action": "schedule_pto"}',
-            "claim_input": self.DONE,
             "claim_raw": '{"claim": "success"}',
         }
+        saved: str = TurnCheckMiddleware.LIVE_RECORD.read_text(encoding="utf-8")
+        assert self.USER not in saved
+        assert self.DONE not in saved
 
     def test_extractor_sees_user_messages_and_final_answer_separately(self) -> None:
         """Intent is read from the user's words only; the claim from the final answer only."""

@@ -46,9 +46,10 @@ class TurnCheckMiddleware(AgentMiddleware):
     fields; TurnChecker compares those fields with the evidence deterministically.
 
     The result goes into the graph as a "turn_check" node, linked to the verifications it used, and is anchored like
-    every other node. Next to the verdict it keeps the extracted fields (intent, claim) and an "extraction" block:
-    the model, the exact text each extraction read, and each call's raw reply. A wrong verdict can then be traced to
-    the extraction or to the graph from the record alone, without re-running the turn.
+    every other node. Next to the verdict it keeps the extracted fields (intent, claim) and an "extraction" block
+    with the model and each call's raw reply. A wrong verdict can then be traced to the extraction (the fields are
+    wrong) or to the graph (the fields are right, the evidence disagrees) without re-running the turn. The chat text
+    itself is not copied into the graph, which is permanent; it stays in the conversation.
 
     When the verdict is misreported or intent_mismatch, and notify_user is on, a short notice is added to the end of
     the agent's answer, so the user sees the risk instead of a false "done".
@@ -111,7 +112,7 @@ class TurnCheckMiddleware(AgentMiddleware):
         intent: dict[str, Any] = await extractor.intent(user_messages)
         claim: str = await extractor.claim(final)
         result: dict[str, Any] = TurnChecker.check(intent, claim, verifications)
-        result["extraction"] = self.extraction_record(extractor, user_messages, final)
+        result["extraction"] = self.extraction_record(extractor)
 
         branch: str = (intent.get("employee_id") or "unknown").upper()
         graph.extend(branch, "turn", "turn_check", result, also=parents)
@@ -153,18 +154,15 @@ class TurnCheckMiddleware(AgentMiddleware):
         return records, hashes
 
     @staticmethod
-    def extraction_record(extractor: Any, user_messages: list[str], final: str) -> dict[str, Any]:
+    def extraction_record(extractor: Any) -> dict[str, Any]:
         """
-        :return: What the extraction saw and said: the model, the inputs to each call (the user's messages for intent,
-                 the final message for the claim) and each call's raw reply (None if the call was never made, an
-                 error string if it failed).
+        :return: What the extraction said: the model and each call's raw reply (None if the call was never made, an
+                 error string if it failed). The chat text it read is deliberately left out of the permanent graph.
         """
         raw: dict[str, str | None] = getattr(extractor, "raw", {}) or {}
         return {
             "model": getattr(extractor, "model", None),
-            "intent_input": user_messages,
             "intent_raw": raw.get("intent"),
-            "claim_input": final,
             "claim_raw": raw.get("claim"),
         }
 

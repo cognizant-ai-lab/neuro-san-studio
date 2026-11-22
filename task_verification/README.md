@@ -74,8 +74,9 @@ at all). A second middleware, on the front-man agent `MyIntranet`, checks the wh
 3. **Compares them deterministically** (`turn_checker.py`, no LLM): every confirmed booking against the request, and
    the claim against what the database confirms.
 4. **Records a `turn_check` node** in the graph, linked to the verifications it used, and anchors it. Next to the
-   verdict it keeps the extracted fields and an `extraction` block (the model, the exact text each call read, and each
-   call's raw reply or error), so a wrong verdict can be traced to the extraction or to the graph without re-running.
+   verdict it keeps the extracted fields and an `extraction` block (the model and each call's raw reply or error), so
+   a wrong verdict can be traced to the extraction or to the graph without re-running. The chat text itself is not
+   copied into the graph, which is permanent.
 5. **Warns the user** when the turn is `misreported` or `intent_mismatch`: a short notice is added to the end of the
    agent's answer. `notify_user: false` in the HOCON keeps the record and leaves the answer alone.
 
