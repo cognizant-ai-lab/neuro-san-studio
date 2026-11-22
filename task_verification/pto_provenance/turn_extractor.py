@@ -37,6 +37,11 @@ class TurnExtractor:
     Both ask for JSON and fall back to "unknown" when the reply cannot be read. Unknown fields make TurnChecker
     answer "unclear", never "consistent", so a confused extractor cannot hide a problem; at worst it raises a
     false alarm.
+
+    Each call's raw reply (or the error, if the call failed) is kept in self.raw, keyed "intent" and "claim", and
+    the model in self.model, so the caller can record them next to the verdict. A wrong verdict can then be traced
+    to the extraction (the raw reply already says the wrong thing) or to the graph (the reply is right, the evidence
+    disagrees) without re-running anything.
     """
 
     INTENT_PROMPT: str = """
@@ -65,6 +70,9 @@ Judge only what the message tells the employee, not whether it is true.
         """:param llm: Any langchain chat model. Use temperature 0 so the same text gives the same fields."""
         self.llm: BaseChatModel = llm
         self.logger: Logger = getLogger(__name__)
+        # The model's name, as the chat model class reports it (ChatAnthropic and ChatGoogleGenerativeAI: "model").
+        self.model: str = str(getattr(llm, "model", None) or getattr(llm, "model_name", None) or type(llm).__name__)
+        self.raw: dict[str, str | None] = {"intent": None, "claim": None}
 
     async def intent(self, user_messages: list[str], today: date | None = None) -> dict[str, Any]:
         """
@@ -73,11 +81,12 @@ Judge only what the message tells the employee, not whether it is true.
         :return: {"action", "employee_id", "start_date", "end_date"}, with None for anything unknown.
         """
         unknown: dict[str, Any] = {"action": None, "employee_id": None, "start_date": None, "end_date": None}
+        self.raw["intent"] = None
         if not user_messages:
             return unknown
         prompt: str = self.INTENT_PROMPT.format(today=(today or date.today()).isoformat())
         transcript: str = "\n".join(f"Employee: {text}" for text in user_messages)
-        parsed: dict[str, Any] | None = await self._ask(prompt, transcript)
+        parsed: dict[str, Any] | None = await self._ask("intent", prompt, transcript)
         if parsed is None:
             return unknown
 
@@ -99,23 +108,29 @@ Judge only what the message tells the employee, not whether it is true.
         :param final_message: The agent's last message to the user this turn.
         :return: success | failure | question | none, or "unknown" if the reply could not be read.
         """
+        self.raw["claim"] = None
         if not final_message.strip():
             return "none"
-        parsed: dict[str, Any] | None = await self._ask(self.CLAIM_PROMPT, final_message)
+        parsed: dict[str, Any] | None = await self._ask("claim", self.CLAIM_PROMPT, final_message)
         value: Any = (parsed or {}).get("claim")
         return value if value in TurnChecker.CLAIMS else "unknown"
 
-    async def _ask(self, instructions: str, text: str) -> dict[str, Any] | None:
-        """Send one prompt, return the first JSON object in the reply, or None if there is none."""
+    async def _ask(self, which: str, instructions: str, text: str) -> dict[str, Any] | None:
+        """
+        Send one prompt, keep the raw reply in self.raw[which], and return the first JSON object in the reply,
+        or None if there is none.
+        """
         try:
             reply: Any = await self.llm.ainvoke([SystemMessage(instructions), HumanMessage(text)])
         except Exception as error:  # pylint: disable=broad-exception-caught
             # A failed check must not break the user's chat; it is recorded as unknown, which TurnChecker flags.
             self.logger.warning("Turn extractor call failed: %s", error)
+            self.raw[which] = f"call failed: {type(error).__name__}: {error}"
             return None
         content: Any = reply.content
         if isinstance(content, list):  # providers may return a list of content blocks
             content = "".join(block.get("text", "") if isinstance(block, dict) else str(block) for block in content)
+        self.raw[which] = str(content)
         match: re.Match[str] | None = re.search(r"\{.*\}", str(content), re.DOTALL)
         if match is None:
             return None

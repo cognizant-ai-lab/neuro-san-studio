@@ -46,10 +46,14 @@ class TurnCheckMiddleware(AgentMiddleware):
     fields; TurnChecker compares those fields with the evidence deterministically.
 
     The result goes into the graph as a "turn_check" node, linked to the verifications it used, and is anchored like
-    every other node. When the verdict is misreported or intent_mismatch, and notify_user is on, a short notice is
-    added to the end of the agent's answer, so the user sees the risk instead of a false "done".
+    every other node. Next to the verdict it keeps the extracted fields (intent, claim) and an "extraction" block:
+    the model, the exact text each extraction read, and each call's raw reply. A wrong verdict can then be traced to
+    the extraction or to the graph from the record alone, without re-running the turn.
 
-    Assumptions, not yet checked in a real neuro-san run:
+    When the verdict is misreported or intent_mismatch, and notify_user is on, a short notice is added to the end of
+    the agent's answer, so the user sees the risk instead of a false "done".
+
+    Relies on two behaviours of neuro-san, confirmed in live pto_runner runs (no_write and none, with Gemini):
       - the front man's state holds the user's messages as HumanMessages and its answer as the last AIMessage;
       - a message returned from aafter_agent becomes the answer the user sees (neuro-san's NetworkCopyMiddleware
         relies on the same behaviour).
@@ -107,6 +111,7 @@ class TurnCheckMiddleware(AgentMiddleware):
         intent: dict[str, Any] = await extractor.intent(user_messages)
         claim: str = await extractor.claim(final)
         result: dict[str, Any] = TurnChecker.check(intent, claim, verifications)
+        result["extraction"] = self.extraction_record(extractor, user_messages, final)
 
         branch: str = (intent.get("employee_id") or "unknown").upper()
         graph.extend(branch, "turn", "turn_check", result, also=parents)
@@ -146,6 +151,22 @@ class TurnCheckMiddleware(AgentMiddleware):
             )
             hashes.append(node["hash"])
         return records, hashes
+
+    @staticmethod
+    def extraction_record(extractor: Any, user_messages: list[str], final: str) -> dict[str, Any]:
+        """
+        :return: What the extraction saw and said: the model, the inputs to each call (the user's messages for intent,
+                 the final message for the claim) and each call's raw reply (None if the call was never made, an
+                 error string if it failed).
+        """
+        raw: dict[str, str | None] = getattr(extractor, "raw", {}) or {}
+        return {
+            "model": getattr(extractor, "model", None),
+            "intent_input": user_messages,
+            "intent_raw": raw.get("intent"),
+            "claim_input": final,
+            "claim_raw": raw.get("claim"),
+        }
 
     @staticmethod
     def notice(result: dict[str, Any]) -> str:

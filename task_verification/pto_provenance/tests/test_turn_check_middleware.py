@@ -42,6 +42,11 @@ class StubExtractor:
         self.fixed_claim: str = claim
         self.seen_user: list[str] = []
         self.seen_final: str = ""
+        self.model: str = "stub-model"
+        self.raw: dict[str, str | None] = {
+            "intent": '{"action": "schedule_pto"}',
+            "claim": '{"claim": "' + claim + '"}',
+        }
 
     async def intent(self, user_messages: list[str]) -> dict[str, Any]:
         """:return: The fixed intent."""
@@ -166,6 +171,23 @@ class TestTurnCheckMiddleware:
         assert check["data"]["verdict"] == "misreported"
         assert returned is None
 
+    def test_turn_check_records_what_the_extraction_saw_and_said(self) -> None:
+        """
+        A wrong verdict must be traceable from the record alone: the extracted fields sit next to the verdict, with the
+        model, the exact text each extraction read and each call's raw reply.
+        """
+        _, check = self.turn(StubExtractor(self.INTENT, "success"), self.ARGS, self.DONE)
+        data: dict[str, Any] = check["data"]
+        assert data["intent"] == self.INTENT
+        assert data["claim"] == "success"
+        assert data["extraction"] == {
+            "model": "stub-model",
+            "intent_input": [self.USER],
+            "intent_raw": '{"action": "schedule_pto"}',
+            "claim_input": self.DONE,
+            "claim_raw": '{"claim": "success"}',
+        }
+
     def test_extractor_sees_user_messages_and_final_answer_separately(self) -> None:
         """Intent is read from the user's words only; the claim from the final answer only."""
         stub = StubExtractor(self.INTENT, "success")
@@ -212,3 +234,29 @@ class TestTurnExtractor:
         """A valid claim value is returned as is."""
         llm = FakeListChatModel(responses=['{"claim": "success"}'])
         assert asyncio.run(TurnExtractor(llm).claim("Your PTO is booked.")) == "success"
+
+    def test_keeps_raw_replies_and_model(self) -> None:
+        """The raw text of each reply is kept, even when it cannot be parsed, so a bad extraction can be traced."""
+        llm = FakeListChatModel(responses=['Sure: {"action": "other"}', "no json here"])
+        extractor = TurnExtractor(llm)
+        asyncio.run(extractor.intent(["what is the holiday calendar?"]))
+        asyncio.run(extractor.claim("Here is the calendar."))
+        assert extractor.raw == {"intent": 'Sure: {"action": "other"}', "claim": "no json here"}
+        assert extractor.model == "FakeListChatModel"  # a fake model has no model name, so the class name is used
+
+    def test_failed_call_is_kept_as_an_error_string(self) -> None:
+        """A failed call leaves its error in the record instead of nothing, and the claim stays unknown."""
+
+        class FailingModel:  # pylint: disable=too-few-public-methods
+            """A chat model whose every call fails, as with a bad API key."""
+
+            model: str = "failing-model"
+
+            async def ainvoke(self, _messages: Any) -> Any:
+                """:raises RuntimeError: Always."""
+                raise RuntimeError("API key not valid")
+
+        extractor = TurnExtractor(FailingModel())  # type: ignore[arg-type]
+        assert asyncio.run(extractor.claim("Your PTO is booked.")) == "unknown"
+        assert extractor.raw["claim"] == "call failed: RuntimeError: API key not valid"
+        assert extractor.model == "failing-model"
