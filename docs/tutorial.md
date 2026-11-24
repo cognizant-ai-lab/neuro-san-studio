@@ -577,7 +577,8 @@ class BlockingTool(CodedTool):
 ```
 
 See the [advanced calculator](../coded_tools/basic/advanced_calculator/calculator_tool.py) for an existing example.
-The call passes the same `args` and `sly_data` dictionaries, waits for completion, and propagates exceptions to the caller.
+The call passes the same `args` and `sly_data` dictionaries, waits for completion, and propagates exceptions
+to the caller.
 Worker threads share objects with the caller, so avoid concurrent writes to the same mutable state. Canceling the
 awaiting coroutine does not stop blocking work already running in the thread.
 
