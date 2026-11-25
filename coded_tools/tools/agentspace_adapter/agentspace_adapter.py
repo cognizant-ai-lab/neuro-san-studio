@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -94,9 +95,8 @@ class AgentSpaceSearch(CodedTool):
         return res
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
-        """Asynchronous version of the invoke method."""
-        # For this example, we will just call the synchronous method
-        return self.invoke(args, sly_data)
+        """Run the synchronous search in a worker thread so it does not block the event loop."""
+        return await asyncio.to_thread(self.invoke, args, sly_data)
 
     # Helper function to perform the search
     def search_sample(self, search_query: str) -> discoveryengine.services.search_service.pagers.SearchPager:

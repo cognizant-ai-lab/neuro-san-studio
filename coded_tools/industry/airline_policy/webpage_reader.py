@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 from typing import Any
 from typing import Dict
@@ -126,6 +127,6 @@ class WebPageReader(CodedTool):
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
         """
-        Delegates to the synchronous invoke method for now.
+        Run the synchronous invoke method in a worker thread so blocking I/O does not block the event loop.
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)
