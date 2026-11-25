@@ -1,0 +1,63 @@
+# Copyright © 2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# This file defines everything necessary for a data-driven test.
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
+
+# Covers the carmax search path: carmax_search calls the external
+# /tools/internet_info_gatherer agent network, which searches the web and reads the pages.
+{
+    # Describes what agent to test against.
+    "agent": "industry/carmax",
+
+    # Connect to the agent directly (no server required for testing)
+    "connections": ["direct"],
+
+    # Use direct connections when invoking external agents,
+    # so /tools/internet_info_gatherer is reached without a running server.
+    "use_direct": true,
+
+    # Timeout for the entire test (10 minutes - web search and page reads)
+    "timeout_in_seconds": 600,
+
+    # Interactions are a series of dictionaries with request elements paired with
+    # descriptions of response checks.
+    "interactions": [
+        {
+            # A specific inventory request with a location, so the network searches carmax.com
+            # instead of asking for a ZIP code first.
+            "text": "I am in Austin, TX 78701 and open to nationwide results. Search carmax.com for used Toyota RAV4s under $30,000 and give me links to a few listings.",
+
+            # The response block treats how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Keywords says we are going to look for exact matches for each
+                    # element in a list of strings. All elements need to show up
+                    # in order to pass.
+                    "keywords": ["carmax.com"],
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    "gist": "The response includes at least one link to a carmax.com page about used Toyota RAV4 vehicles."
+                }
+            }
+        }
+    ]
+}
