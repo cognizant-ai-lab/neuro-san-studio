@@ -1,0 +1,3 @@
+# Run outputs (logs, chat transcripts, provenance graphs, anchor logs, the demo's live record and fault file)
+# are generated locally by each run and are never committed.
+runs/
