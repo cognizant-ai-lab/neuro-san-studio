@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import webbrowser
+from collections import deque
 from typing import Any
 from typing import Dict
 
@@ -157,28 +158,23 @@ def generate_html(agent_name: str, network_dict: Dict[str, Any]):
 
     # Calculate levels using BFS from root nodes
     def calculate_levels():
-        levels = {}
-        queue = [(root, 0) for root in root_nodes]
-        visited = set()
+        levels = dict.fromkeys(root_nodes, 0)
+        queue = deque(root_nodes)
 
         while queue:
-            node_name, level = queue.pop(0)
+            node_name = queue.popleft()
+            next_level = levels.get(node_name) + 1
+            for child in tools_dict.get(node_name, {}).get("tools", []):
+                if child not in levels:
+                    levels[child] = next_level
+                    queue.append(child)
 
-            if node_name in visited:
-                continue
-            visited.add(node_name)
-            levels[node_name] = level
-
-            # Add children to queue with next level
-            if node_name in tools_dict and "tools" in tools_dict[node_name]:
-                for child in tools_dict[node_name]["tools"]:
-                    if child not in visited:
-                        queue.append((child, level + 1))
-
-        # Handle any orphaned nodes (shouldn't happen in well-formed data)
+        # Preserve consecutive fallback levels for components unreachable from a root.
+        fallback_level = max(levels.values(), default=-1) + 1
         for tool_name in all_tools:
             if tool_name not in levels:
-                levels[tool_name] = max(levels.values()) + 1 if levels else 0
+                levels[tool_name] = fallback_level
+                fallback_level += 1
 
         return levels
 
