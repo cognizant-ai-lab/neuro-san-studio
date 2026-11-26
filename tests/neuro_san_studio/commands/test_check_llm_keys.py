@@ -19,6 +19,7 @@
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import pytest
 from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import check_llm_keys as check_llm_keys_module
@@ -143,6 +144,21 @@ class TestValidateTier2:
         monkeypatch.setenv("AWS_ACCESS_KEY_ID", "AKIA" + "A" * 16)
         result = EnvValidator().validate_tier2("AWS_ACCESS_KEY_ID")
         assert result.status == ValidationStatus.VALID
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("ASIA" + "A" * 16, ValidationStatus.VALID),
+            ("ASIA" + "A" * 15, ValidationStatus.INVALID_FORMAT),
+            ("AROA" + "A" * 16, ValidationStatus.INVALID_FORMAT),
+        ],
+    )
+    def test_temporary_access_key_format(
+        self, monkeypatch: MonkeyPatch, value: str, expected: ValidationStatus
+    ) -> None:
+        """Recognize temporary access keys and reject malformed IDs."""
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", value)
+        assert EnvValidator().validate_tier2("AWS_ACCESS_KEY_ID").status == expected
 
 
 class TestHasErrorsAndWarnings:

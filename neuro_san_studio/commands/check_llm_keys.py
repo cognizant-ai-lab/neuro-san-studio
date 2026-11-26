@@ -115,8 +115,8 @@ class EnvValidator:
             "Google API keys should be at least 20 characters",
         ),
         "AWS_ACCESS_KEY_ID": lambda v: (
-            (v.startswith("AKIA") and len(v) == 20),
-            "AWS Access Key IDs should start with 'AKIA' and be exactly 20 characters",
+            (v.startswith(("AKIA", "ASIA")) and len(v) == 20),
+            "AWS Access Key IDs should start with 'AKIA' or 'ASIA' and be exactly 20 characters",
         ),
         "AWS_SECRET_ACCESS_KEY": lambda v: (
             (len(v) == 40),
