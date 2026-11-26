@@ -19,6 +19,7 @@
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import pytest
 from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import check_llm_keys as check_llm_keys_module
@@ -131,6 +132,20 @@ class TestValidateTier2:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-abc1234567890abc")
         result = EnvValidator().validate_tier2("ANTHROPIC_API_KEY")
         assert result.status == ValidationStatus.VALID
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("-", ValidationStatus.INVALID_FORMAT),
+            ("A" * 18 + "_", ValidationStatus.INVALID_FORMAT),
+            ("A" * 17 + "-_!", ValidationStatus.INVALID_FORMAT),
+            ("A" * 18 + "-_", ValidationStatus.VALID),
+        ],
+    )
+    def test_google_key_format(self, monkeypatch: MonkeyPatch, value: str, expected: ValidationStatus) -> None:
+        """Check the length boundary and allowed punctuation together."""
+        monkeypatch.setenv("GOOGLE_API_KEY", value)
+        assert EnvValidator().validate_tier2("GOOGLE_API_KEY").status == expected
 
     def test_aws_access_key_wrong_length(self, monkeypatch: MonkeyPatch) -> None:
         """AWS Access Key ID with non-20 length → INVALID_FORMAT."""
