@@ -36,7 +36,7 @@ Validates that API keys match expected patterns for each provider.
 | OpenAI | Starts with `sk-`, at least 20 characters |
 | Anthropic | Starts with `sk-ant-`, at least 20 characters |
 | Google | At least 20 characters |
-| AWS Access Key | Starts with `AKIA`, exactly 20 characters |
+| AWS Access Key | Starts with `AKIA` (long-term) or `ASIA` (temporary), exactly 20 characters |
 | AWS Secret Key | Exactly 40 characters |
 | Azure OpenAI | At least 20 characters |
 
