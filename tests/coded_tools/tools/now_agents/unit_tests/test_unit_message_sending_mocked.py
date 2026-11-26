@@ -17,7 +17,9 @@
 import asyncio
 import json
 import os
+import threading
 import unittest
+from typing import Any
 from unittest.mock import Mock
 from unittest.mock import patch
 
@@ -203,21 +205,32 @@ class TestNowAgentSendMessage(unittest.TestCase):
         },
     )
     @patch("coded_tools.tools.now_agents.nowagent_api_send_message.requests.post")
-    def test_async_invoke(self, mock_post):
+    def test_async_invoke(self, mock_post: Mock) -> None:
         """
         Test asynchronous invoke method.
 
         This test verifies that the async_invoke method delegates correctly
-        to the synchronous invoke method.
+        to the synchronous invoke method on a worker thread.
         """
         # Mock successful API response
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = MOCK_SEND_RESPONSE
-        mock_post.return_value = mock_response
+        request_threads: list[int] = []
+
+        # Capture the thread at the HTTP boundary while exercising the real invoke method.
+        def request(*_args: Any, **_kwargs: Any) -> Mock:
+            """Return the mocked HTTP response and record the calling thread."""
+            request_threads.append(threading.get_ident())
+            return mock_response
+
+        mock_post.side_effect = request
 
         # Execute the async tool
         result = asyncio.run(self.tool.async_invoke(self.test_args, self.test_sly_data))
+
+        self.assertEqual(len(request_threads), 1)
+        self.assertNotEqual(request_threads.pop(), threading.get_ident())
 
         # Verify the result matches synchronous behavior
         self.assertEqual(result, MOCK_SEND_RESPONSE)

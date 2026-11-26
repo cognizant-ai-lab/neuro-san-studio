@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -123,9 +124,9 @@ class AgentforceAPI(CodedTool):
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
         """
-        Delegates to the synchronous invoke method for now.
+        Run the synchronous invoke method in a worker thread so blocking I/O does not block the event loop.
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)
 
 
 # Example usage: See tests/coded_tools/tools/agentforce/test_agentforce_api.py

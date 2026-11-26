@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
 import time
@@ -164,7 +165,7 @@ class NowAgentRetrieveMessage(CodedTool):
         """
         Asynchronous version of the invoke method.
 
-        Currently delegates to the synchronous invoke method.
+        Runs the synchronous invoke method in a worker thread to keep the event loop responsive.
 
         Args:
             args: Dictionary containing inquiry and agent_id parameters
@@ -178,4 +179,4 @@ class NowAgentRetrieveMessage(CodedTool):
                   - status_code: HTTP status code if request fails (included only on error)
                   - error_response: Detailed ServiceNow error response for retry logic (included only on error)
         """
-        return self.invoke(args, sly_data)
+        return await asyncio.to_thread(self.invoke, args, sly_data)
