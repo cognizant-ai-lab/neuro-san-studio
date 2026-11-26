@@ -205,5 +205,8 @@ registries/generated/
 # Persistent memory tool default root (per-user, per-agent memory files)
 memory/
 
+# Default report written by the experimental/decision_prescriptor network
+decision_prescriptor_report.html
+
 # test local only
 registries/manifest.hocon.test
