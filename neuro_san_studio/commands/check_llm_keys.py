@@ -25,6 +25,7 @@ Three-tier validation for LLM API keys and other critical environment variables:
 """
 
 import os
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
@@ -111,8 +112,8 @@ class EnvValidator:
             "Anthropic keys should start with 'sk-ant-' and be at least 20 characters",
         ),
         "GOOGLE_API_KEY": lambda v: (
-            (len(v) >= 20 and v.isalnum() or "-" in v or "_" in v),
-            "Google API keys should be at least 20 characters",
+            re.fullmatch(r"[A-Za-z0-9_-]{20,}", v) is not None,
+            "Google API keys should contain at least 20 ASCII letters, digits, hyphens, or underscores",
         ),
         "AWS_ACCESS_KEY_ID": lambda v: (
             (v.startswith("AKIA") and len(v) == 20),
